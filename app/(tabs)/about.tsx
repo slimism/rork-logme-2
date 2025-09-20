@@ -1,19 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '@/constants/colors';
-import { Mail, MessageCircle, ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
-  
-  const handleContactUs = () => {
-    Linking.openURL('mailto:logme.film@gmail.com');
-  };
-
-  const handleFeedback = () => {
-    Linking.openURL('mailto:logme.film@gmail.com?subject=Feedback');
-  };
 
   return (
     <View style={styles.container}>
@@ -64,13 +56,9 @@ export default function AboutScreen() {
         {/* Contact Us Section */}
         <Text style={styles.outsideSectionTitle}>CONTACT US</Text>
         <View style={styles.whiteContainer}>
-          <TouchableOpacity onPress={handleContactUs} style={styles.contactButton}>
-            <Mail size={24} color={colors.text} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleFeedback} style={styles.contactButton}>
-            <MessageCircle size={24} color={colors.text} />
-          </TouchableOpacity>
+          <Text style={styles.contactText}>
+            For feedback, bug reports, or concerns, please reach us at logme.film@gmail.com
+          </Text>
         </View>
       </ScrollView>
     </View>
@@ -182,8 +170,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '400',
   },
-  contactButton: {
-    paddingVertical: 12,
-    marginBottom: 8,
+  contactText: {
+    fontSize: 17,
+    color: colors.text,
+    lineHeight: 24,
+    fontWeight: '400',
   },
 });
