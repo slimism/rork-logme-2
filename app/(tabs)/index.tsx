@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
-import { Plus, Search, Film, Clock, Trash2 } from 'lucide-react-native';
+import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
 
@@ -131,7 +131,7 @@ export default function ProjectsScreen() {
                 <Image source={{ uri: item.logoUri }} style={styles.projectImage} />
               ) : (
                 <View style={styles.projectImagePlaceholder}>
-                  <Film size={32} color="white" />
+                  <Film size={40} color="white" />
                 </View>
               )}
             </View>
@@ -143,7 +143,8 @@ export default function ProjectsScreen() {
                   <Text style={styles.metaText}>{stats.shots} Cameras</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Text style={styles.loggerText}>Logger: J. Doe</Text>
+                  <User size={14} color={colors.subtext} />
+                  <Text style={styles.metaText}>Logger: J. Doe</Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Clock size={14} color={colors.subtext} />
@@ -459,13 +460,13 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   projectImage: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     borderRadius: 8,
   },
   projectImagePlaceholder: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     borderRadius: 8,
     backgroundColor: '#2c3e50',
     alignItems: 'center',
@@ -493,10 +494,7 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     marginLeft: 6,
   },
-  loggerText: {
-    fontSize: 13,
-    color: colors.subtext,
-  },
+
   checkbox: {
     width: 24,
     height: 24,
