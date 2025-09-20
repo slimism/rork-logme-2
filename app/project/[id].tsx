@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
+import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
-import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -160,73 +159,54 @@ export default function ProjectScreen() {
   const renderTake = ({ item: take }: { item: any }) => {
     const isExpanded = expandedTakes.has(take.id);
     const takeNumber = take.data?.takeNumber || '1';
-    const cameraFile = take.data?.cameraFile || take.data?.cameraFile1 || '';
-    const soundFile = take.data?.soundFile || '';
+
+    
+    // Format classification and shot details
+    const details = [];
+    if (take.data?.classification) {
+      details.push(take.data.classification);
+    }
+    if (take.data?.shotDetails && Array.isArray(take.data.shotDetails)) {
+      details.push(...take.data.shotDetails);
+    } else if (take.data?.shotDetails) {
+      details.push(take.data.shotDetails);
+    }
+    
+    // Format timestamp - show as range if we have duration data, otherwise just creation time
+    const formatTimeRange = () => {
+      const startTime = new Date(take.createdAt);
+      const startFormatted = startTime.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
+      // If we have duration or end time data, show as range
+      // For now, just show single time since we don't have end time data
+      return startFormatted;
+    };
     
     return (
-      <Card style={styles.takeCard}>
-        {/* Minimal view - always visible */}
+      <View style={styles.takeCard}>
         <TouchableOpacity 
           style={styles.takeMinimalView}
           onPress={() => toggleTakeExpansion(take.id)}
         >
-          <View style={styles.takeMinimalInfo}>
-            <View style={styles.takeNumberBadge}>
-              <Text style={styles.takeNumberText}>{takeNumber}</Text>
+          <View style={styles.takeContent}>
+            <View style={styles.takeHeader}>
+              <Text style={styles.takeTitle}>Take {takeNumber}</Text>
+              {take.data?.isGoodTake && (
+                <View style={styles.goodTakeIndicator}>
+                  <Check size={16} color="white" />
+                </View>
+              )}
             </View>
-            <View style={styles.takeBasicInfo}>
-              <View style={styles.takeTitleRow}>
-                <Text style={styles.takeTitle}>Take {takeNumber}</Text>
-                {take.data?.isGoodTake && (
-                  <View style={styles.goodTakeIndicator}>
-                    <Check size={14} color="white" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.takeFiles}>
-                {cameraFile && (
-                  <View style={styles.fileItem}>
-                    <Camera size={12} color={colors.subtext} />
-                    <Text style={styles.fileText}>{cameraFile}</Text>
-                  </View>
-                )}
-                {soundFile && (
-                  <View style={styles.fileItem}>
-                    <Mic size={12} color={colors.subtext} />
-                    <Text style={styles.fileText}>{soundFile}</Text>
-                  </View>
-                )}
-              </View>
-              {/* Show classification and shot details */}
-              <View style={styles.takeMetadata}>
-                {take.data?.classification && (
-                  <View style={styles.metadataTag}>
-                    <Text style={styles.metadataText}>{take.data.classification}</Text>
-                  </View>
-                )}
-                {take.data?.shotDetails && (
-                  <View style={styles.metadataTag}>
-                    <Text style={styles.metadataText}>{take.data.shotDetails}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-          <View style={styles.takeActions}>
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                router.push(`/take/${take.id}`);
-              }}
-            >
-              <Edit3 size={16} color={colors.primary} />
-            </TouchableOpacity>
-            <ChevronRight 
-              size={20} 
-              color={colors.subtext} 
-              style={[styles.expandIcon, isExpanded && styles.expandIconRotated]}
-            />
+            
+            {details.length > 0 && (
+              <Text style={styles.takeDetails}>{details.join(', ')}</Text>
+            )}
+            
+            <Text style={styles.takeTime}>{formatTimeRange()}</Text>
           </View>
         </TouchableOpacity>
         
@@ -305,7 +285,7 @@ export default function ProjectScreen() {
             </View>
           </View>
         )}
-      </Card>
+      </View>
     );
   };
 
@@ -465,13 +445,14 @@ export default function ProjectScreen() {
                   <View key={`${sceneNumber}-${shotNumber}`} style={styles.shotContainer}>
                     <View style={styles.shotHeader}>
                       <Text style={styles.shotTitle}>Shot {shotNumber}</Text>
-                      <Text style={styles.takeCount}>{organizedTakes[sceneNumber][shotNumber].length} takes</Text>
                     </View>
-                    {organizedTakes[sceneNumber][shotNumber].map(take => (
-                      <View key={take.id}>
-                        {renderTake({ item: take })}
-                      </View>
-                    ))}
+                    <View style={styles.takesContainer}>
+                      {organizedTakes[sceneNumber][shotNumber].map(take => (
+                        <View key={take.id}>
+                          {renderTake({ item: take })}
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 ))}
               </View>
@@ -594,43 +575,40 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   takeCard: {
-    marginBottom: 12,
-    padding: 0,
-    overflow: 'hidden',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   takeMinimalView: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    backgroundColor: 'white',
   },
-  takeMinimalInfo: {
+  takeContent: {
     flex: 1,
+  },
+  takeHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  takeNumberBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  takeNumberText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  takeBasicInfo: {
-    flex: 1,
+    marginBottom: 4,
   },
   takeTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  takeDetails: {
+    fontSize: 14,
+    color: colors.subtext,
     marginBottom: 4,
+  },
+  takeTime: {
+    fontSize: 14,
+    color: colors.subtext,
   },
   takeFiles: {
     flexDirection: 'row',
@@ -697,43 +675,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   sceneContainer: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sceneHeader: {
     backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 8,
+    marginBottom: 16,
     borderRadius: 8,
   },
   sceneTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
   },
   shotContainer: {
-    marginBottom: 16,
-    marginLeft: 16,
+    marginBottom: 24,
   },
   shotHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 8,
-    borderRadius: 6,
+    backgroundColor: '#B8E6FF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderRadius: 8,
   },
   shotTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
   },
-  takeCount: {
-    fontSize: 12,
-    color: colors.subtext,
-    fontWeight: '500',
+  takesContainer: {
+    gap: 8,
   },
   takeTitleRow: {
     flexDirection: 'row',
@@ -742,9 +714,9 @@ const styles = StyleSheet.create({
   },
   goodTakeIndicator: {
     backgroundColor: '#22c55e',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
