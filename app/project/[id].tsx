@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
   sceneHeader: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   sceneTitle: {
     fontSize: 24,
