@@ -210,9 +210,7 @@ export default function ProjectsScreen() {
               )}
             </View>
           </View>
-        ) : (
-          <Text style={styles.subtitle}>Select a project to view its logs</Text>
-        )}
+        ) : null}
       </View>
       
       {!isMultiSelectMode && (
