@@ -18,7 +18,7 @@ export default function ProjectScreen() {
   const [project, setProject] = useState(projects.find(p => p.id === id));
   const [projectLogSheets, setProjectLogSheets] = useState(logSheets.filter(l => l.projectId === id));
 
-  const [expandedTakes, setExpandedTakes] = useState<Set<string>>(new Set());
+
   const [isExporting, setIsExporting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -142,27 +142,15 @@ export default function ProjectScreen() {
     return parseInt(a) - parseInt(b);
   });
 
-  const toggleTakeExpansion = (takeId: string) => {
-    setExpandedTakes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(takeId)) {
-        newSet.delete(takeId);
-      } else {
-        newSet.add(takeId);
-      }
-      return newSet;
-    });
-  };
+
 
 
 
   const renderTake = ({ item: take, index, totalTakes }: { item: any, index: number, totalTakes: number }) => {
-    const isExpanded = expandedTakes.has(take.id);
     const takeNumber = take.data?.takeNumber || '1';
     const isFirstTake = index === 0;
     const isLastTake = index === totalTakes - 1;
 
-    
     // Format classification and shot details in one row
     const details = [];
     if (take.data?.classification) {
@@ -174,29 +162,17 @@ export default function ProjectScreen() {
       details.push(take.data.shotDetails);
     }
     
-    // Format timestamp range - creation to last modified
-    const formatTimeRange = () => {
-      const createdTime = new Date(take.createdAt);
-      const updatedTime = new Date(take.updatedAt || take.createdAt);
-      
-      const createdFormatted = createdTime.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+    // Format created and updated dates
+    const formatDateTime = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
-      
-      const updatedFormatted = updatedTime.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-      
-      // Show range if created and updated times are different
-      if (take.updatedAt && take.updatedAt !== take.createdAt) {
-        return `${createdFormatted} - ${updatedFormatted}`;
-      }
-      
-      return createdFormatted;
     };
     
     return (
@@ -208,7 +184,7 @@ export default function ProjectScreen() {
       ]}>
         <TouchableOpacity 
           style={styles.takeMinimalView}
-          onPress={() => toggleTakeExpansion(take.id)}
+          onPress={() => router.push(`/take/${take.id}`)}
         >
           <View style={styles.takeContent}>
             <View style={styles.takeHeader}>
@@ -224,85 +200,10 @@ export default function ProjectScreen() {
               <Text style={styles.takeDetails}>{details.join(', ')}</Text>
             )}
             
-            <Text style={styles.takeTime}>{formatTimeRange()}</Text>
+            <Text style={styles.takeTime}>Created: {formatDateTime(take.createdAt)}</Text>
+            <Text style={styles.takeTime}>Last updated: {formatDateTime(take.updatedAt || take.createdAt)}</Text>
           </View>
         </TouchableOpacity>
-        
-        {/* Expanded view - shows all details */}
-        {isExpanded && (
-          <View style={styles.takeExpandedView}>
-            <View style={styles.expandedDetails}>
-              {take.data?.descriptionOfShot && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Description:</Text>
-                  <Text style={styles.detailValue}>{take.data.descriptionOfShot}</Text>
-                </View>
-              )}
-              {take.data?.notesForTake && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Notes:</Text>
-                  <Text style={styles.detailValue}>{take.data.notesForTake}</Text>
-                </View>
-              )}
-              {/* Show additional camera files if multiple cameras */}
-              {(() => {
-                const cameraCount = project?.settings?.cameraConfiguration;
-                if (cameraCount && cameraCount > 1) {
-                  return Array.from({ length: cameraCount }, (_, i) => {
-                    const cameraFieldId = `cameraFile${i + 1}`;
-                    const cameraValue = take.data?.[cameraFieldId];
-                    if (cameraValue) {
-                      return (
-                        <View key={`${take.id}-${cameraFieldId}`} style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Camera {i + 1}:</Text>
-                          <Text style={styles.detailValue}>{cameraValue}</Text>
-                        </View>
-                      );
-                    }
-                    return null;
-                  });
-                }
-                return null;
-              })()}
-              {/* Show classification and shot details in expanded view */}
-              {take.data?.classification && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Classification:</Text>
-                  <Text style={styles.detailValue}>{take.data.classification}</Text>
-                </View>
-              )}
-              {take.data?.shotDetails && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Shot Details:</Text>
-                  <Text style={styles.detailValue}>{take.data.shotDetails}</Text>
-                </View>
-              )}
-              {take.data?.isGoodTake && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Good Take:</Text>
-                  <Text style={styles.detailValue}>Yes</Text>
-                </View>
-              )}
-              {/* Show custom fields */}
-              {project?.settings?.customFields?.map((fieldName: string, index: number) => {
-                const customValue = take.data?.[`custom_${index}`];
-                if (customValue) {
-                  return (
-                    <View key={`${take.id}-custom_${index}`} style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{fieldName}:</Text>
-                      <Text style={styles.detailValue}>{customValue}</Text>
-                    </View>
-                  );
-                }
-                return null;
-              })}
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Created:</Text>
-                <Text style={styles.detailValue}>{new Date(take.createdAt).toLocaleString()}</Text>
-              </View>
-            </View>
-          </View>
-        )}
       </View>
     );
   };
