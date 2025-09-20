@@ -582,6 +582,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    marginBottom: 0,
   },
   takeMinimalView: {
     padding: 16,
@@ -693,7 +694,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B8E6FF',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 12,
+    marginBottom: 0,
     borderRadius: 8,
   },
   shotTitle: {
