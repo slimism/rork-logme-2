@@ -11,7 +11,7 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
-          headerShown: true,
+          headerShown: false,
           tabBarStyle: {
             backgroundColor: 'white',
             borderTopColor: colors.border,
@@ -27,7 +27,7 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="index"
+          name="(projects)"
           options={{
             headerShown: false,
             tabBarLabel: "Projects",
