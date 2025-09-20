@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/projectStore';
 import { Button } from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType } from '@/types';
+import Toast from 'react-native-toast-message';
 
 interface FieldType {
   id: string;
@@ -36,6 +37,7 @@ export default function EditTakeScreen() {
   const [cameraRange, setCameraRange] = useState({ from: '', to: '' });
   const [soundRange, setSoundRange] = useState({ from: '', to: '' });
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateMessage, setDuplicateMessage] = useState('');
   const inputRefs = useRef<Record<string, TextInput | null>>({});
@@ -167,6 +169,14 @@ export default function EditTakeScreen() {
 
   const updateTakeData = (fieldId: string, value: string) => {
     setTakeData(prev => ({ ...prev, [fieldId]: value }));
+    // Clear validation error when user starts typing
+    if (validationErrors.has(fieldId)) {
+      setValidationErrors(prev => {
+        const newErrors = new Set(prev);
+        newErrors.delete(fieldId);
+        return newErrors;
+      });
+    }
   };
 
   const formatFileNumber = (value: string): string => {
@@ -295,16 +305,82 @@ export default function EditTakeScreen() {
     return duplicateTake;
   };
 
+  // Helper function to validate mandatory fields
+  const validateMandatoryFields = () => {
+    const errors = new Set<string>();
+    const missingFields: string[] = [];
+    
+    // Check Scene Number (always mandatory)
+    if (!takeData.sceneNumber?.trim()) {
+      errors.add('sceneNumber');
+      missingFields.push('Scene');
+    }
+    
+    // Check Shot Number (always mandatory)
+    if (!takeData.shotNumber?.trim()) {
+      errors.add('shotNumber');
+      missingFields.push('Shot');
+    }
+    
+    // Check Sound File (mandatory unless disabled)
+    if (!disabledFields.has('soundFile') && !takeData.soundFile?.trim()) {
+      errors.add('soundFile');
+      missingFields.push('Sound File');
+    }
+    
+    // Check Camera Files (mandatory unless disabled)
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      if (!disabledFields.has('cameraFile') && !takeData.cameraFile?.trim()) {
+        errors.add('cameraFile');
+        missingFields.push('Camera File');
+      }
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (!disabledFields.has(fieldId) && !takeData[fieldId]?.trim()) {
+          errors.add(fieldId);
+          missingFields.push(`Camera File ${i}`);
+        }
+      }
+    }
+    
+    setValidationErrors(errors);
+    
+    if (missingFields.length > 0) {
+      const fieldList = missingFields.join(', ');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Required Fields',
+        text2: `Please fill in: ${fieldList}`,
+        position: 'top',
+        visibilityTime: 4000,
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSaveTake = () => {
     if (!logSheet) return;
     
-    // Check for duplicate file numbers first
+    // Validate mandatory fields first
+    if (!validateMandatoryFields()) {
+      return;
+    }
+    
+    // Check for duplicate file numbers
     const duplicateFiles = checkForDuplicateFiles();
     if (duplicateFiles.length > 0) {
       const duplicateList = duplicateFiles.join(', ');
-      const message = `The following file numbers already exist in this project:\n\n${duplicateList}\n\nPlease change these file numbers to unique values before saving.`;
-      setDuplicateMessage(message);
-      setShowDuplicateModal(true);
+      Toast.show({
+        type: 'error',
+        text1: 'Duplicate File Numbers',
+        text2: `${duplicateList} already exist in this project`,
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return;
     }
     
@@ -316,9 +392,13 @@ export default function EditTakeScreen() {
         duplicate: { scene: duplicateTake.data?.sceneNumber, shot: duplicateTake.data?.shotNumber, take: duplicateTake.data?.takeNumber }
       });
       
-      const message = `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists.\n\nPlease change the take number to save your changes.`;
-      setDuplicateMessage(message);
-      setShowDuplicateModal(true);
+      Toast.show({
+        type: 'error',
+        text1: 'Duplicate Take',
+        text2: `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists`,
+        position: 'top',
+        visibilityTime: 4000,
+      });
       return;
     }
     
@@ -361,13 +441,21 @@ export default function EditTakeScreen() {
     const value = takeData[field.id] || '';
     const isMultiline = field.id === 'notesForTake' || field.id === 'descriptionOfShot';
     const isDisabled = disabledFields.has(field.id);
+    const hasError = validationErrors.has(field.id);
+    const isMandatory = ['sceneNumber', 'shotNumber', 'soundFile', 'cameraFile'].includes(field.id) || field.id.startsWith('cameraFile');
     const isFileField = field.id === 'soundFile';
     
     if (isFileField && soundRangeEnabled) {
       return (
         <View key={field.id} style={[styles.fieldContainer, customStyle]}>
           <View style={styles.fieldHeaderRow}>
-            <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>Sound File</Text>
+            <Text style={[
+              styles.fieldLabel, 
+              isDisabled && styles.disabledLabel,
+              hasError && styles.errorLabel
+            ]}>
+              Sound File{!isDisabled && <Text style={styles.asterisk}> *</Text>}
+            </Text>
             <TouchableOpacity
               style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
               onPress={() => setSoundRangeEnabled(false)}
@@ -409,7 +497,13 @@ export default function EditTakeScreen() {
       return (
         <View key={field.id} style={[styles.fieldContainer, customStyle]}>
           <View style={styles.fieldHeaderRow}>
-            <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>Sound File</Text>
+            <Text style={[
+              styles.fieldLabel, 
+              isDisabled && styles.disabledLabel,
+              hasError && styles.errorLabel
+            ]}>
+              Sound File{!isDisabled && <Text style={styles.asterisk}> *</Text>}
+            </Text>
             <TouchableOpacity
               style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
               onPress={() => setSoundRangeEnabled(true)}
@@ -420,7 +514,11 @@ export default function EditTakeScreen() {
           </View>
           <TextInput
             ref={(ref) => { inputRefs.current[field.id] = ref; }}
-            style={[styles.fieldInput, isDisabled && styles.disabledInput]}
+            style={[
+              styles.fieldInput, 
+              isDisabled && styles.disabledInput,
+              hasError && styles.errorInput
+            ]}
             value={value}
             onChangeText={(text) => updateTakeData(field.id, text)}
             onBlur={() => {
@@ -440,13 +538,20 @@ export default function EditTakeScreen() {
     
     return (
       <View key={field.id} style={[styles.fieldContainer, customStyle]}>
-        <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>{field.label}</Text>
+        <Text style={[
+          styles.fieldLabel, 
+          isDisabled && styles.disabledLabel,
+          hasError && styles.errorLabel
+        ]}>
+          {field.label}{isMandatory && !isDisabled && <Text style={styles.asterisk}> *</Text>}
+        </Text>
         <TextInput
           ref={(ref) => { inputRefs.current[field.id] = ref; }}
           style={[
             styles.fieldInput,
             isMultiline && styles.multilineInput,
-            isDisabled && styles.disabledInput
+            isDisabled && styles.disabledInput,
+            hasError && styles.errorInput
           ]}
           value={isDisabled ? '' : value}
           onChangeText={(text) => updateTakeData(field.id, text)}
@@ -533,7 +638,13 @@ export default function EditTakeScreen() {
         fields.push(
           <View key={fieldId} style={styles.fieldContainer}>
             <View style={styles.fieldHeaderRow}>
-              <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>{fieldLabel}</Text>
+              <Text style={[
+                styles.fieldLabel, 
+                isDisabled && styles.disabledLabel,
+                validationErrors.has(fieldId) && styles.errorLabel
+              ]}>
+                {fieldLabel}{!isDisabled && <Text style={styles.asterisk}> *</Text>}
+              </Text>
               {i === 1 && (
                 <TouchableOpacity
                   style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
@@ -546,7 +657,11 @@ export default function EditTakeScreen() {
             </View>
             <TextInput
               ref={(ref) => { inputRefs.current[fieldId] = ref; }}
-              style={[styles.fieldInput, isDisabled && styles.disabledInput]}
+              style={[
+                styles.fieldInput, 
+                isDisabled && styles.disabledInput,
+                validationErrors.has(fieldId) && styles.errorInput
+              ]}
               value={isDisabled ? '' : (takeData[fieldId] || '')}
               onChangeText={(text) => updateTakeData(fieldId, text)}
               onBlur={() => {
@@ -670,9 +785,15 @@ export default function EditTakeScreen() {
           <View style={styles.rowContainer}>
             {enabledFields.find((field: FieldType) => field.id === 'sceneNumber') && (
               <View style={styles.thirdWidth}>
-                <Text style={styles.fieldLabel}>Scene</Text>
+                <Text style={[styles.fieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
+                  Scene<Text style={styles.asterisk}> *</Text>
+                </Text>
                 <TextInput
-                  style={[styles.fieldInput, disabledFields.has('sceneNumber') && styles.disabledInput]}
+                  style={[
+                    styles.fieldInput, 
+                    disabledFields.has('sceneNumber') && styles.disabledInput,
+                    validationErrors.has('sceneNumber') && styles.errorInput
+                  ]}
                   value={disabledFields.has('sceneNumber') ? '' : (takeData.sceneNumber || '')}
                   onChangeText={(text) => updateTakeData('sceneNumber', text)}
                   placeholder={disabledFields.has('sceneNumber') ? '' : 'Enter scene'}
@@ -694,9 +815,19 @@ export default function EditTakeScreen() {
             )}
             {enabledFields.find((field: FieldType) => field.id === 'shotNumber') && (
               <View style={styles.thirdWidth}>
-                <Text style={[styles.fieldLabel, disabledFields.has('shotNumber') && styles.disabledLabel]}>Shot</Text>
+                <Text style={[
+                  styles.fieldLabel, 
+                  disabledFields.has('shotNumber') && styles.disabledLabel,
+                  validationErrors.has('shotNumber') && styles.errorLabel
+                ]}>
+                  Shot<Text style={styles.asterisk}> *</Text>
+                </Text>
                 <TextInput
-                  style={[styles.fieldInput, disabledFields.has('shotNumber') && styles.disabledInput]}
+                  style={[
+                    styles.fieldInput, 
+                    disabledFields.has('shotNumber') && styles.disabledInput,
+                    validationErrors.has('shotNumber') && styles.errorInput
+                  ]}
                   value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
                   onChangeText={(text) => updateTakeData('shotNumber', text)}
                   placeholder={disabledFields.has('shotNumber') ? '' : 'Enter shot'}
@@ -718,9 +849,17 @@ export default function EditTakeScreen() {
             )}
             {enabledFields.find((field: FieldType) => field.id === 'takeNumber') && (
               <View style={styles.thirdWidth}>
-                <Text style={[styles.fieldLabel, disabledFields.has('takeNumber') && styles.disabledLabel]}>Take</Text>
+                <Text style={[
+                  styles.fieldLabel, 
+                  disabledFields.has('takeNumber') && styles.disabledLabel,
+                  validationErrors.has('takeNumber') && styles.errorLabel
+                ]}>Take</Text>
                 <TextInput
-                  style={[styles.fieldInput, disabledFields.has('takeNumber') && styles.disabledInput]}
+                  style={[
+                    styles.fieldInput, 
+                    disabledFields.has('takeNumber') && styles.disabledInput,
+                    validationErrors.has('takeNumber') && styles.errorInput
+                  ]}
                   value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
                   onChangeText={(text) => updateTakeData('takeNumber', text)}
                   placeholder={disabledFields.has('takeNumber') ? '' : 'Enter take'}
@@ -942,6 +1081,8 @@ export default function EditTakeScreen() {
           </View>
         </View>
       </Modal>
+      
+      <Toast />
     </KeyboardAvoidingView>
   );
 }
@@ -1304,6 +1445,18 @@ const styles = StyleSheet.create({
   },
   disabledLabel: {
     color: colors.subtext,
+  },
+  errorLabel: {
+    color: colors.error,
+  },
+  errorInput: {
+    borderColor: colors.error,
+    borderWidth: 2,
+  },
+  asterisk: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   sectionContainer: {
     backgroundColor: 'white',

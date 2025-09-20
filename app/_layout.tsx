@@ -3,6 +3,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import CustomSplashScreen from "@/components/SplashScreen";
+import Toast from 'react-native-toast-message';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -71,6 +72,7 @@ function RootLayoutNav() {
           }} 
         />
       </Stack>
+      <Toast />
     </>
   );
 }
