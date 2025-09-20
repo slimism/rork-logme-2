@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Camera, Check, X } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -31,6 +31,21 @@ export default function AddTakeScreen() {
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     setProject(projects.find(p => p.id === projectId));
@@ -676,12 +691,16 @@ export default function AddTakeScreen() {
               focusNextField(field.id, allFieldIds);
             }
           }}
-          onFocus={() => {
+          onFocus={(event) => {
             if (!isDisabled) {
               // Scroll to make the field visible when focused
               setTimeout(() => {
-                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-              }, 300);
+                const target = event.target as any;
+                target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                  const scrollY = Math.max(0, pageY - 100);
+                  scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                });
+              }, 100);
             }
           }}
           blurOnSubmit={isMultiline}
@@ -742,8 +761,8 @@ export default function AddTakeScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior='padding'
-      keyboardVerticalOffset={90}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <Stack.Screen 
         options={{
@@ -758,6 +777,7 @@ export default function AddTakeScreen() {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
         <View style={styles.fieldsSection}>
           {/* Scene, Shot, Take on same row */}
@@ -839,11 +859,15 @@ export default function AddTakeScreen() {
                       focusNextField('cameraFile', allFieldIds);
                     }
                   }}
-                  onFocus={() => {
+                  onFocus={(event) => {
                     if (!disabledFields.has('cameraFile')) {
                       setTimeout(() => {
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                      }, 300);
+                        const target = event.target as any;
+                        target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                          const scrollY = Math.max(0, pageY - 100);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }, 100);
                     }
                   }}
                 />
@@ -923,11 +947,15 @@ export default function AddTakeScreen() {
                       focusNextField('soundFile', allFieldIds);
                     }
                   }}
-                  onFocus={() => {
+                  onFocus={(event) => {
                     if (!disabledFields.has('soundFile')) {
                       setTimeout(() => {
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                      }, 300);
+                        const target = event.target as any;
+                        target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                          const scrollY = Math.max(0, pageY - 100);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }, 100);
                     }
                   }}
                 />
@@ -1013,11 +1041,15 @@ export default function AddTakeScreen() {
                             focusNextField(fieldId, allFieldIds);
                           }
                         }}
-                        onFocus={() => {
+                        onFocus={(event) => {
                           if (!isDisabled) {
                             setTimeout(() => {
-                              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                            }, 300);
+                              const target = event.target as any;
+                              target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                                const scrollY = Math.max(0, pageY - 100);
+                                scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                              });
+                            }, 100);
                           }
                         }}
                       />
@@ -1048,19 +1080,19 @@ export default function AddTakeScreen() {
         {/* Classification Section */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Classification</Text>
-          <View style={styles.buttonRow}>
+          <View style={styles.classificationGrid}>
             {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
-                  styles.toggleButton,
-                  classification === type && styles.toggleButtonActive
+                  styles.classificationButton,
+                  classification === type && styles.classificationButtonActive
                 ]}
                 onPress={() => handleClassificationChange(type)}
               >
                 <Text style={[
-                  styles.toggleButtonText,
-                  classification === type && styles.toggleButtonTextActive
+                  styles.classificationButtonText,
+                  classification === type && styles.classificationButtonTextActive
                 ]}>
                   {type}
                 </Text>
@@ -1072,26 +1104,26 @@ export default function AddTakeScreen() {
         {/* Shot Details Section */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Shot Details</Text>
-          <View style={styles.buttonRow}>
+          <View style={styles.shotDetailsRow}>
             {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
               const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
               return (
                 <TouchableOpacity
                   key={type}
                   style={[
-                    styles.toggleButton,
-                    shotDetails === type && styles.toggleButtonActive,
-                    isDisabled && styles.toggleButtonDisabled
+                    styles.shotDetailsButton,
+                    shotDetails === type && styles.shotDetailsButtonActive,
+                    isDisabled && styles.shotDetailsButtonDisabled
                   ]}
                   onPress={() => !isDisabled && handleShotDetailsChange(type)}
                   disabled={isDisabled}
                 >
                   <Text style={[
-                    styles.toggleButtonText,
-                    shotDetails === type && styles.toggleButtonTextActive,
-                    isDisabled && styles.toggleButtonTextDisabled
+                    styles.shotDetailsButtonText,
+                    shotDetails === type && styles.shotDetailsButtonTextActive,
+                    isDisabled && styles.shotDetailsButtonTextDisabled
                   ]}>
-                    {type}
+                    {type === 'NO SLATE' ? 'No Slate' : type}
                   </Text>
                 </TouchableOpacity>
               );
@@ -1108,7 +1140,7 @@ export default function AddTakeScreen() {
               ]}
               onPress={() => setIsGoodTake(!isGoodTake)}
             >
-              <Check size={20} color={isGoodTake ? 'white' : colors.primary} />
+              <Check size={20} color={isGoodTake ? 'white' : colors.success} />
               <Text style={[
                 styles.goodTakeButtonText,
                 isGoodTake && styles.goodTakeButtonTextActive
@@ -1125,22 +1157,7 @@ export default function AddTakeScreen() {
           </View>
         </View>
 
-        <View style={styles.statsSection}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.totalTakes}</Text>
-            <Text style={styles.statLabel}>Total Takes</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.scenes}</Text>
-            <Text style={styles.statLabel}>Scenes</Text>
-          </View>
-          {tokens === 0 && (
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{getRemainingTrialLogs()}</Text>
-              <Text style={styles.statLabel}>Free Logs Left</Text>
-            </View>
-          )}
-        </View>
+
       </ScrollView>
       
       {/* Waste Modal */}
@@ -1246,6 +1263,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   headerButton: {
     padding: 8,
     marginHorizontal: 8,
@@ -1285,27 +1305,9 @@ const styles = StyleSheet.create({
   addTakeButton: {
     backgroundColor: '#2c3e50',
     flex: 1,
+    height: 48,
   },
-  statsSection: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    marginTop: 16,
-    padding: 20,
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: colors.subtext,
-    marginTop: 4,
-  },
+
   rowContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -1369,20 +1371,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.success,
     backgroundColor: 'white',
     gap: 8,
+    height: 48,
   },
   goodTakeButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.success,
   },
   goodTakeButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: colors.primary,
+    color: colors.success,
   },
   goodTakeButtonTextActive: {
     color: 'white',
@@ -1529,6 +1532,72 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   toggleButtonTextDisabled: {
+    color: colors.disabled,
+  },
+  classificationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  classificationButton: {
+    width: '48%',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+  },
+  classificationButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  classificationButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  classificationButtonTextActive: {
+    color: 'white',
+  },
+  shotDetailsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'center',
+  },
+  shotDetailsButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 140,
+    height: 56,
+  },
+  shotDetailsButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  shotDetailsButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  shotDetailsButtonTextActive: {
+    color: 'white',
+  },
+  shotDetailsButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
+  },
+  shotDetailsButtonTextDisabled: {
     color: colors.disabled,
   },
 });

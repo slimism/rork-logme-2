@@ -31,6 +31,7 @@ export default function ProjectScreen() {
     classification: null as ClassificationType | null,
     goodTakesOnly: false
   });
+  const [sceneFilterInput, setSceneFilterInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -354,6 +355,32 @@ export default function ProjectScreen() {
         {/* Filter Panel */}
         {showFilters && (
           <View style={styles.filterPanel}>
+            {/* Scene Number Filter */}
+            <View style={styles.sceneFilterContainer}>
+              <Text style={styles.sceneFilterLabel}>Scene:</Text>
+              <TextInput
+                style={styles.sceneFilterInput}
+                placeholder="Enter scene number"
+                value={sceneFilterInput}
+                onChangeText={setSceneFilterInput}
+                onBlur={() => setFilters(prev => ({ ...prev, scene: sceneFilterInput }))}
+                placeholderTextColor={colors.subtext}
+                keyboardType="numeric"
+              />
+              {sceneFilterInput.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSceneFilterInput('');
+                    setFilters(prev => ({ ...prev, scene: '' }));
+                  }} 
+                  style={styles.clearSceneButton}
+                >
+                  <X size={14} color={colors.subtext} />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Other Filters */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
               <TouchableOpacity
                 style={[
@@ -400,6 +427,7 @@ export default function ProjectScreen() {
                     goodTakesOnly: false
                   });
                   setSearchQuery('');
+                  setSceneFilterInput('');
                 }}
               >
                 <Text style={styles.clearFiltersText}>Clear All</Text>
@@ -733,6 +761,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: 12,
+  },
+  sceneFilterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sceneFilterLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    marginRight: 8,
+  },
+  sceneFilterInput: {
+    flex: 1,
+    height: 36,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: colors.text,
+  },
+  clearSceneButton: {
+    position: 'absolute',
+    right: 24,
+    padding: 4,
   },
   filterScrollView: {
     paddingHorizontal: 16,

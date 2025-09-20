@@ -271,13 +271,7 @@ export default function ProjectSettingsScreen() {
               <Text style={styles.cameraInputLabel}>cameras</Text>
             </View>
           </View>
-          
-          <View style={styles.infoRow}>
-            <Info size={16} color={colors.subtext} />
-            <Text style={styles.infoText}>
-              If set to 2, you&apos;ll have &quot;Camera file 1&quot; and &quot;Camera file 2&quot; fields when adding takes.
-            </Text>
-          </View>
+
         </View>
 
         <View style={styles.section}>
