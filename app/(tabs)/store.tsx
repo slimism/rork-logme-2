@@ -150,7 +150,7 @@ export default function Store() {
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
         {/* Status Cards */}
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, styles.firstStatusCard]}>
           <Text style={styles.statusLabel}>Remaining Credits</Text>
           <Text style={styles.statusValue}>{tokens}</Text>
         </View>
@@ -276,6 +276,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  firstStatusCard: {
+    marginBottom: 4,
   },
   statusLabel: {
     fontSize: 16,
