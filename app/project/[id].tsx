@@ -577,7 +577,6 @@ const styles = StyleSheet.create({
   takeCard: {
     backgroundColor: 'white',
     borderRadius: 8,
-    marginHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -703,7 +702,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   takesContainer: {
-    gap: 8,
+    gap: 0,
   },
   takeTitleRow: {
     flexDirection: 'row',
