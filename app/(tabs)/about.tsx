@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { colors } from '@/constants/colors';
-import { Mail, MessageCircle } from 'lucide-react-native';
-import { TopBar } from '@/components/TopBar';
+import { Mail, MessageCircle, ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AboutScreen() {
+  const insets = useSafeAreaInsets();
+  
   const handleContactUs = () => {
     Linking.openURL('mailto:logme.film@gmail.com');
   };
@@ -15,7 +17,15 @@ export default function AboutScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar />
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity style={styles.backButton}>
+          <ChevronLeft size={24} color={colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>About</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* App Version Section */}
         <View style={styles.versionSection}>
@@ -71,6 +81,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  headerSpacer: {
+    width: 32,
   },
   scrollView: {
     flex: 1,
