@@ -926,8 +926,11 @@ export default function EditTakeScreen() {
             )}
           </View>
           
-          {/* Camera and Sound files */}
+          {/* Camera files */}
           {renderCameraFields(cameraConfiguration, allFieldIds)}
+          
+          {/* Sound file */}
+          {enabledFields.find((field: FieldType) => field.id === 'soundFile') && renderField({ id: 'soundFile', label: 'Sound File' }, allFieldIds)}
           
           {/* Other fields */}
           {fieldsToRender
