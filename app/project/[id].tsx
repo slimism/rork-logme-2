@@ -4,7 +4,7 @@ import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, Filter, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
+
 import { EmptyState } from '@/components/EmptyState';
 
 import { colors } from '@/constants/colors';
@@ -47,8 +47,8 @@ export default function ProjectScreen() {
 
   const HeaderRight = () => (
     <View style={styles.headerRightContainer}>
-      <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
-        <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
+      <TouchableOpacity onPress={() => router.push(`/add-take/${id}`)} style={styles.addButton}>
+        <Plus size={20} color={colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -333,7 +333,7 @@ export default function ProjectScreen() {
       />
       
       <View style={styles.content}>
-        {/* Search Field with Filter Button */}
+        {/* Search Field with Filter and Export Buttons */}
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
             <Search size={20} color={colors.subtext} style={styles.searchIcon} />
@@ -352,10 +352,12 @@ export default function ProjectScreen() {
           </View>
           <TouchableOpacity 
             onPress={() => setShowFilters(!showFilters)} 
-            style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+            style={[styles.filterIconButton, showFilters && styles.filterIconButtonActive]}
           >
             <Filter size={18} color={showFilters ? 'white' : colors.text} />
-            <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>Filter</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleExportPDF} style={styles.exportIconButton} disabled={isExporting}>
+            <Share size={18} color={isExporting ? colors.subtext : colors.text} />
           </TouchableOpacity>
         </View>
         
@@ -482,14 +484,7 @@ export default function ProjectScreen() {
           />
         )}
 
-        <View style={styles.fabContainer}>
-          <Button
-            title=""
-            onPress={() => router.push(`/add-take/${id}`)}
-            icon={<Plus size={24} color="white" />}
-            style={styles.fab}
-          />
-        </View>
+
       </View>
       
       {/* Export Modal */}
@@ -557,7 +552,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  exportButton: {
+  addButton: {
     padding: 8,
     marginHorizontal: 8,
   },
@@ -685,17 +680,7 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     flex: 1,
   },
-  fabContainer: {
-    position: 'absolute',
-    bottom: 70,
-    right: 20,
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    paddingHorizontal: 0,
-  },
+
   sceneContainer: {
     marginBottom: 24,
   },
@@ -802,6 +787,26 @@ const styles = StyleSheet.create({
   },
   filterScrollView: {
     paddingHorizontal: 16,
+  },
+  filterIconButton: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'white',
+    marginLeft: 8,
+  },
+  filterIconButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  exportIconButton: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'white',
+    marginLeft: 8,
   },
   filterButton: {
     flexDirection: 'row',
