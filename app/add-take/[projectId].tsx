@@ -821,30 +821,13 @@ export default function AddTakeScreen() {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeaderRow}>
                 <Text style={[styles.fieldLabel, disabledFields.has('cameraFile') && styles.disabledLabel]}>Camera File</Text>
-                <View style={styles.buttonGroup}>
-                  <TouchableOpacity 
-                    style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
-                    onPress={() => !disabledFields.has('cameraFile') && toggleRangeMode('cameraFile')}
-                    disabled={disabledFields.has('cameraFile')}
-                  >
-                    <Text style={[styles.rangeButtonText, disabledFields.has('cameraFile') && styles.disabledText]}>Range</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[
-                      styles.recButton, 
-                      (cameraRecState.cameraFile ?? true) ? styles.recButtonActive : styles.recButtonInactive,
-                      disabledFields.has('cameraFile') && styles.disabledButton
-                    ]}
-                    onPress={() => !disabledFields.has('cameraFile') && toggleCameraRec('cameraFile')}
-                    disabled={disabledFields.has('cameraFile')}
-                  >
-                    <Text style={[
-                      styles.recButtonText, 
-                      (cameraRecState.cameraFile ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
-                      disabledFields.has('cameraFile') && styles.disabledText
-                    ]}>REC</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
+                  onPress={() => !disabledFields.has('cameraFile') && toggleRangeMode('cameraFile')}
+                  disabled={disabledFields.has('cameraFile')}
+                >
+                  <Text style={[styles.rangeButtonText, disabledFields.has('cameraFile') && styles.disabledText]}>Range</Text>
+                </TouchableOpacity>
               </View>
               {showRangeMode['cameraFile'] && !disabledFields.has('cameraFile') ? (
                 <View style={styles.rangeContainer}>
