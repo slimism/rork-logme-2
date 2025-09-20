@@ -174,7 +174,8 @@ export default function ProjectsScreen() {
               </View>
             </View>
             <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
-              <Plus size={20} color="white" />
+              <Plus size={16} color="white" />
+              <Text style={styles.addProjectText}>Add Project</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -319,12 +320,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addProjectButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    gap: 6,
+  },
+  addProjectText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
   },
   multiSelectHeader: {
     flexDirection: 'row',
