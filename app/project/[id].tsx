@@ -191,7 +191,7 @@ export default function ProjectScreen() {
               <Text style={styles.takeTitle}>Take {takeNumber}</Text>
               {take.data?.isGoodTake && (
                 <View style={styles.goodTakeIndicator}>
-                  <Check size={12} color="white" strokeWidth={3} />
+                  <Check size={12} color="#10B981" strokeWidth={3} />
                 </View>
               )}
             </View>
@@ -651,12 +651,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   goodTakeIndicator: {
-    backgroundColor: '#10B981',
+    backgroundColor: 'white',
     borderRadius: 10,
     width: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#10B981',
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
