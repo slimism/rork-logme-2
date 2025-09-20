@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { Plus, ArrowLeft, Download, Edit3, ChevronRight, Camera, Mic, Check, Filter, X, Search } from 'lucide-react-native';
+import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, Filter, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -47,8 +47,8 @@ export default function ProjectScreen() {
 
   const HeaderRight = () => (
     <View style={styles.headerRightContainer}>
-      <TouchableOpacity onPress={handleExportPDF} style={styles.headerButton} disabled={isExporting}>
-        <Download size={24} color={isExporting ? colors.subtext : colors.text} />
+      <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
+        <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -328,6 +328,7 @@ export default function ProjectScreen() {
           headerLeft: () => <HeaderLeft />,
           headerRight: () => <HeaderRight />,
           headerBackVisible: false,
+          headerTitleAlign: 'center',
         }} 
       />
       
@@ -555,6 +556,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
+  },
+  exportButton: {
+    padding: 8,
+    marginHorizontal: 8,
   },
   menuDropdown: {
     position: 'absolute',
