@@ -76,14 +76,13 @@ export default function AddTakeScreen() {
     const currentProject = projects.find(p => p.id === projectId);
     if (currentProject) {
       const initialRecState: { [key: string]: boolean } = {};
-      if (currentProject.settings?.cameraConfiguration === 1) {
-        initialRecState.cameraFile = true;
-      } else {
+      // Only initialize REC state for multiple cameras (more than 1)
+      if ((currentProject.settings?.cameraConfiguration || 1) > 1) {
         for (let i = 1; i <= (currentProject.settings?.cameraConfiguration || 1); i++) {
           initialRecState[`cameraFile${i}`] = true;
         }
+        setCameraRecState(initialRecState);
       }
-      setCameraRecState(initialRecState);
     }
   }, [projectId, projects]);
 
