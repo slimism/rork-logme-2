@@ -24,6 +24,7 @@ export default function AddTakeScreen() {
 
   const [showRangeMode, setShowRangeMode] = useState<{ [key: string]: boolean }>({});
   const [rangeData, setRangeData] = useState<{ [key: string]: { from: string; to: string } }>({});
+  const [cameraRecState, setCameraRecState] = useState<{ [key: string]: boolean }>({});
   const [showWasteModal, setShowWasteModal] = useState<boolean>(false);
   const [wasteOptions, setWasteOptions] = useState<{ camera: boolean; sound: boolean }>({ camera: false, sound: false });
   const [showInsertModal, setShowInsertModal] = useState<boolean>(false);
@@ -104,29 +105,16 @@ export default function AddTakeScreen() {
           autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
         }
         
-        // Handle camera files based on configuration (only if not disabled)
+        // Handle camera files based on configuration (only if not disabled and camera is active/rolling)
         if (project?.settings?.cameraConfiguration === 1) {
           if (lastLog.data?.cameraFile && !disabledFields.has('cameraFile')) {
-            const cameraFileValue = lastLog.data.cameraFile;
-            let nextCameraFileNum = 0;
+            // Initialize REC state to active (red) by default
+            setCameraRecState(prev => ({ ...prev, cameraFile: prev.cameraFile ?? true }));
             
-            // Check if it's a range (e.g., "0001-0005")
-            if (cameraFileValue.includes('-')) {
-              const rangeParts = cameraFileValue.split('-');
-              const endRange = parseInt(rangeParts[1]) || 0;
-              nextCameraFileNum = endRange + 1;
-            } else {
-              nextCameraFileNum = (parseInt(cameraFileValue) || 0) + 1;
-            }
-            
-            autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
-          }
-        } else {
-          // Multiple cameras
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            const fieldId = `cameraFile${i}`;
-            if (lastLog.data?.[fieldId] && !disabledFields.has(fieldId)) {
-              const cameraFileValue = lastLog.data[fieldId];
+            // Only increment if camera is active (REC state is true)
+            const isActive = cameraRecState.cameraFile ?? true;
+            if (isActive) {
+              const cameraFileValue = lastLog.data.cameraFile;
               let nextCameraFileNum = 0;
               
               // Check if it's a range (e.g., "0001-0005")
@@ -138,7 +126,34 @@ export default function AddTakeScreen() {
                 nextCameraFileNum = (parseInt(cameraFileValue) || 0) + 1;
               }
               
-              autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
+            }
+          }
+        } else {
+          // Multiple cameras
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (lastLog.data?.[fieldId] && !disabledFields.has(fieldId)) {
+              // Initialize REC state to active (red) by default
+              setCameraRecState(prev => ({ ...prev, [fieldId]: prev[fieldId] ?? true }));
+              
+              // Only increment if camera is active (REC state is true)
+              const isActive = cameraRecState[fieldId] ?? true;
+              if (isActive) {
+                const cameraFileValue = lastLog.data[fieldId];
+                let nextCameraFileNum = 0;
+                
+                // Check if it's a range (e.g., "0001-0005")
+                if (cameraFileValue.includes('-')) {
+                  const rangeParts = cameraFileValue.split('-');
+                  const endRange = parseInt(rangeParts[1]) || 0;
+                  nextCameraFileNum = endRange + 1;
+                } else {
+                  nextCameraFileNum = (parseInt(cameraFileValue) || 0) + 1;
+                }
+                
+                autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+              }
             }
           }
         }
@@ -154,7 +169,7 @@ export default function AddTakeScreen() {
         setTakeData(autoFillData);
       }
     }
-  }, [projectId, projects, logSheets, project?.settings?.cameraConfiguration, disabledFields]);
+  }, [projectId, projects, logSheets, project?.settings?.cameraConfiguration, disabledFields, cameraRecState]);
   
 
 
@@ -626,6 +641,13 @@ export default function AddTakeScreen() {
     setClassification(null);
   };
 
+  const toggleCameraRec = (fieldId: string) => {
+    setCameraRecState(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
+  };
+
   const handleShotDetailsChange = (type: ShotDetailsType) => {
     const newShotDetails = shotDetails === type ? null : type;
     
@@ -792,13 +814,30 @@ export default function AddTakeScreen() {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeaderRow}>
                 <Text style={[styles.fieldLabel, disabledFields.has('cameraFile') && styles.disabledLabel]}>Camera File</Text>
-                <TouchableOpacity 
-                  style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
-                  onPress={() => !disabledFields.has('cameraFile') && toggleRangeMode('cameraFile')}
-                  disabled={disabledFields.has('cameraFile')}
-                >
-                  <Text style={[styles.rangeButtonText, disabledFields.has('cameraFile') && styles.disabledText]}>Range</Text>
-                </TouchableOpacity>
+                <View style={styles.buttonGroup}>
+                  <TouchableOpacity 
+                    style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
+                    onPress={() => !disabledFields.has('cameraFile') && toggleRangeMode('cameraFile')}
+                    disabled={disabledFields.has('cameraFile')}
+                  >
+                    <Text style={[styles.rangeButtonText, disabledFields.has('cameraFile') && styles.disabledText]}>Range</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      styles.recButton, 
+                      cameraRecState.cameraFile ? styles.recButtonActive : styles.recButtonInactive,
+                      disabledFields.has('cameraFile') && styles.disabledButton
+                    ]}
+                    onPress={() => !disabledFields.has('cameraFile') && toggleCameraRec('cameraFile')}
+                    disabled={disabledFields.has('cameraFile')}
+                  >
+                    <Text style={[
+                      styles.recButtonText, 
+                      cameraRecState.cameraFile ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                      disabledFields.has('cameraFile') && styles.disabledText
+                    ]}>REC</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               {showRangeMode['cameraFile'] && !disabledFields.has('cameraFile') ? (
                 <View style={styles.rangeContainer}>
@@ -974,13 +1013,30 @@ export default function AddTakeScreen() {
                   <View key={fieldId} style={styles.fieldContainer}>
                     <View style={styles.fieldHeaderRow}>
                       <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>{fieldLabel}</Text>
-                      <TouchableOpacity 
-                        style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                        onPress={() => !isDisabled && toggleRangeMode(fieldId)}
-                        disabled={isDisabled}
-                      >
-                        <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-                      </TouchableOpacity>
+                      <View style={styles.buttonGroup}>
+                        <TouchableOpacity 
+                          style={[styles.rangeButton, isDisabled && styles.disabledButton]}
+                          onPress={() => !isDisabled && toggleRangeMode(fieldId)}
+                          disabled={isDisabled}
+                        >
+                          <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[
+                            styles.recButton, 
+                            cameraRecState[fieldId] ? styles.recButtonActive : styles.recButtonInactive,
+                            isDisabled && styles.disabledButton
+                          ]}
+                          onPress={() => !isDisabled && toggleCameraRec(fieldId)}
+                          disabled={isDisabled}
+                        >
+                          <Text style={[
+                            styles.recButtonText, 
+                            cameraRecState[fieldId] ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                            isDisabled && styles.disabledText
+                          ]}>REC</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     {showRangeMode[fieldId] && !isDisabled ? (
                       <View style={styles.rangeContainer}>
@@ -1436,6 +1492,36 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  recButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 6,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  recButtonActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  recButtonInactive: {
+    backgroundColor: '#9CA3AF',
+    borderColor: '#9CA3AF',
+  },
+  recButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  recButtonTextActive: {
+    color: 'white',
+  },
+  recButtonTextInactive: {
+    color: 'white',
   },
   modalOverlay: {
     flex: 1,
