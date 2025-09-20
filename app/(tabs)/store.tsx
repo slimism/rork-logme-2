@@ -8,11 +8,11 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { Coins, Star, Package, Crown } from 'lucide-react-native';
+import { ChevronLeft, Calendar, Hourglass, Infinity } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
 import { iapService, IAPProduct } from '@/services/iapService';
-import { TopBar } from '@/components/TopBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TokenPackage extends IAPProduct {
   originalPrice?: string;
@@ -133,112 +133,87 @@ export default function Store() {
     }
   };
 
-  const renderTokenPackage = (packageItem: TokenPackage) => (
-    <View key={packageItem.productId} style={[styles.packageCard, packageItem.popular && styles.popularCard]}>
-      {packageItem.popular && (
-        <View style={styles.popularBadge}>
-          <Star size={12} color="white" />
-          <Text style={styles.popularText}>Most Popular</Text>
-        </View>
-      )}
-      
-      <View style={styles.packageHeader}>
-        <View style={styles.tokenInfo}>
-          <Coins size={24} color={colors.primary} />
-          <Text style={styles.tokenCount}>{packageItem.tokens}</Text>
-          <Text style={styles.tokenLabel}>Token{packageItem.tokens > 1 ? 's' : ''}</Text>
-        </View>
-        
-        <View style={styles.priceInfo}>
-          <Text style={styles.price}>{packageItem.price}</Text>
-          {packageItem.originalPrice && (
-            <Text style={styles.originalPrice}>{packageItem.originalPrice}</Text>
-          )}
-          {packageItem.savings && (
-            <Text style={styles.savings}>{packageItem.savings}</Text>
-          )}
-        </View>
-      </View>
-      
-      <Text style={styles.packageDescription}>
-        Each token grants full access to one project with unlimited logs
-      </Text>
-      
-      <TouchableOpacity
-        style={[
-          styles.purchaseButton,
-          packageItem.popular && styles.popularButton,
-          purchasing === packageItem.productId && styles.purchasingButton
-        ]}
-        onPress={() => handlePurchase(packageItem)}
-        disabled={purchasing !== null}
-      >
-        <Text style={[
-          styles.purchaseButtonText,
-          packageItem.popular && styles.popularButtonText
-        ]}>
-          {purchasing === packageItem.productId ? 'Processing...' : 'Purchase'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+
+
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      <TopBar />
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity style={styles.backButton}>
+          <ChevronLeft size={24} color={colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Store</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Crown size={32} color={colors.primary} />
-        <Text style={styles.title}>Token Store</Text>
-        <Text style={styles.subtitle}>
-          Purchase tokens to unlock unlimited projects
-        </Text>
-      </View>
+        {/* Status Cards */}
+        <View style={styles.statusCard}>
+          <Text style={styles.statusLabel}>Remaining Credits</Text>
+          <Text style={styles.statusValue}>{tokens}</Text>
+        </View>
 
-      <View style={styles.statusCard}>
-        <View style={styles.statusRow}>
-          <View style={styles.statusItem}>
-            <Coins size={20} color={colors.primary} />
-            <Text style={styles.statusLabel}>Your Tokens</Text>
-            <Text style={styles.statusValue}>{tokens}</Text>
+        <View style={styles.statusCard}>
+          <Text style={styles.statusLabel}>Trial Logs left</Text>
+          <Text style={styles.statusValue}>{getRemainingTrialLogs()}</Text>
+        </View>
+
+        {/* How Credits Work */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>How Credits Work</Text>
+          
+          <View style={styles.infoItem}>
+            <Calendar size={20} color={colors.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Each token unlocks one project with unlimited logs.</Text>
           </View>
           
-          <View style={styles.statusDivider} />
+          <View style={styles.infoItem}>
+            <Hourglass size={20} color={colors.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Free trial includes 15 logs across all projects.</Text>
+          </View>
           
-          <View style={styles.statusItem}>
-            <Package size={20} color={colors.secondary} />
-            <Text style={styles.statusLabel}>Trial Logs Left</Text>
-            <Text style={styles.statusValue}>{getRemainingTrialLogs()}</Text>
+          <View style={styles.infoItem}>
+            <Infinity size={20} color={colors.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Credits never expire and can be used anytime.</Text>
           </View>
         </View>
-      </View>
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>How Tokens Work</Text>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoBullet}>•</Text>
-          <Text style={styles.infoText}>Each token unlocks one project with unlimited logs</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoBullet}>•</Text>
-          <Text style={styles.infoText}>Free trial includes 15 logs across all projects</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoBullet}>•</Text>
-          <Text style={styles.infoText}>Tokens never expire and can be used anytime</Text>
-        </View>
-      </View>
-
-      <View style={styles.packagesContainer}>
-        <Text style={styles.packagesTitle}>Choose Your Package</Text>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading products...</Text>
+        {/* Purchase Credits */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Purchase Credits</Text>
+          
+          <View style={styles.purchaseOption}>
+            <View style={styles.purchaseInfo}>
+              <Text style={styles.purchaseTitle}>1 Project</Text>
+              <Text style={styles.purchaseSubtitle}>Unlock one project</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>$4.99</Text>
+            </View>
           </View>
-        ) : (
-          products.map(renderTokenPackage)
-        )}
-      </View>
+          
+          <View style={styles.purchaseOption}>
+            <View style={styles.purchaseInfo}>
+              <Text style={styles.purchaseTitle}>4 Projects</Text>
+              <Text style={styles.purchaseSubtitle}>Best value</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>$14.99</Text>
+            </View>
+          </View>
+          
+          <View style={styles.purchaseOption}>
+            <View style={styles.purchaseInfo}>
+              <Text style={styles.purchaseTitle}>10 Projects</Text>
+              <Text style={styles.purchaseSubtitle}>For the pros</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>$29.99</Text>
+            </View>
+          </View>
+        </View>
 
       {Platform.OS !== 'web' && (
         <TouchableOpacity style={styles.restoreButton} onPress={handleRestorePurchases}>
@@ -259,7 +234,31 @@ export default function Store() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  headerSpacer: {
+    width: 40,
   },
   scrollContainer: {
     flex: 1,
@@ -267,101 +266,83 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.subtext,
-    textAlign: 'center',
-    marginTop: 4,
-  },
   statusCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusRow: {
+    marginBottom: 16,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  statusItem: {
-    flex: 1,
-    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   statusLabel: {
-    fontSize: 14,
-    color: colors.subtext,
-    marginTop: 8,
+    fontSize: 16,
+    color: colors.text,
   },
   statusValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 4,
-  },
-  statusDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-    marginHorizontal: 20,
-  },
-  infoCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+  },
+  sectionContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 20,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  infoBullet: {
-    fontSize: 16,
-    color: colors.primary,
-    marginRight: 8,
+  infoIcon: {
+    marginRight: 12,
     marginTop: 2,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.subtext,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  packagesContainer: {
-    marginBottom: 24,
+  purchaseOption: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  packagesTitle: {
-    fontSize: 20,
+  purchaseInfo: {
+    flex: 1,
+  },
+  purchaseTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
+    marginBottom: 4,
+  },
+  purchaseSubtitle: {
+    fontSize: 14,
+    color: colors.subtext,
+  },
+  priceContainer: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
   },
   loadingContainer: {
     padding: 40,
@@ -370,104 +351,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: colors.subtext,
-  },
-  packageCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    position: 'relative',
-  },
-  popularCard: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: -8,
-    left: 20,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  popularText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  packageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tokenInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tokenCount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginLeft: 8,
-  },
-  tokenLabel: {
-    fontSize: 16,
-    color: colors.subtext,
-    marginLeft: 4,
-  },
-  priceInfo: {
-    alignItems: 'flex-end',
-  },
-  price: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  originalPrice: {
-    fontSize: 14,
-    color: colors.subtext,
-    textDecorationLine: 'line-through',
-  },
-  savings: {
-    fontSize: 12,
-    color: colors.success,
-    fontWeight: '600',
-  },
-  packageDescription: {
-    fontSize: 14,
-    color: colors.subtext,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  purchaseButton: {
-    backgroundColor: colors.secondary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  popularButton: {
-    backgroundColor: colors.primary,
-  },
-  purchasingButton: {
-    opacity: 0.6,
-  },
-  purchaseButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  popularButtonText: {
-    color: 'white',
   },
   restoreButton: {
     backgroundColor: 'transparent',
