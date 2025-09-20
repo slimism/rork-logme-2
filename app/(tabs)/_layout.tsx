@@ -29,7 +29,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: "Projects",
+            headerShown: false,
             tabBarLabel: "Projects",
             tabBarIcon: ({ color, size }) => (
               <FolderOpen size={size} color={color} />

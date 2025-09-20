@@ -246,7 +246,7 @@ export default function ProjectsScreen() {
         
         {filteredProjects.length === 0 ? (
           <EmptyState
-            title={searchQuery ? "No Projects Found" : "Projects"}
+            title={searchQuery ? "No Projects Found" : "Get Started"}
             message={searchQuery ? "No projects match your search." : "Create your first film production project to get started."}
             icon={<Film size={48} color={colors.primary} />}
           />
