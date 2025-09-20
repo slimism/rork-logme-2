@@ -30,18 +30,23 @@ export default function AboutScreen() {
 
         {/* Key Features Section */}
         <Text style={styles.outsideSectionTitle}>KEY FEATURES</Text>
-        <View style={styles.whiteContainer}>
-          <View style={styles.featuresList}>
+        <View style={styles.featuresContainer}>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>Project Management</Text>
-            <View style={styles.separator} />
+          </View>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>Take Logging</Text>
-            <View style={styles.separator} />
+          </View>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>Smart Filtering</Text>
-            <View style={styles.separator} />
+          </View>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>PDF Export</Text>
-            <View style={styles.separator} />
+          </View>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>Customizable Fields</Text>
-            <View style={styles.separator} />
+          </View>
+          <View style={styles.featureContainer}>
             <Text style={styles.featureItem}>Multi-Camera Support</Text>
           </View>
         </View>
@@ -159,19 +164,22 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderRadius: 8,
   },
-  featuresList: {
-    marginTop: 0,
+  featuresContainer: {
+    marginHorizontal: 16,
+  },
+  featureContainer: {
+    backgroundColor: 'white',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   featureItem: {
     fontSize: 17,
     color: colors.text,
-    paddingVertical: 12,
     fontWeight: '400',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 0,
   },
   aboutText: {
     fontSize: 17,
