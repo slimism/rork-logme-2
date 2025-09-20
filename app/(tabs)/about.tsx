@@ -112,10 +112,12 @@ const styles = StyleSheet.create({
   versionSection: {
     backgroundColor: 'white',
     marginTop: 0,
+    marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    borderRadius: 8,
   },
   versionRow: {
     flexDirection: 'row',
@@ -155,8 +157,10 @@ const styles = StyleSheet.create({
   },
   whiteContainer: {
     backgroundColor: 'white',
+    marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 20,
+    borderRadius: 8,
   },
   featuresList: {
     marginTop: 0,
