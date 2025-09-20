@@ -125,32 +125,41 @@ export default function ProjectsScreen() {
         ]}
       >
         <View style={styles.projectContent}>
-          <View style={styles.projectHeader}>
-            <View style={styles.projectIconContainer}>
+          <View style={styles.projectMainRow}>
+            <View style={styles.projectImageContainer}>
               {item.logoUri ? (
-                <Image source={{ uri: item.logoUri }} style={styles.projectLogo} />
+                <Image source={{ uri: item.logoUri }} style={styles.projectImage} />
               ) : (
-                <Film size={24} color={colors.primary} />
+                <View style={styles.projectImagePlaceholder}>
+                  <Film size={32} color="white" />
+                </View>
               )}
             </View>
-            <View style={styles.projectTitleContainer}>
+            <View style={styles.projectInfo}>
               <Text style={styles.projectTitle}>{item.name}</Text>
+              <View style={styles.projectMeta}>
+                <View style={styles.metaItem}>
+                  <Film size={14} color={colors.subtext} />
+                  <Text style={styles.metaText}>{stats.shots} Cameras</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Text style={styles.loggerText}>Logger: J. Doe</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Clock size={14} color={colors.subtext} />
+                  <Text style={styles.metaText}>Started: 09:12 AM</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Film size={14} color={colors.subtext} />
+                  <Text style={styles.metaText}>Total Shots: {stats.shots}</Text>
+                </View>
+              </View>
             </View>
             {isMultiSelectMode && (
               <View style={[styles.checkbox, isSelected && styles.checkedBox]}>
                 {isSelected && <Text style={styles.checkmark}>✓</Text>}
               </View>
             )}
-          </View>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Film size={16} color={colors.subtext} />
-              <Text style={styles.statText}>{stats.shots} shots</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Clock size={16} color={colors.subtext} />
-              <Text style={styles.statText}>{formatLastUpdated(stats.lastUpdated)}</Text>
-            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -426,6 +435,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   selectedProjectCard: {
     borderColor: colors.primary,
@@ -434,32 +451,51 @@ const styles = StyleSheet.create({
   projectContent: {
     padding: 16,
   },
-  projectHeader: {
+  projectMainRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
   },
-  projectIconContainer: {
-    width: 40,
-    height: 40,
+  projectImageContainer: {
+    marginRight: 16,
+  },
+  projectImage: {
+    width: 60,
+    height: 60,
     borderRadius: 8,
-    backgroundColor: colors.primary + '20',
+  },
+  projectImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#2c3e50',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  projectLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-  },
-  projectTitleContainer: {
+  projectInfo: {
     flex: 1,
   },
   projectTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: 8,
+  },
+  projectMeta: {
+    gap: 4,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  metaText: {
+    fontSize: 13,
+    color: colors.subtext,
+    marginLeft: 6,
+  },
+  loggerText: {
+    fontSize: 13,
+    color: colors.subtext,
   },
   checkbox: {
     width: 24,
@@ -469,6 +505,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 12,
   },
   checkedBox: {
     backgroundColor: colors.primary,
