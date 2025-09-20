@@ -171,9 +171,6 @@ export default function ProjectsScreen() {
               <Text style={styles.creditsLabel}>Remaining Credits</Text>
               <View style={styles.creditsRow}>
                 <Text style={styles.creditsNumber}>{tokens}</Text>
-                <TouchableOpacity onPress={() => router.push('/store')} style={styles.plusButton}>
-                  <Plus size={16} color={colors.primary} />
-                </TouchableOpacity>
               </View>
             </View>
             <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
