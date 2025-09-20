@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image, PanResponder, Animated, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -15,6 +15,8 @@ export default function ProjectsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
 
   const remainingTrialLogs = getRemainingTrialLogs();
@@ -33,18 +35,7 @@ export default function ProjectsScreen() {
     };
   };
 
-  const formatLastUpdated = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (hours < 1) return 'Updated just now';
-    if (hours < 24) return `Updated ${hours}h ago`;
-    if (days === 1) return 'Updated 1d ago';
-    if (days < 7) return `Updated ${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
-  };
+
 
   const handleCreateProject = () => {
     if (!canCreateProject()) {
@@ -100,71 +91,133 @@ export default function ProjectsScreen() {
     setSelectedProjects([]);
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const handleDeleteProject = (projectId: string) => {
+    setProjectToDelete(projectId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteProject = () => {
+    if (projectToDelete) {
+      deleteProject(projectToDelete);
+      setProjectToDelete(null);
+    }
+    setShowDeleteModal(false);
+  };
+
+  const cancelDeleteProject = () => {
+    setProjectToDelete(null);
+    setShowDeleteModal(false);
+  };
+
+  const SwipeableProjectCard = ({ item }: { item: any }) => {
+    const translateX = new Animated.Value(0);
     const stats = getProjectStats(item.id);
     const isSelected = selectedProjects.includes(item.id);
     
+    const panResponder = PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dx < 0) {
+          translateX.setValue(Math.max(gestureState.dx, -100));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -50) {
+          Animated.spring(translateX, {
+            toValue: -100,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    });
+    
     return (
-      <TouchableOpacity
-        onPress={() => {
-          if (isMultiSelectMode) {
-            toggleProjectSelection(item.id);
-          } else {
-            router.push(`/project/${item.id}`);
-          }
-        }}
-        onLongPress={() => {
-          if (!isMultiSelectMode) {
-            startMultiSelect();
-            toggleProjectSelection(item.id);
-          }
-        }}
-        style={[
-          styles.projectCard,
-          isSelected && styles.selectedProjectCard
-        ]}
-      >
-        <View style={styles.projectContent}>
-          <View style={styles.projectMainRow}>
-            <View style={styles.projectImageContainer}>
-              {item.logoUri ? (
-                <Image source={{ uri: item.logoUri }} style={styles.projectImage} />
-              ) : (
-                <View style={styles.projectImagePlaceholder}>
-                  <Film size={40} color="white" />
+      <View style={styles.swipeContainer}>
+        <View style={styles.deleteAction}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteProject(item.id)}
+          >
+            <Trash2 size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+        
+        <Animated.View
+          style={[
+            styles.projectCard,
+            isSelected && styles.selectedProjectCard,
+            { transform: [{ translateX }] }
+          ]}
+          {...panResponder.panHandlers}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              if (isMultiSelectMode) {
+                toggleProjectSelection(item.id);
+              } else {
+                router.push(`/project/${item.id}`);
+              }
+            }}
+            onLongPress={() => {
+              if (!isMultiSelectMode) {
+                startMultiSelect();
+                toggleProjectSelection(item.id);
+              }
+            }}
+            style={styles.projectContent}
+          >
+            <View style={styles.projectMainRow}>
+              <View style={styles.projectImageContainer}>
+                {item.logoUri ? (
+                  <Image source={{ uri: item.logoUri }} style={styles.projectImage} />
+                ) : (
+                  <View style={styles.projectImagePlaceholder}>
+                    <Film size={40} color="white" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>{item.name}</Text>
+                <View style={styles.projectMeta}>
+                  <View style={styles.metaItem}>
+                    <Film size={14} color={colors.subtext} />
+                    <Text style={styles.metaText}>{stats.shots} Cameras</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <User size={14} color={colors.subtext} />
+                    <Text style={styles.metaText}>Logger: J. Doe</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Clock size={14} color={colors.subtext} />
+                    <Text style={styles.metaText}>Started: 09:12 AM</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Film size={14} color={colors.subtext} />
+                    <Text style={styles.metaText}>Total Shots: {stats.shots}</Text>
+                  </View>
+                </View>
+              </View>
+              {isMultiSelectMode && (
+                <View style={[styles.checkbox, isSelected && styles.checkedBox]}>
+                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
                 </View>
               )}
             </View>
-            <View style={styles.projectInfo}>
-              <Text style={styles.projectTitle}>{item.name}</Text>
-              <View style={styles.projectMeta}>
-                <View style={styles.metaItem}>
-                  <Film size={14} color={colors.subtext} />
-                  <Text style={styles.metaText}>{stats.shots} Cameras</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <User size={14} color={colors.subtext} />
-                  <Text style={styles.metaText}>Logger: J. Doe</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Clock size={14} color={colors.subtext} />
-                  <Text style={styles.metaText}>Started: 09:12 AM</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Film size={14} color={colors.subtext} />
-                  <Text style={styles.metaText}>Total Shots: {stats.shots}</Text>
-                </View>
-              </View>
-            </View>
-            {isMultiSelectMode && (
-              <View style={[styles.checkbox, isSelected && styles.checkedBox]}>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
     );
+  };
+
+  const renderItem = ({ item }: { item: any }) => {
+    return <SwipeableProjectCard item={item} />;
   };
 
   const renderHeader = () => (
@@ -226,7 +279,7 @@ export default function ProjectsScreen() {
       {remainingTrialLogs > 0 && !isMultiSelectMode && (
         <View style={styles.trialBanner}>
           <View style={styles.trialTextContainer}>
-            <Text style={styles.trialTitle}>You're on a trial</Text>
+            <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
             <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
@@ -256,6 +309,34 @@ export default function ProjectsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={cancelDeleteProject}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Project Options</Text>
+            
+            <TouchableOpacity
+              style={styles.deleteOption}
+              onPress={confirmDeleteProject}
+            >
+              <Trash2 size={20} color={colors.error} />
+              <Text style={styles.deleteOptionText}>Delete Project</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.cancelOption}
+              onPress={cancelDeleteProject}
+            >
+              <Text style={styles.cancelOptionText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -433,7 +514,6 @@ const styles = StyleSheet.create({
   projectCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',
@@ -513,6 +593,69 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  swipeContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  deleteAction: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    backgroundColor: colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    minHeight: 200,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  deleteOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff5f5',
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  deleteOptionText: {
+    fontSize: 16,
+    color: colors.error,
+    fontWeight: '500',
+  },
+  cancelOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelOptionText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
   },
   statsRow: {
     flexDirection: 'row',
