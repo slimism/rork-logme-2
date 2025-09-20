@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   appLogo: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 48,
     marginRight: 12,
   },
   appTitle: {
