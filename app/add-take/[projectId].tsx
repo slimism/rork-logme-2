@@ -71,8 +71,25 @@ export default function AddTakeScreen() {
     return highestNum;
   };
 
+  // Initialize REC state separately to avoid infinite loops
   useEffect(() => {
-    setProject(projects.find(p => p.id === projectId));
+    const currentProject = projects.find(p => p.id === projectId);
+    if (currentProject) {
+      const initialRecState: { [key: string]: boolean } = {};
+      if (currentProject.settings?.cameraConfiguration === 1) {
+        initialRecState.cameraFile = true;
+      } else {
+        for (let i = 1; i <= (currentProject.settings?.cameraConfiguration || 1); i++) {
+          initialRecState[`cameraFile${i}`] = true;
+        }
+      }
+      setCameraRecState(initialRecState);
+    }
+  }, [projectId, projects]);
+
+  useEffect(() => {
+    const currentProject = projects.find(p => p.id === projectId);
+    setProject(currentProject);
     
     // Calculate stats
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
@@ -83,32 +100,21 @@ export default function AddTakeScreen() {
       scenes: scenes.size,
     });
     
-    // Initialize REC state to active (red) by default for all camera files
-    const initialRecState: { [key: string]: boolean } = {};
-    if (project?.settings?.cameraConfiguration === 1) {
-      initialRecState.cameraFile = true;
-    } else {
-      for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-        initialRecState[`cameraFile${i}`] = true;
-      }
-    }
-    setCameraRecState(prev => ({ ...initialRecState, ...prev }));
-    
     // Auto-fill logic
     if (projectLogSheets.length === 0) {
       // Very first log file - fill with "0001" for all file fields
       const autoFillData: TakeData = {};
       
       // Set sound file to "0001"
-      if (project?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
+      if (currentProject?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
         autoFillData.soundFile = '0001';
       }
       
       // Set camera files to "0001"
-      if (project?.settings?.cameraConfiguration === 1) {
+      if (currentProject?.settings?.cameraConfiguration === 1) {
         autoFillData.cameraFile = '0001';
       } else {
-        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+        for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
           autoFillData[`cameraFile${i}`] = '0001';
         }
       }
@@ -150,28 +156,20 @@ export default function AddTakeScreen() {
         }
         
         // Handle camera files based on configuration
-        if (project?.settings?.cameraConfiguration === 1) {
+        if (currentProject?.settings?.cameraConfiguration === 1) {
           if (!disabledFields.has('cameraFile')) {
-            // Only increment if camera is active (REC state is true)
-            const isActive = cameraRecState.cameraFile ?? true;
-            if (isActive) {
-              const highestCameraNum = getHighestFileNumber('cameraFile', projectLogSheets);
-              const nextCameraFileNum = highestCameraNum + 1;
-              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
-            }
+            const highestCameraNum = getHighestFileNumber('cameraFile', projectLogSheets);
+            const nextCameraFileNum = highestCameraNum + 1;
+            autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
           }
         } else {
           // Multiple cameras
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
             if (!disabledFields.has(fieldId)) {
-              // Only increment if camera is active (REC state is true)
-              const isActive = cameraRecState[fieldId] ?? true;
-              if (isActive) {
-                const highestCameraNum = getHighestFileNumber(fieldId, projectLogSheets);
-                const nextCameraFileNum = highestCameraNum + 1;
-                autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
-              }
+              const highestCameraNum = getHighestFileNumber(fieldId, projectLogSheets);
+              const nextCameraFileNum = highestCameraNum + 1;
+              autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
             }
           }
         }
@@ -187,7 +185,7 @@ export default function AddTakeScreen() {
         setTakeData(autoFillData);
       }
     }
-  }, [projectId, projects, logSheets, project?.settings?.cameraConfiguration, disabledFields, cameraRecState]);
+  }, [projectId, projects, logSheets, disabledFields]);
   
 
 
