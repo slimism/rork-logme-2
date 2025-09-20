@@ -167,7 +167,7 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={{ uri: 'https://r2-pub.rork.com/attachments/szkt3n37coom5kdmr9i5l' }} 
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
