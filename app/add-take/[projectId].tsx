@@ -48,6 +48,29 @@ export default function AddTakeScreen() {
     };
   }, []);
 
+  // Helper function to get the highest file number from all logs
+  const getHighestFileNumber = (fieldId: string, projectLogSheets: any[]) => {
+    let highestNum = 0;
+    
+    projectLogSheets.forEach(sheet => {
+      if (sheet.data?.[fieldId]) {
+        const fileValue = sheet.data[fieldId];
+        if (fileValue.includes('-')) {
+          // Handle range format (e.g., "0001-0005")
+          const rangeParts = fileValue.split('-');
+          const endRange = parseInt(rangeParts[1]) || 0;
+          highestNum = Math.max(highestNum, endRange);
+        } else {
+          // Handle single number format
+          const num = parseInt(fileValue) || 0;
+          highestNum = Math.max(highestNum, num);
+        }
+      }
+    });
+    
+    return highestNum;
+  };
+
   useEffect(() => {
     setProject(projects.find(p => p.id === projectId));
     
@@ -60,8 +83,39 @@ export default function AddTakeScreen() {
       scenes: scenes.size,
     });
     
-    // Auto-fill based on last log entry with smart logic
-    if (projectLogSheets.length > 0) {
+    // Initialize REC state to active (red) by default for all camera files
+    const initialRecState: { [key: string]: boolean } = {};
+    if (project?.settings?.cameraConfiguration === 1) {
+      initialRecState.cameraFile = true;
+    } else {
+      for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+        initialRecState[`cameraFile${i}`] = true;
+      }
+    }
+    setCameraRecState(prev => ({ ...initialRecState, ...prev }));
+    
+    // Auto-fill logic
+    if (projectLogSheets.length === 0) {
+      // Very first log file - fill with "0001" for all file fields
+      const autoFillData: TakeData = {};
+      
+      // Set sound file to "0001"
+      if (project?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
+        autoFillData.soundFile = '0001';
+      }
+      
+      // Set camera files to "0001"
+      if (project?.settings?.cameraConfiguration === 1) {
+        autoFillData.cameraFile = '0001';
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          autoFillData[`cameraFile${i}`] = '0001';
+        }
+      }
+      
+      setTakeData(autoFillData);
+    } else {
+      // Subsequent log files - increment from highest file number
       const lastLog = projectLogSheets
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
       
@@ -88,44 +142,21 @@ export default function AddTakeScreen() {
           autoFillData.takeNumber = nextTakeNumber;
         }
         
-        // Auto-increment camera and sound files with 4-digit format (only if not disabled)
-        if (lastLog.data?.soundFile && !disabledFields.has('soundFile')) {
-          const soundFileValue = lastLog.data.soundFile;
-          let nextSoundFileNum = 0;
-          
-          // Check if it's a range (e.g., "0001-0005")
-          if (soundFileValue.includes('-')) {
-            const rangeParts = soundFileValue.split('-');
-            const endRange = parseInt(rangeParts[1]) || 0;
-            nextSoundFileNum = endRange + 1;
-          } else {
-            nextSoundFileNum = (parseInt(soundFileValue) || 0) + 1;
-          }
-          
+        // Auto-increment sound file based on highest number + 1
+        if (!disabledFields.has('soundFile')) {
+          const highestSoundNum = getHighestFileNumber('soundFile', projectLogSheets);
+          const nextSoundFileNum = highestSoundNum + 1;
           autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
         }
         
-        // Handle camera files based on configuration (only if not disabled and camera is active/rolling)
+        // Handle camera files based on configuration
         if (project?.settings?.cameraConfiguration === 1) {
-          if (lastLog.data?.cameraFile && !disabledFields.has('cameraFile')) {
-            // Initialize REC state to active (red) by default
-            setCameraRecState(prev => ({ ...prev, cameraFile: prev.cameraFile ?? true }));
-            
+          if (!disabledFields.has('cameraFile')) {
             // Only increment if camera is active (REC state is true)
             const isActive = cameraRecState.cameraFile ?? true;
             if (isActive) {
-              const cameraFileValue = lastLog.data.cameraFile;
-              let nextCameraFileNum = 0;
-              
-              // Check if it's a range (e.g., "0001-0005")
-              if (cameraFileValue.includes('-')) {
-                const rangeParts = cameraFileValue.split('-');
-                const endRange = parseInt(rangeParts[1]) || 0;
-                nextCameraFileNum = endRange + 1;
-              } else {
-                nextCameraFileNum = (parseInt(cameraFileValue) || 0) + 1;
-              }
-              
+              const highestCameraNum = getHighestFileNumber('cameraFile', projectLogSheets);
+              const nextCameraFileNum = highestCameraNum + 1;
               autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
             }
           }
@@ -133,25 +164,12 @@ export default function AddTakeScreen() {
           // Multiple cameras
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
-            if (lastLog.data?.[fieldId] && !disabledFields.has(fieldId)) {
-              // Initialize REC state to active (red) by default
-              setCameraRecState(prev => ({ ...prev, [fieldId]: prev[fieldId] ?? true }));
-              
+            if (!disabledFields.has(fieldId)) {
               // Only increment if camera is active (REC state is true)
               const isActive = cameraRecState[fieldId] ?? true;
               if (isActive) {
-                const cameraFileValue = lastLog.data[fieldId];
-                let nextCameraFileNum = 0;
-                
-                // Check if it's a range (e.g., "0001-0005")
-                if (cameraFileValue.includes('-')) {
-                  const rangeParts = cameraFileValue.split('-');
-                  const endRange = parseInt(rangeParts[1]) || 0;
-                  nextCameraFileNum = endRange + 1;
-                } else {
-                  nextCameraFileNum = (parseInt(cameraFileValue) || 0) + 1;
-                }
-                
+                const highestCameraNum = getHighestFileNumber(fieldId, projectLogSheets);
+                const nextCameraFileNum = highestCameraNum + 1;
                 autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
               }
             }
@@ -409,17 +427,8 @@ export default function AddTakeScreen() {
   };
 
   const getPlaceholderText = (fieldId: string, fieldLabel: string) => {
-    // For camera and audio files, use previous log values as placeholders
+    // For camera and audio files, show "0001" as placeholder
     if (fieldId === 'soundFile' || fieldId.startsWith('cameraFile')) {
-      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-      if (projectLogSheets.length > 0) {
-        const lastLog = projectLogSheets
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-        
-        if (lastLog?.data?.[fieldId]) {
-          return lastLog.data[fieldId];
-        }
-      }
       return '0001';
     }
     return `Enter ${fieldLabel.toLowerCase()}`;
@@ -825,7 +834,7 @@ export default function AddTakeScreen() {
                   <TouchableOpacity 
                     style={[
                       styles.recButton, 
-                      cameraRecState.cameraFile ? styles.recButtonActive : styles.recButtonInactive,
+                      (cameraRecState.cameraFile ?? true) ? styles.recButtonActive : styles.recButtonInactive,
                       disabledFields.has('cameraFile') && styles.disabledButton
                     ]}
                     onPress={() => !disabledFields.has('cameraFile') && toggleCameraRec('cameraFile')}
@@ -833,7 +842,7 @@ export default function AddTakeScreen() {
                   >
                     <Text style={[
                       styles.recButtonText, 
-                      cameraRecState.cameraFile ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                      (cameraRecState.cameraFile ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
                       disabledFields.has('cameraFile') && styles.disabledText
                     ]}>REC</Text>
                   </TouchableOpacity>
@@ -1024,7 +1033,7 @@ export default function AddTakeScreen() {
                         <TouchableOpacity 
                           style={[
                             styles.recButton, 
-                            cameraRecState[fieldId] ? styles.recButtonActive : styles.recButtonInactive,
+                            (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
                             isDisabled && styles.disabledButton
                           ]}
                           onPress={() => !isDisabled && toggleCameraRec(fieldId)}
@@ -1032,7 +1041,7 @@ export default function AddTakeScreen() {
                         >
                           <Text style={[
                             styles.recButtonText, 
-                            cameraRecState[fieldId] ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                            (cameraRecState[fieldId] ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
                             isDisabled && styles.disabledText
                           ]}>REC</Text>
                         </TouchableOpacity>
