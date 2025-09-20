@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import { Tabs } from "expo-router";
-import { Film, FolderOpen, ShoppingCart } from "lucide-react-native";
+import { FileText, ShoppingBag, Clock } from "lucide-react-native";
 import { colors } from "@/constants/colors";
 
 
@@ -32,7 +32,7 @@ export default function TabLayout() {
             headerShown: false,
             tabBarLabel: "Projects",
             tabBarIcon: ({ color, size }) => (
-              <FolderOpen size={size} color={color} />
+              <FileText size={size} color={color} />
             ),
           }}
         />
@@ -43,7 +43,7 @@ export default function TabLayout() {
             title: "Store",
             tabBarLabel: "Store",
             tabBarIcon: ({ color, size }) => (
-              <ShoppingCart size={size} color={color} />
+              <ShoppingBag size={size} color={color} />
             ),
           }}
         />
@@ -54,7 +54,7 @@ export default function TabLayout() {
             title: "About",
             tabBarLabel: "About",
             tabBarIcon: ({ color, size }) => (
-              <Film size={size} color={color} />
+              <Clock size={size} color={color} />
             ),
           }}
         />
