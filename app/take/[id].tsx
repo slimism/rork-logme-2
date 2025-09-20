@@ -108,6 +108,19 @@ export default function EditTakeScreen() {
         setInsertSoundSpeed(soundSpeed);
       }
       
+      // Parse camera REC state if it exists
+      if (currentLogSheet.data.cameraRecState) {
+        try {
+          const parsedRecState = typeof currentLogSheet.data.cameraRecState === 'string' 
+            ? JSON.parse(currentLogSheet.data.cameraRecState) 
+            : currentLogSheet.data.cameraRecState;
+          setCameraRecState(parsedRecState || {});
+        } catch (e) {
+          console.log('Error parsing camera REC state:', e);
+          setCameraRecState({});
+        }
+      }
+      
       // Initialize range data from existing values if they contain ranges
       const newRangeData: { [key: string]: { from: string; to: string } } = {};
       const newShowRangeMode: { [key: string]: boolean } = {};
@@ -428,13 +441,31 @@ export default function EditTakeScreen() {
     }
     
     try {
+      // Prepare final take data with REC state considerations
+      const finalTakeData = { ...takeData };
+      
+      // For multiple cameras, only include file data for cameras with active REC
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      if (cameraConfiguration > 1) {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fieldId] ?? true;
+          
+          if (!isRecActive) {
+            // If REC is not active, don't record this camera file
+            delete finalTakeData[fieldId];
+          }
+        }
+      }
+      
       const updatedData = {
-        ...takeData,
+        ...finalTakeData,
         classification: classification || '',
         shotDetails: shotDetails || '',
         isGoodTake: isGoodTake,
         wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : ''
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+        cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
       };
       
       updateLogSheet(logSheet.id, updatedData);

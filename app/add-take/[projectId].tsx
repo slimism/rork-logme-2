@@ -50,7 +50,7 @@ export default function AddTakeScreen() {
     };
   }, []);
 
-  // Helper function to get the highest file number from all logs
+  // Helper function to get the highest file number from all logs for a specific camera
   const getHighestFileNumber = (fieldId: string, projectLogSheets: any[]) => {
     let highestNum = 0;
     
@@ -71,6 +71,30 @@ export default function AddTakeScreen() {
     });
     
     return highestNum;
+  };
+
+  // Helper function to get the next file number based on REC state
+  const getNextFileNumber = (fieldId: string, projectLogSheets: any[], isRecActive: boolean) => {
+    if (!isRecActive) {
+      // If REC is not active, don't increment - use the same number as last recorded entry
+      const lastRecordedEntry = projectLogSheets
+        .filter(sheet => sheet.data?.[fieldId])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      
+      if (lastRecordedEntry?.data?.[fieldId]) {
+        const lastValue = lastRecordedEntry.data[fieldId];
+        if (lastValue.includes('-')) {
+          const rangeParts = lastValue.split('-');
+          return parseInt(rangeParts[1]) || 1;
+        } else {
+          return parseInt(lastValue) || 1;
+        }
+      }
+      return 1; // If no previous entry, start with 1
+    } else {
+      // If REC is active, increment from the highest number
+      return getHighestFileNumber(fieldId, projectLogSheets) + 1;
+    }
   };
 
   // Initialize REC state separately to avoid infinite loops
@@ -156,7 +180,7 @@ export default function AddTakeScreen() {
           autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
         }
         
-        // Handle camera files based on configuration
+        // Handle camera files based on configuration and REC state
         if (currentProject?.settings?.cameraConfiguration === 1) {
           if (!disabledFields.has('cameraFile')) {
             const highestCameraNum = getHighestFileNumber('cameraFile', projectLogSheets);
@@ -164,12 +188,12 @@ export default function AddTakeScreen() {
             autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
           }
         } else {
-          // Multiple cameras
+          // Multiple cameras - use REC state to determine file numbers
           for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
             if (!disabledFields.has(fieldId)) {
-              const highestCameraNum = getHighestFileNumber(fieldId, projectLogSheets);
-              const nextCameraFileNum = highestCameraNum + 1;
+              const isRecActive = cameraRecState[fieldId] ?? true;
+              const nextCameraFileNum = getNextFileNumber(fieldId, projectLogSheets, isRecActive);
               autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
             }
           }
@@ -514,12 +538,30 @@ export default function AddTakeScreen() {
       projectId
     );
     
+    // Prepare final take data with REC state considerations
+    const finalTakeData = { ...takeData };
+    
+    // For multiple cameras, only include file data for cameras with active REC
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration > 1) {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        
+        if (!isRecActive) {
+          // If REC is not active, don't record this camera file
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
     // Update the log sheet with take data including new fields
     logSheet.data = {
-      ...takeData,
+      ...finalTakeData,
       classification,
       shotDetails,
-      isGoodTake
+      isGoodTake,
+      cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
     };
     
     router.back();
