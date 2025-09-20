@@ -872,8 +872,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 16,
-    marginBottom: 8,
-    gap: 6,
+    marginBottom: 4,
+    gap: 4,
   },
   searchContainer: {
     flex: 1,
