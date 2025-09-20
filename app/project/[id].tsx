@@ -163,7 +163,7 @@ export default function ProjectScreen() {
     const isLastTake = index === totalTakes - 1;
 
     
-    // Format classification and shot details
+    // Format classification and shot details in one row
     const details = [];
     if (take.data?.classification) {
       details.push(take.data.classification);
@@ -174,18 +174,29 @@ export default function ProjectScreen() {
       details.push(take.data.shotDetails);
     }
     
-    // Format timestamp - show as range if we have duration data, otherwise just creation time
+    // Format timestamp range - creation to last modified
     const formatTimeRange = () => {
-      const startTime = new Date(take.createdAt);
-      const startFormatted = startTime.toLocaleTimeString('en-US', { 
+      const createdTime = new Date(take.createdAt);
+      const updatedTime = new Date(take.updatedAt || take.createdAt);
+      
+      const createdFormatted = createdTime.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
       });
       
-      // If we have duration or end time data, show as range
-      // For now, just show single time since we don't have end time data
-      return startFormatted;
+      const updatedFormatted = updatedTime.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
+      // Show range if created and updated times are different
+      if (take.updatedAt && take.updatedAt !== take.createdAt) {
+        return `${createdFormatted} - ${updatedFormatted}`;
+      }
+      
+      return createdFormatted;
     };
     
     return (
