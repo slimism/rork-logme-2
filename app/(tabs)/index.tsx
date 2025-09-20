@@ -215,7 +215,9 @@ export default function ProjectsScreen() {
       
       {!isMultiSelectMode && (
         <View style={styles.searchContainer}>
-          <Search size={20} color={colors.subtext} style={styles.searchIcon} />
+          <View style={styles.searchIcon}>
+            <Search size={20} color={colors.subtext} />
+          </View>
           <TextInput
             style={styles.searchInput}
             placeholder="Search projects..."
