@@ -227,28 +227,24 @@ export default function ProjectsScreen() {
   );
 
   return (
-    <View>
-      <View style={styles.container}>
-        {renderHeader()}
-        
-        {filteredProjects.length === 0 ? (
-          <EmptyState
-            title={searchQuery ? "No Projects Found" : "Get Started"}
-            message={searchQuery ? "No projects match your search." : "Create your first film production project to get started."}
-            icon={<Film size={48} color={colors.primary} />}
-          />
-        ) : (
-          <FlatList
-            data={filteredProjects}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-
-
-      </View>
+    <View style={styles.container}>
+      {renderHeader()}
+      
+      {filteredProjects.length === 0 ? (
+        <EmptyState
+          title={searchQuery ? "No Projects Found" : "Get Started"}
+          message={searchQuery ? "No projects match your search." : "Create your first film production project to get started."}
+          icon={<Film size={48} color={colors.primary} />}
+        />
+      ) : (
+        <FlatList
+          data={filteredProjects}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
