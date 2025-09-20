@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
-    gap: 12,
+    gap: 6,
   },
   searchContainer: {
     flex: 1,
