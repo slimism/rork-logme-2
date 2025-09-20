@@ -678,16 +678,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sceneHeader: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 16,
-    borderRadius: 8,
   },
   sceneTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: 'black',
   },
   shotContainer: {
     marginBottom: 24,
