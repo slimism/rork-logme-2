@@ -10,7 +10,7 @@ export default function AboutScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton}>
           <ChevronLeft size={24} color={colors.primary} />
         </TouchableOpacity>
@@ -20,9 +20,10 @@ export default function AboutScreen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* App Version Section */}
+        <Text style={styles.appVersionTitle}>App Version</Text>
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
-            <Text style={styles.versionLabel}>App Version</Text>
+            <Text style={styles.versionLabel}>Version</Text>
             <Text style={styles.versionValue}>1.0.0</Text>
           </View>
         </View>
@@ -96,6 +97,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  appVersionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 20,
+    marginBottom: 8,
+    marginHorizontal: 20,
   },
   versionSection: {
     backgroundColor: 'white',

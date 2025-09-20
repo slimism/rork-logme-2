@@ -140,7 +140,7 @@ export default function Store() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton}>
           <ChevronLeft size={24} color={colors.primary} />
         </TouchableOpacity>
