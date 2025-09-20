@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.subtext,
     textAlign: 'center',
     marginTop: 4,
   },
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.subtext,
     marginTop: 8,
   },
   statusValue: {
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.subtext,
     flex: 1,
     lineHeight: 20,
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.subtext,
   },
   packageCard: {
     backgroundColor: 'white',
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   },
   tokenLabel: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.subtext,
     marginLeft: 4,
   },
   priceInfo: {
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   originalPrice: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.subtext,
     textDecorationLine: 'line-through',
   },
   savings: {
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   packageDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.subtext,
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.subtext,
     textAlign: 'center',
   },
 });
