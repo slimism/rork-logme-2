@@ -354,7 +354,7 @@ export default function ProjectScreen() {
             onPress={() => setShowFilters(!showFilters)} 
             style={[styles.filterButton, showFilters && styles.filterButtonActive]}
           >
-            <Filter size={20} color={showFilters ? 'white' : colors.text} />
+            <Filter size={18} color={showFilters ? 'white' : colors.text} />
             <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>Filter</Text>
           </TouchableOpacity>
         </View>
@@ -806,13 +806,13 @@ const styles = StyleSheet.create({
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'white',
-    gap: 8,
+    gap: 6,
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -867,6 +867,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 16,
+    marginBottom: 8,
     gap: 12,
   },
   searchContainer: {
