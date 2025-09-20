@@ -576,8 +576,9 @@ const styles = StyleSheet.create({
   },
   takeCard: {
     backgroundColor: 'white',
-    borderRadius: 8,
     marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -675,12 +676,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   sceneContainer: {
-    marginBottom: 32,
+    marginBottom: 24,
+    marginHorizontal: 16,
   },
   sceneHeader: {
+    backgroundColor: '#B8E6FF',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 16,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   sceneTitle: {
     fontSize: 24,
@@ -688,14 +692,14 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   shotContainer: {
-    marginBottom: 24,
+    backgroundColor: '#B8E6FF',
   },
   shotHeader: {
     backgroundColor: '#B8E6FF',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 12,
-    borderRadius: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
   },
   shotTitle: {
     fontSize: 18,
@@ -703,7 +707,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   takesContainer: {
-    gap: 8,
+    backgroundColor: '#B8E6FF',
+    paddingBottom: 8,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
   takeTitleRow: {
     flexDirection: 'row',
