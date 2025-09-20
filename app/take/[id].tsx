@@ -36,6 +36,7 @@ export default function EditTakeScreen() {
   const [soundRangeEnabled, setSoundRangeEnabled] = useState(false);
   const [cameraRange, setCameraRange] = useState({ from: '', to: '' });
   const [soundRange, setSoundRange] = useState({ from: '', to: '' });
+  const [cameraRecState, setCameraRecState] = useState<{ [key: string]: boolean }>({});
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
@@ -57,6 +58,23 @@ export default function EditTakeScreen() {
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  // Initialize REC state separately to avoid infinite loops
+  useEffect(() => {
+    const currentLogSheet = logSheets.find(l => l.id === id);
+    const currentProject = projects.find(p => p.id === currentLogSheet?.projectId);
+    
+    if (currentProject) {
+      const initialRecState: { [key: string]: boolean } = {};
+      // Only initialize REC state for multiple cameras (more than 1)
+      if ((currentProject.settings?.cameraConfiguration || 1) > 1) {
+        for (let i = 1; i <= (currentProject.settings?.cameraConfiguration || 1); i++) {
+          initialRecState[`cameraFile${i}`] = true;
+        }
+        setCameraRecState(initialRecState);
+      }
+    }
+  }, [id, projects, logSheets]);
 
   useEffect(() => {
     const currentLogSheet = logSheets.find(l => l.id === id);
@@ -226,6 +244,13 @@ export default function EditTakeScreen() {
   const handleInsertModalConfirm = (soundSpeed: boolean) => {
     setInsertSoundSpeed(soundSpeed);
     setShowInsertModal(false);
+  };
+
+  const toggleCameraRec = (fieldId: string) => {
+    setCameraRecState(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
   };
 
   // Helper function to check for duplicate file numbers
@@ -645,15 +670,34 @@ export default function EditTakeScreen() {
               ]}>
                 {fieldLabel}{!isDisabled && <Text style={styles.asterisk}> *</Text>}
               </Text>
-              {i === 1 && (
-                <TouchableOpacity
-                  style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
-                  onPress={() => setCameraRangeEnabled(true)}
-                  disabled={isDisabled}
-                >
-                  <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.buttonGroup}>
+                {i === 1 && (
+                  <TouchableOpacity
+                    style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
+                    onPress={() => setCameraRangeEnabled(true)}
+                    disabled={isDisabled}
+                  >
+                    <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
+                  </TouchableOpacity>
+                )}
+                {cameraCount > 1 && (
+                  <TouchableOpacity 
+                    style={[
+                      styles.recButton, 
+                      (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
+                      isDisabled && styles.disabledButton
+                    ]}
+                    onPress={() => !isDisabled && toggleCameraRec(fieldId)}
+                    disabled={isDisabled}
+                  >
+                    <Text style={[
+                      styles.recButtonText, 
+                      (cameraRecState[fieldId] ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                      isDisabled && styles.disabledText
+                    ]}>REC</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             <TextInput
               ref={(ref) => { inputRefs.current[fieldId] = ref; }}
@@ -1457,6 +1501,36 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  recButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 6,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  recButtonActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  recButtonInactive: {
+    backgroundColor: '#9CA3AF',
+    borderColor: '#9CA3AF',
+  },
+  recButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  recButtonTextActive: {
+    color: 'white',
+  },
+  recButtonTextInactive: {
+    color: 'white',
   },
   sectionContainer: {
     backgroundColor: 'white',
