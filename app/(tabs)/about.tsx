@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { colors } from '@/constants/colors';
-import { Film, Camera, List, Download, Settings, Mail } from 'lucide-react-native';
+import { Mail, MessageCircle } from 'lucide-react-native';
 import { TopBar } from '@/components/TopBar';
 
 export default function AboutScreen() {
@@ -9,110 +9,60 @@ export default function AboutScreen() {
     Linking.openURL('mailto:logme.film@gmail.com');
   };
 
+  const handleFeedback = () => {
+    Linking.openURL('mailto:logme.film@gmail.com?subject=Feedback');
+  };
+
   return (
     <View style={styles.container}>
       <TopBar />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Film size={48} color={colors.primary} />
-          <Text style={styles.title}>About LogMe</Text>
-          <Text style={styles.subtitle}>
-            Professional film production logging tool
-          </Text>
-        </View>
-
-
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About LogMe</Text>
-          <Text style={styles.text}>
-            LogMe is a professional tool designed for film production crews to organize and manage their production documentation efficiently. Create projects with customizable log sheet fields, track takes by scene and shot, and maintain detailed production records.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Features</Text>
-          
-          <View style={styles.featureItem}>
-            <Film size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Project Management</Text>
-              <Text style={styles.featureDescription}>
-                Create and organize film projects with customizable settings and field configurations.
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Camera size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Take Logging</Text>
-              <Text style={styles.featureDescription}>
-                Log takes with scene numbers, shot numbers, camera files, sound files, card numbers, and detailed notes.
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <List size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Smart Filtering</Text>
-              <Text style={styles.featureDescription}>
-                Filter and sort your takes by scene and shot numbers for quick access to specific content.
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Download size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>PDF Export</Text>
-              <Text style={styles.featureDescription}>
-                Export your projects as professional PDF log sheets for sharing and archival.
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Settings size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Customizable Fields</Text>
-              <Text style={styles.featureDescription}>
-                Configure which fields appear in your log sheets and add custom fields for your specific needs.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.featureItem}>
-            <Camera size={24} color={colors.primary} style={styles.featureIcon} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Multi-Camera Support</Text>
-              <Text style={styles.featureDescription}>
-                Configure multiple camera setups and track files from each camera separately.
-              </Text>
-            </View>
+        {/* App Version Section */}
+        <View style={styles.versionSection}>
+          <View style={styles.versionRow}>
+            <Text style={styles.versionLabel}>App Version</Text>
+            <Text style={styles.versionValue}>1.0.0</Text>
           </View>
         </View>
 
+        {/* Key Features Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Us</Text>
-          <Text style={styles.text}>
-            Have questions, feedback, or need support? We would love to hear from you!
+          <Text style={styles.sectionTitle}>KEY FEATURES</Text>
+          
+          <View style={styles.featuresList}>
+            <Text style={styles.featureItem}>Project Management</Text>
+            <View style={styles.separator} />
+            <Text style={styles.featureItem}>Take Logging</Text>
+            <View style={styles.separator} />
+            <Text style={styles.featureItem}>Smart Filtering</Text>
+            <View style={styles.separator} />
+            <Text style={styles.featureItem}>PDF Export</Text>
+            <View style={styles.separator} />
+            <Text style={styles.featureItem}>Customizable Fields</Text>
+            <View style={styles.separator} />
+            <Text style={styles.featureItem}>Multi-Camera Support</Text>
+          </View>
+        </View>
+
+        {/* About the App Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ABOUT THE APP</Text>
+          <Text style={styles.aboutText}>
+            LogMe is a professional tool designed for film production crews to efficiently manage projects and takes. It offers features like take logging, smart filtering, PDF export, customizable fields, and multi-camera support.
           </Text>
+        </View>
+
+        {/* Contact Us Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>CONTACT US</Text>
           
           <TouchableOpacity onPress={handleContactUs} style={styles.contactButton}>
-            <Mail size={24} color={colors.primary} style={styles.contactIcon} />
-            <View style={styles.contactContent}>
-              <Text style={styles.contactTitle}>Email Support</Text>
-              <Text style={styles.contactEmail}>logme.film@gmail.com</Text>
-            </View>
+            <Mail size={24} color={colors.text} />
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            © 2025 LogMe App
-          </Text>
+          
+          <TouchableOpacity onPress={handleFeedback} style={styles.contactButton}>
+            <MessageCircle size={24} color={colors.text} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -122,125 +72,72 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
-  header: {
+  versionSection: {
+    backgroundColor: 'white',
+    marginTop: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  versionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  versionLabel: {
+    fontSize: 17,
     color: colors.text,
-    marginTop: 12,
+    fontWeight: '400',
   },
-  subtitle: {
-    fontSize: 16,
+  versionValue: {
+    fontSize: 17,
     color: colors.subtext,
-    marginTop: 4,
-    textAlign: 'center',
+    fontWeight: '400',
   },
-
   section: {
-    padding: 16,
     backgroundColor: 'white',
-    marginTop: 16,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginTop: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
     color: colors.subtext,
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 20,
+    letterSpacing: 0.5,
   },
-  text: {
-    fontSize: 16,
-    color: colors.subtext,
-    lineHeight: 24,
+  featuresList: {
+    marginTop: 0,
   },
   featureItem: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    alignItems: 'flex-start',
-  },
-  featureIcon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
     color: colors.text,
-    marginBottom: 4,
+    paddingVertical: 12,
+    fontWeight: '400',
   },
-  featureDescription: {
-    fontSize: 14,
-    color: colors.subtext,
-    lineHeight: 20,
+  separator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginLeft: 0,
+  },
+  aboutText: {
+    fontSize: 17,
+    color: colors.text,
+    lineHeight: 24,
+    fontWeight: '400',
   },
   contactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: colors.primary + '10',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
-  },
-  contactIcon: {
-    marginRight: 12,
-  },
-  contactContent: {
-    flex: 1,
-  },
-  contactTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  contactEmail: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  footer: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: colors.subtext,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
 });
