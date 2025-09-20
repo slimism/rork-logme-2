@@ -247,6 +247,55 @@ export default function AddTakeScreen() {
     });
   };
 
+  // Helper function to check for duplicate file numbers
+  const checkForDuplicateFiles = () => {
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+    const duplicates: string[] = [];
+    
+    // Check sound file
+    if (takeData.soundFile && !disabledFields.has('soundFile')) {
+      const soundFileValue = takeData.soundFile;
+      const existingSheet = projectLogSheets.find(sheet => 
+        sheet.data?.soundFile === soundFileValue
+      );
+      
+      if (existingSheet) {
+        duplicates.push(`Sound File "${soundFileValue}"`);
+      }
+    }
+    
+    // Check camera files
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
+        const cameraFileValue = takeData.cameraFile;
+        const existingSheet = projectLogSheets.find(sheet => 
+          sheet.data?.cameraFile === cameraFileValue
+        );
+        
+        if (existingSheet) {
+          duplicates.push(`Camera File "${cameraFileValue}"`);
+        }
+      }
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (takeData[fieldId] && !disabledFields.has(fieldId)) {
+          const cameraFileValue = takeData[fieldId];
+          const existingSheet = projectLogSheets.find(sheet => 
+            sheet.data?.[fieldId] === cameraFileValue
+          );
+          
+          if (existingSheet) {
+            duplicates.push(`Camera File ${i} "${cameraFileValue}"`);
+          }
+        }
+      }
+    }
+    
+    return duplicates;
+  };
+
   const handleAddTake = () => {
     // Check if user can add more logs
     if (!canAddLog()) {
@@ -260,6 +309,18 @@ export default function AddTakeScreen() {
             onPress: () => router.push('/store'),
           },
         ]
+      );
+      return;
+    }
+    
+    // Check for duplicate file numbers first
+    const duplicateFiles = checkForDuplicateFiles();
+    if (duplicateFiles.length > 0) {
+      const duplicateList = duplicateFiles.join(', ');
+      Alert.alert(
+        'Duplicate File Numbers Detected',
+        `The following file numbers already exist in this project:\n\n${duplicateList}\n\nPlease change these file numbers to unique values before adding the take.`,
+        [{ text: 'OK', style: 'default' }]
       );
       return;
     }

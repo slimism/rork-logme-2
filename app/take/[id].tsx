@@ -218,6 +218,59 @@ export default function EditTakeScreen() {
     setShowInsertModal(false);
   };
 
+  // Helper function to check for duplicate file numbers
+  const checkForDuplicateFiles = () => {
+    if (!logSheet) return [];
+    
+    const projectLogSheets = logSheets.filter(sheet => 
+      sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id // Exclude current take
+    );
+    const duplicates: string[] = [];
+    
+    // Check sound file
+    if (takeData.soundFile && !disabledFields.has('soundFile')) {
+      const soundFileValue = takeData.soundFile;
+      const existingSheet = projectLogSheets.find(sheet => 
+        sheet.data?.soundFile === soundFileValue
+      );
+      
+      if (existingSheet) {
+        duplicates.push(`Sound File "${soundFileValue}"`);
+      }
+    }
+    
+    // Check camera files
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
+        const cameraFileValue = takeData.cameraFile;
+        const existingSheet = projectLogSheets.find(sheet => 
+          sheet.data?.cameraFile === cameraFileValue
+        );
+        
+        if (existingSheet) {
+          duplicates.push(`Camera File "${cameraFileValue}"`);
+        }
+      }
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (takeData[fieldId] && !disabledFields.has(fieldId)) {
+          const cameraFileValue = takeData[fieldId];
+          const existingSheet = projectLogSheets.find(sheet => 
+            sheet.data?.[fieldId] === cameraFileValue
+          );
+          
+          if (existingSheet) {
+            duplicates.push(`Camera File ${i} "${cameraFileValue}"`);
+          }
+        }
+      }
+    }
+    
+    return duplicates;
+  };
+
   const checkForDuplicateTake = () => {
     if (!logSheet) return false;
     
@@ -244,6 +297,16 @@ export default function EditTakeScreen() {
 
   const handleSaveTake = () => {
     if (!logSheet) return;
+    
+    // Check for duplicate file numbers first
+    const duplicateFiles = checkForDuplicateFiles();
+    if (duplicateFiles.length > 0) {
+      const duplicateList = duplicateFiles.join(', ');
+      const message = `The following file numbers already exist in this project:\n\n${duplicateList}\n\nPlease change these file numbers to unique values before saving.`;
+      setDuplicateMessage(message);
+      setShowDuplicateModal(true);
+      return;
+    }
     
     // Check for duplicate takes
     const duplicateTake = checkForDuplicateTake();
