@@ -216,8 +216,45 @@ export default function EditTakeScreen() {
     setShowInsertModal(false);
   };
 
+  const checkForDuplicateTake = () => {
+    if (!logSheet) return false;
+    
+    const sceneNumber = takeData.sceneNumber;
+    const shotNumber = takeData.shotNumber;
+    const takeNumber = takeData.takeNumber;
+    
+    // Only check for duplicates if we have scene, shot, and take numbers
+    if (!sceneNumber || !shotNumber || !takeNumber) {
+      return false;
+    }
+    
+    // Check if there's another take with the same scene, shot, and take number (excluding current take)
+    const duplicateTake = logSheets.find(sheet => 
+      sheet.id !== logSheet.id && // Exclude current take
+      sheet.projectId === logSheet.projectId &&
+      sheet.data?.sceneNumber === sceneNumber &&
+      sheet.data?.shotNumber === shotNumber &&
+      sheet.data?.takeNumber === takeNumber
+    );
+    
+    return duplicateTake;
+  };
+
   const handleSaveTake = () => {
     if (!logSheet) return;
+    
+    // Check for duplicate takes
+    const duplicateTake = checkForDuplicateTake();
+    if (duplicateTake) {
+      Alert.alert(
+        'Duplicate Take Detected',
+        `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists.\n\nPlease change the take number to save your changes.`,
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+      return;
+    }
     
     try {
       const updatedData = {
