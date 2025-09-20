@@ -104,7 +104,7 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {icon}
-          {title && (
+          {title && title.trim() !== '' && (
             <Text
               style={[
                 styles.text,

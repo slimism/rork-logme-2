@@ -164,15 +164,21 @@ export default function ProjectScreen() {
     
     // Format created and updated dates
     const formatDateTime = (dateString: string) => {
-      const date = new Date(dateString);
-      return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+      if (!dateString) return 'Unknown';
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Unknown';
+        return date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+      } catch {
+        return 'Unknown';
+      }
     };
     
     return (
@@ -197,7 +203,7 @@ export default function ProjectScreen() {
             </View>
             
             {details.length > 0 && (
-              <Text style={styles.takeDetails}>{details.join(', ')}</Text>
+              <Text style={styles.takeDetails}>{details.filter(Boolean).join(', ')}</Text>
             )}
             
             <Text style={styles.takeTime}>Created: {formatDateTime(take.createdAt)}</Text>
