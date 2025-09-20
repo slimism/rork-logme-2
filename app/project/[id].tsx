@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, Filter, X, Search } from 'lucide-react-native';
+import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -354,7 +354,7 @@ export default function ProjectScreen() {
             onPress={() => setShowFilters(!showFilters)} 
             style={[styles.filterButton, showFilters && styles.filterButtonActive]}
           >
-            <Filter size={20} color={showFilters ? 'white' : colors.text} />
+            <SlidersHorizontal size={20} color={showFilters ? 'white' : colors.text} />
             <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>Filter</Text>
           </TouchableOpacity>
         </View>
@@ -809,9 +809,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'white',
+    backgroundColor: '#f5f5f5',
     gap: 8,
   },
   filterButtonActive: {
@@ -873,12 +871,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: 12,
