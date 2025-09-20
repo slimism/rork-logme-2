@@ -47,9 +47,6 @@ export default function ProjectScreen() {
 
   const HeaderRight = () => (
     <View style={styles.headerRightContainer}>
-      <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={styles.headerButton}>
-        <Filter size={24} color={colors.text} />
-      </TouchableOpacity>
       <TouchableOpacity onPress={handleExportPDF} style={styles.headerButton} disabled={isExporting}>
         <Download size={24} color={isExporting ? colors.subtext : colors.text} />
       </TouchableOpacity>
@@ -335,21 +332,30 @@ export default function ProjectScreen() {
       />
       
       <View style={styles.content}>
-        {/* Search Field */}
-        <View style={styles.searchContainer}>
-          <Search size={20} color={colors.subtext} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search shot description"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={colors.subtext}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchButton}>
-              <X size={16} color={colors.subtext} />
-            </TouchableOpacity>
-          )}
+        {/* Search Field with Filter Button */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Search size={20} color={colors.subtext} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search film logs"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={colors.subtext}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchButton}>
+                <X size={16} color={colors.subtext} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity 
+            onPress={() => setShowFilters(!showFilters)} 
+            style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+          >
+            <Filter size={20} color={showFilters ? 'white' : colors.text} />
+            <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>Filter</Text>
+          </TouchableOpacity>
         </View>
         
         {/* Filter Panel */}
@@ -384,15 +390,15 @@ export default function ProjectScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
               <TouchableOpacity
                 style={[
-                  styles.filterButton,
-                  filters.goodTakesOnly && styles.filterButtonActive
+                  styles.filterTagButton,
+                  filters.goodTakesOnly && styles.filterTagButtonActive
                 ]}
                 onPress={() => setFilters(prev => ({ ...prev, goodTakesOnly: !prev.goodTakesOnly }))}
               >
                 <Check size={16} color={filters.goodTakesOnly ? 'white' : colors.text} />
                 <Text style={[
-                  styles.filterButtonText,
-                  filters.goodTakesOnly && styles.filterButtonTextActive
+                  styles.filterTagButtonText,
+                  filters.goodTakesOnly && styles.filterTagButtonTextActive
                 ]}>Good Takes</Text>
               </TouchableOpacity>
               
@@ -400,8 +406,8 @@ export default function ProjectScreen() {
                 <TouchableOpacity
                   key={type}
                   style={[
-                    styles.filterButton,
-                    filters.classification === type && styles.filterButtonActive
+                    styles.filterTagButton,
+                    filters.classification === type && styles.filterTagButtonActive
                   ]}
                   onPress={() => setFilters(prev => ({ 
                     ...prev, 
@@ -409,8 +415,8 @@ export default function ProjectScreen() {
                   }))}
                 >
                   <Text style={[
-                    styles.filterButtonText,
-                    filters.classification === type && styles.filterButtonTextActive
+                    styles.filterTagButtonText,
+                    filters.classification === type && styles.filterTagButtonTextActive
                   ]}>{type}</Text>
                 </TouchableOpacity>
               ))}
@@ -795,14 +801,13 @@ const styles = StyleSheet.create({
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'white',
-    marginRight: 8,
-    gap: 4,
+    gap: 8,
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -814,6 +819,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterButtonTextActive: {
+    color: 'white',
+  },
+  filterTagButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'white',
+    marginRight: 8,
+    gap: 4,
+  },
+  filterTagButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterTagButtonText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  filterTagButtonTextActive: {
     color: 'white',
   },
   clearFiltersButton: {
@@ -828,12 +857,18 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     fontWeight: '500',
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 16,
+    gap: 12,
+  },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
