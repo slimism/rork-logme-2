@@ -40,7 +40,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="store"
           options={{
-            title: "Store",
+            headerShown: false,
             tabBarLabel: "Store",
             tabBarIcon: ({ color, size }) => (
               <ShoppingBag size={size} color={color} />
@@ -51,7 +51,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="about"
           options={{
-            title: "About",
+            headerShown: false,
             tabBarLabel: "About",
             tabBarIcon: ({ color, size }) => (
               <Clock size={size} color={color} />
