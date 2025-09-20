@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { colors } from '@/constants/colors';
 import { Film, Camera, List, Download, Settings, Mail } from 'lucide-react-native';
+import { TopBar } from '@/components/TopBar';
 
 export default function AboutScreen() {
   const handleContactUs = () => {
@@ -10,10 +11,11 @@ export default function AboutScreen() {
 
   return (
     <View style={styles.container}>
+      <TopBar />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Film size={48} color={colors.primary} />
-          <Text style={styles.title}>LogMe</Text>
+          <Text style={styles.title}>About LogMe</Text>
           <Text style={styles.subtitle}>
             Professional film production logging tool
           </Text>
@@ -132,8 +134,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   title: {
     fontSize: 24,
