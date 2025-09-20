@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
-import { Plus, Search, Film, Clock, MoreVertical, Trash2, ShoppingCart, Coins } from 'lucide-react-native';
+import { Plus, Search, Film, Clock, Trash2 } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
 
-import { Button } from '@/components/Button';
+
 import { EmptyState } from '@/components/EmptyState';
 import { colors } from '@/constants/colors';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
-  const { tokens, canCreateProject, getRemainingTrialLogs, useToken, useTrial, canAddLog } = useTokenStore();
+  const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
-  const [showMainMenu, setShowMainMenu] = useState(false);
+
 
   const remainingTrialLogs = getRemainingTrialLogs();
 
@@ -75,7 +75,6 @@ export default function ProjectsScreen() {
             selectedProjects.forEach(projectId => deleteProject(projectId));
             setSelectedProjects([]);
             setIsMultiSelectMode(false);
-            setShowMainMenu(false);
           },
         },
       ]
@@ -90,14 +89,10 @@ export default function ProjectsScreen() {
     );
   };
 
-  const handleMainMenuPress = () => {
-    if (projects.length === 0) return;
-    setShowMainMenu(!showMainMenu);
-  };
+
 
   const startMultiSelect = () => {
     setIsMultiSelectMode(true);
-    setShowMainMenu(false);
   };
 
   const cancelMultiSelect = () => {
@@ -172,25 +167,18 @@ export default function ProjectsScreen() {
           />
           <Text style={styles.appTitle}>LogMe</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/store')} style={styles.storeButton}>
-              <Coins size={20} color={colors.primary} />
-              <Text style={styles.tokenCount}>{tokens}</Text>
-            </TouchableOpacity>
-            {projects.length > 0 && (
-              <TouchableOpacity onPress={handleMainMenuPress} style={styles.menuButton}>
-                <MoreVertical size={24} color={colors.text} />
-              </TouchableOpacity>
-            )}
-            {showMainMenu && (
-              <View style={styles.mainMenuDropdown}>
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={startMultiSelect}
-                >
-                  <Text style={styles.menuItemText}>Select Projects</Text>
+            <View style={styles.creditsContainer}>
+              <Text style={styles.creditsLabel}>Remaining Credits</Text>
+              <View style={styles.creditsRow}>
+                <Text style={styles.creditsNumber}>{tokens}</Text>
+                <TouchableOpacity onPress={() => router.push('/store')} style={styles.plusButton}>
+                  <Plus size={16} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-            )}
+            </View>
+            <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
+              <Plus size={20} color="white" />
+            </TouchableOpacity>
           </View>
         </View>
         {isMultiSelectMode ? (
@@ -242,7 +230,7 @@ export default function ProjectsScreen() {
   );
 
   return (
-    <TouchableWithoutFeedback onPress={() => setShowMainMenu(false)}>
+    <View>
       <View style={styles.container}>
         {renderHeader()}
         
@@ -262,16 +250,9 @@ export default function ProjectsScreen() {
           />
         )}
 
-        <View style={styles.fabContainer}>
-          <Button
-            title=""
-            onPress={handleCreateProject}
-            icon={<Plus size={24} color="white" />}
-            style={styles.fab}
-          />
-        </View>
+
       </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 }
 
@@ -313,38 +294,40 @@ const styles = StyleSheet.create({
     position: 'relative',
     gap: 12,
   },
-  storeButton: {
+  creditsContainer: {
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  creditsLabel: {
+    fontSize: 12,
+    color: colors.subtext,
+    marginBottom: 2,
+  },
+  creditsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '10',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+    gap: 4,
   },
-  tokenCount: {
+  creditsNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.text,
   },
-  menuButton: {
-    padding: 4,
+  plusButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  mainMenuDropdown: {
-    position: 'absolute',
-    top: 30,
-    right: 0,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 1000,
-    minWidth: 150,
+  addProjectButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   multiSelectHeader: {
     flexDirection: 'row',
@@ -511,15 +494,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
-  fabContainer: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    paddingHorizontal: 0,
-  },
+
 });
