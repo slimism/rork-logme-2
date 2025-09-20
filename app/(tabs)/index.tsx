@@ -214,12 +214,13 @@ export default function ProjectsScreen() {
       )}
 
       {remainingTrialLogs > 0 && !isMultiSelectMode && (
-        <View style={styles.trialInfo}>
-          <Text style={styles.trialText}>
-            Trial: {remainingTrialLogs} logs remaining
-          </Text>
-          <TouchableOpacity onPress={() => router.push('/store')}>
-            <Text style={styles.buyTokensText}>Buy Tokens</Text>
+        <View style={styles.trialBanner}>
+          <View style={styles.trialTextContainer}>
+            <Text style={styles.trialTitle}>You're on a trial</Text>
+            <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
+            <Text style={styles.buyCreditsText}>Buy Credits</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -380,25 +381,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  trialInfo: {
+  trialBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.primary + '10',
+    backgroundColor: '#f8f9fa',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
-  trialText: {
+  trialTextContainer: {
+    flex: 1,
+  },
+  trialTitle: {
     fontSize: 14,
-    color: colors.primary,
+    color: '#495057',
     fontWeight: '500',
+    marginBottom: 2,
   },
-  buyTokensText: {
+  trialSubtitle: {
+    fontSize: 12,
+    color: '#6c757d',
+  },
+  buyCreditsButton: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  buyCreditsText: {
     fontSize: 14,
-    color: colors.primary,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    color: 'white',
+    fontWeight: '500',
   },
   listContent: {
     padding: 16,
