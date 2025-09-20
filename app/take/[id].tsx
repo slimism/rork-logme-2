@@ -366,7 +366,7 @@ export default function EditTakeScreen() {
       missingFields.push('Sound File');
     }
     
-    // Check Camera Files (mandatory unless disabled)
+    // Check Camera Files (mandatory unless disabled or REC is inactive)
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       if (!disabledFields.has('cameraFile') && !takeData.cameraFile?.trim()) {
@@ -376,7 +376,9 @@ export default function EditTakeScreen() {
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
-        if (!disabledFields.has(fieldId) && !takeData[fieldId]?.trim()) {
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        // Only validate if field is not disabled AND REC is active
+        if (!disabledFields.has(fieldId) && isRecActive && !takeData[fieldId]?.trim()) {
           errors.add(fieldId);
           missingFields.push(`Camera File ${i}`);
         }
@@ -699,7 +701,7 @@ export default function EditTakeScreen() {
                 isDisabled && styles.disabledLabel,
                 validationErrors.has(fieldId) && styles.errorLabel
               ]}>
-                {fieldLabel}{!isDisabled && <Text style={styles.asterisk}> *</Text>}
+                {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
               </Text>
               <View style={styles.buttonGroup}>
                 {i === 1 && (
