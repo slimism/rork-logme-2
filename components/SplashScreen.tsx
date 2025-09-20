@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -10,7 +10,6 @@ interface SplashScreenProps {
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const logoRotateAnim = useRef(new Animated.Value(0)).current;
   const backgroundElementsAnim = useRef(new Animated.Value(0)).current;
 
   const handleFinish = useCallback(() => {
@@ -39,11 +38,6 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
           friction: 7,
           useNativeDriver: true,
         }),
-        Animated.timing(logoRotateAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
       ]),
     ]).start(() => {
       // Wait a bit then finish
@@ -53,12 +47,9 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
       
       return () => clearTimeout(timeout);
     });
-  }, [backgroundElementsAnim, fadeAnim, logoRotateAnim, scaleAnim, handleFinish]);
+  }, [backgroundElementsAnim, fadeAnim, scaleAnim, handleFinish]);
 
-  const logoRotation = logoRotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -139,40 +130,16 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
           {
             opacity: fadeAnim,
             transform: [
-              { scale: scaleAnim },
-              { rotate: logoRotation }
+              { scale: scaleAnim }
             ]
           }
         ]}
       >
-        {/* LOGME Logo SVG */}
-        <Svg width="200" height="200" viewBox="0 0 200 200">
-          <Defs>
-            <LinearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#E3F2FD" stopOpacity="1" />
-              <Stop offset="50%" stopColor="#BBDEFB" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#64B5F6" stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          
-          {/* Triangle shape similar to the logo */}
-          <Path
-            d="M60 50 Q80 30 120 50 Q140 70 120 110 Q100 130 80 110 Q60 90 60 70 Z"
-            fill="none"
-            stroke="url(#logoGrad)"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          
-          {/* Inner line element */}
-          <Path
-            d="M85 60 L115 90"
-            stroke="#FFFFFF"
-            strokeWidth="6"
-            strokeLinecap="round"
-          />
-        </Svg>
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/tu3cij9bjihf44jz25j56' }}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       {/* App name */}
@@ -233,6 +200,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 20,
+  },
+  logoImage: {
+    width: 200,
+    height: 200,
   },
   textContainer: {
     marginBottom: 40,
