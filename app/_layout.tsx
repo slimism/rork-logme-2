@@ -1,7 +1,8 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
+import CustomSplashScreen from "@/components/SplashScreen";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -11,9 +12,19 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
+
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <CustomSplashScreen onFinish={handleSplashFinish} />;
+  }
 
   return <RootLayoutNav />;
 }
