@@ -36,6 +36,8 @@ export default function EditTakeScreen() {
   const [cameraRange, setCameraRange] = useState({ from: '', to: '' });
   const [soundRange, setSoundRange] = useState({ from: '', to: '' });
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateMessage, setDuplicateMessage] = useState('');
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -246,13 +248,14 @@ export default function EditTakeScreen() {
     // Check for duplicate takes
     const duplicateTake = checkForDuplicateTake();
     if (duplicateTake) {
-      Alert.alert(
-        'Duplicate Take Detected',
-        `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists.\n\nPlease change the take number to save your changes.`,
-        [
-          { text: 'OK', style: 'default' }
-        ]
-      );
+      console.log('Duplicate take detected:', {
+        current: { scene: takeData.sceneNumber, shot: takeData.shotNumber, take: takeData.takeNumber },
+        duplicate: { scene: duplicateTake.data?.sceneNumber, shot: duplicateTake.data?.shotNumber, take: duplicateTake.data?.takeNumber }
+      });
+      
+      const message = `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists.\n\nPlease change the take number to save your changes.`;
+      setDuplicateMessage(message);
+      setShowDuplicateModal(true);
       return;
     }
     
@@ -853,6 +856,29 @@ export default function EditTakeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Duplicate Take Modal */}
+      <Modal
+        visible={showDuplicateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDuplicateModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Duplicate Take Detected</Text>
+            <Text style={styles.modalDescription}>{duplicateMessage}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={() => setShowDuplicateModal(false)}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -1124,6 +1150,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 20,
+  },
+  modalDescription: {
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 20,
+    lineHeight: 22,
   },
   checkboxRow: {
     flexDirection: 'row',
