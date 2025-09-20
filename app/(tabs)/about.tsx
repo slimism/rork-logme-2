@@ -26,9 +26,8 @@ export default function AboutScreen() {
         </View>
 
         {/* Key Features Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>KEY FEATURES</Text>
-          
+        <Text style={styles.outsideSectionTitle}>KEY FEATURES</Text>
+        <View style={styles.whiteContainer}>
           <View style={styles.featuresList}>
             <Text style={styles.featureItem}>Project Management</Text>
             <View style={styles.separator} />
@@ -45,17 +44,16 @@ export default function AboutScreen() {
         </View>
 
         {/* About the App Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ABOUT THE APP</Text>
+        <Text style={styles.outsideSectionTitle}>ABOUT THE APP</Text>
+        <View style={styles.whiteContainer}>
           <Text style={styles.aboutText}>
             LogMe is a professional tool designed for film production crews to efficiently manage projects and takes. It offers features like take logging, smart filtering, PDF export, customizable fields, and multi-camera support.
           </Text>
         </View>
 
         {/* Contact Us Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CONTACT US</Text>
-          
+        <Text style={styles.outsideSectionTitle}>CONTACT US</Text>
+        <View style={styles.whiteContainer}>
           <TouchableOpacity onPress={handleContactUs} style={styles.contactButton}>
             <Mail size={24} color={colors.text} />
           </TouchableOpacity>
@@ -115,6 +113,19 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     marginBottom: 20,
     letterSpacing: 0.5,
+  },
+  outsideSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 32,
+    marginBottom: 8,
+    marginHorizontal: 20,
+  },
+  whiteContainer: {
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   featuresList: {
     marginTop: 0,
