@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   featureContainer: {
     backgroundColor: 'white',
-    marginBottom: 8,
+    marginBottom: 4,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 8,
