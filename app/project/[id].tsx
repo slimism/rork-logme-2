@@ -156,9 +156,11 @@ export default function ProjectScreen() {
 
 
 
-  const renderTake = ({ item: take }: { item: any }) => {
+  const renderTake = ({ item: take, index, totalTakes }: { item: any, index: number, totalTakes: number }) => {
     const isExpanded = expandedTakes.has(take.id);
     const takeNumber = take.data?.takeNumber || '1';
+    const isFirstTake = index === 0;
+    const isLastTake = index === totalTakes - 1;
 
     
     // Format classification and shot details
@@ -187,7 +189,12 @@ export default function ProjectScreen() {
     };
     
     return (
-      <View style={styles.takeCard}>
+      <View style={[
+        styles.takeCard,
+        isFirstTake && styles.takeCardFirst,
+        isLastTake && styles.takeCardLast,
+        !isFirstTake && !isLastTake && styles.takeCardMiddle
+      ]}>
         <TouchableOpacity 
           style={styles.takeMinimalView}
           onPress={() => toggleTakeExpansion(take.id)}
@@ -447,9 +454,13 @@ export default function ProjectScreen() {
                       <Text style={styles.shotTitle}>Shot {shotNumber}</Text>
                     </View>
                     <View style={styles.takesContainer}>
-                      {organizedTakes[sceneNumber][shotNumber].map(take => (
+                      {organizedTakes[sceneNumber][shotNumber].map((take, index) => (
                         <View key={take.id}>
-                          {renderTake({ item: take })}
+                          {renderTake({ 
+                            item: take, 
+                            index, 
+                            totalTakes: organizedTakes[sceneNumber][shotNumber].length 
+                          })}
                         </View>
                       ))}
                     </View>
@@ -576,13 +587,27 @@ const styles = StyleSheet.create({
   },
   takeCard: {
     backgroundColor: 'white',
-    borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
     marginBottom: 0,
+  },
+  takeCardFirst: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  takeCardMiddle: {
+    borderRadius: 0,
+  },
+  takeCardLast: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
   takeMinimalView: {
     padding: 16,
@@ -695,7 +720,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 0,
-    borderRadius: 8,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   shotTitle: {
     fontSize: 18,
