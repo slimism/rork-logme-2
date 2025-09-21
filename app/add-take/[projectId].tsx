@@ -982,7 +982,7 @@ export default function AddTakeScreen() {
     >
       <Stack.Screen 
         options={{
-          title: "Film Logger",
+          title: "New Log",
           headerLeft: () => <HeaderLeft />,
           headerBackVisible: false,
         }} 
@@ -995,18 +995,18 @@ export default function AddTakeScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
-        <View style={styles.fieldsSection}>
+        <View style={styles.formContainer}>
           {/* Scene, Shot, Take on same row */}
-          <View style={styles.rowContainer}>
+          <View style={styles.topRowContainer}>
             {enabledFields.find(f => f.id === 'sceneNumber') && (
-              <View style={styles.thirdWidth}>
-                <Text style={[styles.fieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
-                  Scene<Text style={styles.asterisk}> *</Text>
+              <View style={styles.topFieldContainer}>
+                <Text style={[styles.topFieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
+                  Scene
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['sceneNumber'] = ref; }}
                   style={[
-                    styles.fieldInput,
+                    styles.topFieldInput,
                     validationErrors.has('sceneNumber') && styles.errorInput
                   ]}
                   value={takeData.sceneNumber || ''}
@@ -1020,7 +1020,7 @@ export default function AddTakeScreen() {
                       });
                     }
                   }}
-                  placeholder="Enter scene"
+                  placeholder=""
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextField('sceneNumber', allFieldIds)}
@@ -1037,14 +1037,14 @@ export default function AddTakeScreen() {
               </View>
             )}
             {enabledFields.find(f => f.id === 'shotNumber') && (
-              <View style={styles.thirdWidth}>
-                <Text style={[styles.fieldLabel, validationErrors.has('shotNumber') && styles.errorLabel]}>
-                  Shot<Text style={styles.asterisk}> *</Text>
+              <View style={styles.topFieldContainer}>
+                <Text style={[styles.topFieldLabel, validationErrors.has('shotNumber') && styles.errorLabel]}>
+                  Shot
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['shotNumber'] = ref; }}
                   style={[
-                    styles.fieldInput,
+                    styles.topFieldInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
                   value={takeData.shotNumber || ''}
@@ -1058,7 +1058,7 @@ export default function AddTakeScreen() {
                       });
                     }
                   }}
-                  placeholder="Enter shot"
+                  placeholder=""
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextField('shotNumber', allFieldIds)}
@@ -1074,10 +1074,48 @@ export default function AddTakeScreen() {
                 />
               </View>
             )}
-            {enabledFields.find(f => f.id === 'takeNumber') && renderField(enabledFields.find(f => f.id === 'takeNumber'), allFieldIds, styles.thirdWidth)}
+            {enabledFields.find(f => f.id === 'takeNumber') && (
+              <View style={styles.topFieldContainer}>
+                <Text style={[styles.topFieldLabel, validationErrors.has('takeNumber') && styles.errorLabel]}>
+                  Take
+                </Text>
+                <TextInput
+                  ref={(ref) => { inputRefs.current['takeNumber'] = ref; }}
+                  style={[
+                    styles.topFieldInput,
+                    validationErrors.has('takeNumber') && styles.errorInput
+                  ]}
+                  value={takeData.takeNumber || ''}
+                  onChangeText={(text) => {
+                    updateTakeData('takeNumber', text);
+                    if (validationErrors.has('takeNumber')) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev);
+                        newErrors.delete('takeNumber');
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder=""
+                  placeholderTextColor={colors.subtext}
+                  keyboardType="numeric"
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField('takeNumber', allFieldIds)}
+                  onFocus={(event) => {
+                    setTimeout(() => {
+                      const target = event.target as any;
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
+                  }}
+                />
+              </View>
+            )}
           </View>
           
-          {/* Camera file on its own row */}
+          {/* Camera file */}
           {cameraConfiguration === 1 && (
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeaderRow}>
@@ -1086,7 +1124,7 @@ export default function AddTakeScreen() {
                   disabledFields.has('cameraFile') && styles.disabledLabel,
                   validationErrors.has('cameraFile') && styles.errorLabel
                 ]}>
-                  Camera File{!disabledFields.has('cameraFile') && <Text style={styles.asterisk}> *</Text>}
+                  Camera File
                 </Text>
                 <TouchableOpacity 
                   style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
@@ -1186,7 +1224,7 @@ export default function AddTakeScreen() {
             </View>
           )}
           
-          {/* Sound file on its own row */}
+          {/* Sound file */}
           {enabledFields.find(f => f.id === 'soundFile') && (
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeaderRow}>
@@ -1195,7 +1233,7 @@ export default function AddTakeScreen() {
                   disabledFields.has('soundFile') && styles.disabledLabel,
                   validationErrors.has('soundFile') && styles.errorLabel
                 ]}>
-                  Sound File{!disabledFields.has('soundFile') && <Text style={styles.asterisk}> *</Text>}
+                  Sound File
                 </Text>
                 <TouchableOpacity 
                   style={[styles.rangeButton, disabledFields.has('soundFile') && styles.disabledButton]}
@@ -1310,7 +1348,7 @@ export default function AddTakeScreen() {
                         isDisabled && styles.disabledLabel,
                         validationErrors.has(fieldId) && styles.errorLabel
                       ]}>
-                        {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
+                        {fieldLabel}
                       </Text>
                       <View style={styles.buttonGroup}>
                         <TouchableOpacity 
@@ -1430,21 +1468,39 @@ export default function AddTakeScreen() {
             </View>
           )}
           
-          {/* Other fields each on their own row */}
-          {fieldsToRender
-            .filter(field => !['sceneNumber', 'shotNumber', 'takeNumber', 'cameraFile', 'soundFile'].includes(field.id))
-            .map(field => renderField(field, allFieldIds))}
-          
-          {/* Custom fields */}
-          {customFields.map((fieldName: string, index: number) => 
-            renderField({
-              id: `custom_${index}`,
-              label: fieldName
-            }, allFieldIds)
+          {/* Take Description */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Take Description</Text>
+            <TextInput
+              ref={(ref) => { inputRefs.current['descriptionOfShot'] = ref; }}
+              style={[styles.fieldInput, styles.multilineInput]}
+              value={takeData.descriptionOfShot || ''}
+              onChangeText={(text) => updateTakeData('descriptionOfShot', text)}
+              placeholder=""
+              placeholderTextColor={colors.subtext}
+              multiline={true}
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+
+          {/* Notes */}
+          {notesField && (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>Notes</Text>
+              <TextInput
+                ref={(ref) => { inputRefs.current['notesForTake'] = ref; }}
+                style={[styles.fieldInput, styles.multilineInput]}
+                value={takeData.notesForTake || ''}
+                onChangeText={(text) => updateTakeData('notesForTake', text)}
+                placeholder=""
+                placeholderTextColor={colors.subtext}
+                multiline={true}
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
           )}
-          
-          {/* Notes field always last */}
-          {notesField && renderField(notesField, allFieldIds)}
         </View>
 
         {/* Classification Section */}
@@ -1630,7 +1686,7 @@ export default function AddTakeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -1642,37 +1698,84 @@ const styles = StyleSheet.create({
     padding: 8,
     marginHorizontal: 8,
   },
-  fieldsSection: {
+  formContainer: {
     backgroundColor: 'white',
+    margin: 16,
+    borderRadius: 12,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  topRowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  topFieldContainer: {
+    flex: 1,
+  },
+  topFieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginBottom: 8,
+  },
+  topFieldInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: 'white',
+    height: 48,
   },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   fieldLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
+    color: '#666',
     marginBottom: 8,
   },
   fieldInput: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#e0e0e0',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
     backgroundColor: 'white',
+    minHeight: 48,
   },
   multilineInput: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
+    paddingTop: 12,
   },
   addTakeSection: {
     backgroundColor: 'white',
-    marginTop: 16,
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 12,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   addTakeButton: {
     backgroundColor: '#2c3e50',
@@ -1698,14 +1801,24 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     backgroundColor: 'white',
-    marginTop: 16,
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 12,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -1769,17 +1882,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rangeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 6,
-    backgroundColor: 'white',
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#f8f8f8',
   },
   rangeButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.primary,
+    color: '#007AFF',
   },
   disabledText: {
     color: colors.disabled,
@@ -1958,51 +2071,51 @@ const styles = StyleSheet.create({
     width: '48%',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'white',
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f8f8',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
+    height: 48,
   },
   classificationButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
   classificationButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
   },
   classificationButtonTextActive: {
     color: 'white',
   },
   shotDetailsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     justifyContent: 'center',
   },
   shotDetailsButton: {
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'white',
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f8f8f8',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 140,
-    height: 56,
+    minWidth: 120,
+    height: 48,
   },
   shotDetailsButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
   shotDetailsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
   },
   shotDetailsButtonTextActive: {
     color: 'white',
