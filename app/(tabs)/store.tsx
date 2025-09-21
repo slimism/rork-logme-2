@@ -13,6 +13,7 @@ import { colors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
 import { iapService, IAPProduct } from '@/services/iapService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeStore } from '@/store/themeStore';
 
 interface TokenPackage extends IAPProduct {
   originalPrice?: string;
@@ -22,6 +23,7 @@ interface TokenPackage extends IAPProduct {
 
 export default function Store() {
   const { tokens, addTokens, getRemainingTrialLogs } = useTokenStore();
+  const { darkMode } = useThemeStore();
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [products, setProducts] = useState<TokenPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,76 +140,76 @@ export default function Store() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, darkMode && styles.containerDark]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, darkMode && styles.headerDark, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton}>
           <ChevronLeft size={24} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Store</Text>
+        <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>Store</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
         {/* Status Cards */}
-        <View style={[styles.statusCard, styles.firstStatusCard]}>
-          <Text style={styles.statusLabel}>Remaining Credits</Text>
-          <Text style={styles.statusValue}>{tokens}</Text>
+        <View style={[styles.statusCard, styles.firstStatusCard, darkMode && styles.statusCardDark]}>
+          <Text style={[styles.statusLabel, darkMode && styles.statusLabelDark]}>Remaining Credits</Text>
+          <Text style={[styles.statusValue, darkMode && styles.statusValueDark]}>{tokens}</Text>
         </View>
 
-        <View style={styles.statusCard}>
-          <Text style={styles.statusLabel}>Trial Logs left</Text>
-          <Text style={styles.statusValue}>{getRemainingTrialLogs()}</Text>
+        <View style={[styles.statusCard, darkMode && styles.statusCardDark]}>
+          <Text style={[styles.statusLabel, darkMode && styles.statusLabelDark]}>Trial Logs left</Text>
+          <Text style={[styles.statusValue, darkMode && styles.statusValueDark]}>{getRemainingTrialLogs()}</Text>
         </View>
 
         {/* How Credits Work */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>How Credits Work</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>How Credits Work</Text>
           
           <View style={styles.infoItem}>
             <Calendar size={20} color={colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoText}>Each token unlocks one project with unlimited logs.</Text>
+            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Each token unlocks one project with unlimited logs.</Text>
           </View>
           
           <View style={styles.infoItem}>
             <Hourglass size={20} color={colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoText}>Free trial includes 15 logs across all projects.</Text>
+            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Free trial includes 15 logs across all projects.</Text>
           </View>
           
           <View style={styles.infoItem}>
             <Infinity size={20} color={colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoText}>Credits never expire and can be used anytime.</Text>
+            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Credits never expire and can be used anytime.</Text>
           </View>
         </View>
 
         {/* Purchase Credits */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Purchase Credits</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Purchase Credits</Text>
           
-          <View style={styles.purchaseOption}>
+          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
             <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>1 Project</Text>
-              <Text style={styles.purchaseSubtitle}>Unlock one project</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>1 Project</Text>
+              <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Unlock one project</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$4.99</Text>
             </View>
           </View>
           
-          <View style={styles.purchaseOption}>
+          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
             <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>4 Projects</Text>
-              <Text style={styles.purchaseSubtitle}>Best value</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>4 Projects</Text>
+              <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Best value</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$14.99</Text>
             </View>
           </View>
           
-          <View style={styles.purchaseOption}>
+          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
             <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>10 Projects</Text>
-              <Text style={styles.purchaseSubtitle}>For the pros</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>10 Projects</Text>
+              <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>For the pros</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$29.99</Text>
@@ -216,13 +218,13 @@ export default function Store() {
         </View>
 
       {Platform.OS !== 'web' && (
-        <TouchableOpacity style={styles.restoreButton} onPress={handleRestorePurchases}>
+        <TouchableOpacity style={[styles.restoreButton, darkMode && styles.restoreButtonDark]} onPress={handleRestorePurchases}>
           <Text style={styles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
       )}
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
+        <Text style={[styles.footerText, darkMode && styles.footerTextDark]}>
           Secure payments processed through the App Store
         </Text>
       </View>
@@ -236,6 +238,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  containerDark: {
+    backgroundColor: '#1a1a1a',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,6 +250,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerDark: {
+    backgroundColor: '#2a2a2a',
+    borderBottomColor: '#444',
   },
   backButton: {
     width: 40,
@@ -256,6 +265,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  headerTitleDark: {
+    color: '#ffffff',
   },
   headerSpacer: {
     width: 40,
@@ -277,6 +289,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  statusCardDark: {
+    backgroundColor: '#2a2a2a',
+    borderBottomColor: '#444',
+  },
   firstStatusCard: {
     marginBottom: 4,
   },
@@ -284,10 +300,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
+  statusLabelDark: {
+    color: '#ffffff',
+  },
   statusValue: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  statusValueDark: {
+    color: '#ffffff',
   },
   sectionContainer: {
     marginTop: 20,
@@ -298,6 +320,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 20,
+  },
+  sectionTitleDark: {
+    color: '#ffffff',
   },
   infoItem: {
     flexDirection: 'row',
@@ -314,6 +339,9 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 22,
   },
+  infoTextDark: {
+    color: '#cccccc',
+  },
   purchaseOption: {
     backgroundColor: 'white',
     borderRadius: 8,
@@ -322,6 +350,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  purchaseOptionDark: {
+    backgroundColor: '#2a2a2a',
   },
   purchaseInfo: {
     flex: 1,
@@ -332,9 +363,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 2,
   },
+  purchaseTitleDark: {
+    color: '#ffffff',
+  },
   purchaseSubtitle: {
     fontSize: 13,
     color: colors.subtext,
+  },
+  purchaseSubtitleDark: {
+    color: '#cccccc',
   },
   priceContainer: {
     backgroundColor: '#e3f2fd',
@@ -365,6 +402,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  restoreButtonDark: {
+    borderColor: '#444',
+  },
   restoreButtonText: {
     color: colors.primary,
     fontSize: 14,
@@ -378,5 +418,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.subtext,
     textAlign: 'center',
+  },
+  footerTextDark: {
+    color: '#cccccc',
   },
 });

@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType } from '@/types';
 import Toast from 'react-native-toast-message';
+import { useThemeStore } from '@/store/themeStore';
 
 interface FieldType {
   id: string;
@@ -19,6 +20,7 @@ interface FieldType {
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projects, logSheets, updateLogSheet } = useProjectStore();
+  const { darkMode } = useThemeStore();
   
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
   const [project, setProject] = useState<any>(null);
@@ -192,7 +194,7 @@ export default function EditTakeScreen() {
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-      <ArrowLeft size={24} color={colors.text} />
+      <ArrowLeft size={24} color={darkMode ? '#ffffff' : colors.text} />
     </TouchableOpacity>
   );
 
@@ -780,7 +782,7 @@ export default function EditTakeScreen() {
 
   if (!logSheet || !project) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, darkMode && styles.containerDark]}>
         <Stack.Screen 
           options={{
             title: "Take Not Found",
@@ -789,7 +791,7 @@ export default function EditTakeScreen() {
           }} 
         />
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Take not found</Text>
+          <Text style={[styles.errorText, darkMode && styles.errorTextDark]}>Take not found</Text>
         </View>
       </View>
     );
@@ -825,7 +827,7 @@ export default function EditTakeScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, darkMode && styles.containerDark]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -845,15 +847,15 @@ export default function EditTakeScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
-        <View style={styles.mainContainer}>
+        <View style={[styles.mainContainer, darkMode && styles.mainContainerDark]}>
           <View style={styles.takeInfo}>
-            <Text style={styles.takeTitle}>
+            <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>
               Scene {takeData.sceneNumber || 'Unknown'} - Shot {takeData.shotNumber || 'Unknown'}
             </Text>
-            <Text style={styles.takeSubtitle}>
+            <Text style={[styles.takeSubtitle, darkMode && styles.takeSubtitleDark]}>
               Created: {new Date(logSheet.createdAt).toLocaleDateString()}
             </Text>
-            <Text style={styles.takeSubtitle}>
+            <Text style={[styles.takeSubtitle, darkMode && styles.takeSubtitleDark]}>
               Last Updated: {new Date(logSheet.updatedAt).toLocaleDateString()}
             </Text>
           </View>
@@ -861,19 +863,24 @@ export default function EditTakeScreen() {
           <View style={styles.rowContainer}>
             {enabledFields.find((field: FieldType) => field.id === 'sceneNumber') && (
               <View style={styles.thirdWidth}>
-                <Text style={[styles.fieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
+                <Text style={[
+                  styles.fieldLabel, 
+                  darkMode && styles.fieldLabelDark,
+                  validationErrors.has('sceneNumber') && styles.errorLabel
+                ]}>
                   Scene<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
                   style={[
                     styles.fieldInput, 
+                    darkMode && styles.fieldInputDark,
                     disabledFields.has('sceneNumber') && styles.disabledInput,
                     validationErrors.has('sceneNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('sceneNumber') ? '' : (takeData.sceneNumber || '')}
                   onChangeText={(text) => updateTakeData('sceneNumber', text)}
                   placeholder={disabledFields.has('sceneNumber') ? '' : 'Enter scene'}
-                  placeholderTextColor={colors.subtext}
+                  placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
                   onFocus={(event) => {
                     if (!disabledFields.has('sceneNumber')) {
@@ -893,6 +900,7 @@ export default function EditTakeScreen() {
               <View style={styles.thirdWidth}>
                 <Text style={[
                   styles.fieldLabel, 
+                  darkMode && styles.fieldLabelDark,
                   disabledFields.has('shotNumber') && styles.disabledLabel,
                   validationErrors.has('shotNumber') && styles.errorLabel
                 ]}>
@@ -901,13 +909,14 @@ export default function EditTakeScreen() {
                 <TextInput
                   style={[
                     styles.fieldInput, 
+                    darkMode && styles.fieldInputDark,
                     disabledFields.has('shotNumber') && styles.disabledInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
                   onChangeText={(text) => updateTakeData('shotNumber', text)}
                   placeholder={disabledFields.has('shotNumber') ? '' : 'Enter shot'}
-                  placeholderTextColor={colors.subtext}
+                  placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
                   onFocus={(event) => {
                     if (!disabledFields.has('shotNumber')) {
@@ -927,19 +936,21 @@ export default function EditTakeScreen() {
               <View style={styles.thirdWidth}>
                 <Text style={[
                   styles.fieldLabel, 
+                  darkMode && styles.fieldLabelDark,
                   disabledFields.has('takeNumber') && styles.disabledLabel,
                   validationErrors.has('takeNumber') && styles.errorLabel
                 ]}>Take</Text>
                 <TextInput
                   style={[
                     styles.fieldInput, 
+                    darkMode && styles.fieldInputDark,
                     disabledFields.has('takeNumber') && styles.disabledInput,
                     validationErrors.has('takeNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
                   onChangeText={(text) => updateTakeData('takeNumber', text)}
                   placeholder={disabledFields.has('takeNumber') ? '' : 'Enter take'}
-                  placeholderTextColor={colors.subtext}
+                  placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
                   onFocus={(event) => {
@@ -982,7 +993,7 @@ export default function EditTakeScreen() {
           
           {/* Classification Section */}
           <View style={styles.sectionSpacing}>
-            <Text style={styles.sectionTitle}>Classification</Text>
+            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Classification</Text>
             <View style={styles.classificationRow}>
               {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
                 <TouchableOpacity
@@ -1006,7 +1017,7 @@ export default function EditTakeScreen() {
 
           {/* Shot Details Section */}
           <View style={styles.sectionSpacing}>
-            <Text style={styles.sectionTitle}>Shot Details</Text>
+            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Shot Details</Text>
             <View style={styles.shotDetailsRow}>
               {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
                 const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
@@ -1069,8 +1080,8 @@ export default function EditTakeScreen() {
         onRequestClose={() => setShowWasteModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Waste Options</Text>
+          <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
+            <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Select Waste Options</Text>
             <TouchableOpacity
               style={styles.checkboxRow}
               onPress={() => setWasteOptions(prev => ({ ...prev, camera: !prev.camera }))}
@@ -1078,7 +1089,7 @@ export default function EditTakeScreen() {
               <View style={[styles.checkbox, wasteOptions.camera && styles.checkboxChecked]}>
                 {wasteOptions.camera && <Check size={16} color="white" />}
               </View>
-              <Text style={styles.checkboxLabel}>Camera file waste</Text>
+              <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Camera file waste</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.checkboxRow}
@@ -1087,7 +1098,7 @@ export default function EditTakeScreen() {
               <View style={[styles.checkbox, wasteOptions.sound && styles.checkboxChecked]}>
                 {wasteOptions.sound && <Check size={16} color="white" />}
               </View>
-              <Text style={styles.checkboxLabel}>Sound file waste</Text>
+              <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Sound file waste</Text>
             </TouchableOpacity>
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -1098,7 +1109,7 @@ export default function EditTakeScreen() {
                   setWasteOptions({ camera: false, sound: false });
                 }}
               >
-                <Text style={styles.modalButtonText}>Cancel</Text>
+                <Text style={[styles.modalButtonText, darkMode && styles.modalButtonTextDark]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
@@ -1118,8 +1129,8 @@ export default function EditTakeScreen() {
         onRequestClose={() => setShowInsertModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Did sound speed in this shot?</Text>
+          <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
+            <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Did sound speed in this shot?</Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
@@ -1146,9 +1157,9 @@ export default function EditTakeScreen() {
         onRequestClose={() => setShowDuplicateModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Duplicate Take Detected</Text>
-            <Text style={styles.modalDescription}>{duplicateMessage}</Text>
+          <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
+            <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Duplicate Take Detected</Text>
+            <Text style={[styles.modalDescription, darkMode && styles.modalDescriptionDark]}>{duplicateMessage}</Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
@@ -1171,6 +1182,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f8f8',
   },
+  containerDark: {
+    backgroundColor: '#1a1a1a',
+  },
   content: {
     flex: 1,
   },
@@ -1190,11 +1204,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.subtext,
   },
+  errorTextDark: {
+    color: '#cccccc',
+  },
   mainContainer: {
     backgroundColor: 'white',
     margin: 20,
     borderRadius: 12,
     padding: 20,
+  },
+  mainContainerDark: {
+    backgroundColor: '#2a2a2a',
   },
   takeInfo: {
     marginBottom: 20,
@@ -1205,10 +1225,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
+  takeTitleDark: {
+    color: '#ffffff',
+  },
   takeSubtitle: {
     fontSize: 14,
     color: colors.subtext,
     marginBottom: 4,
+  },
+  takeSubtitleDark: {
+    color: '#cccccc',
   },
 
   sectionTitle: {
@@ -1217,6 +1243,9 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     marginBottom: 12,
     letterSpacing: 0.5,
+  },
+  sectionTitleDark: {
+    color: '#cccccc',
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -1271,6 +1300,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
+  fieldLabelDark: {
+    color: '#ffffff',
+  },
   fieldInput: {
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -1278,6 +1310,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     backgroundColor: 'white',
+  },
+  fieldInputDark: {
+    backgroundColor: '#3a3a3a',
+    color: '#ffffff',
   },
   disabledInput: {
     backgroundColor: '#f5f5f5',
@@ -1414,17 +1450,26 @@ const styles = StyleSheet.create({
     width: '80%',
     maxWidth: 400,
   },
+  modalContentDark: {
+    backgroundColor: '#2a2a2a',
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 20,
   },
+  modalTitleDark: {
+    color: '#ffffff',
+  },
   modalDescription: {
     fontSize: 16,
     color: colors.text,
     marginBottom: 20,
     lineHeight: 22,
+  },
+  modalDescriptionDark: {
+    color: '#ffffff',
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -1449,6 +1494,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
+  checkboxLabelDark: {
+    color: '#ffffff',
+  },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -1470,6 +1518,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     fontWeight: '500',
+  },
+  modalButtonTextDark: {
+    color: '#ffffff',
   },
   modalButtonTextPrimary: {
     color: 'white',
