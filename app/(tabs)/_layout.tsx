@@ -4,25 +4,25 @@ import { Tabs } from "expo-router";
 import { FileText, ShoppingBag, Clock } from "lucide-react-native";
 import { colors } from "@/constants/colors";
 
-
 export default function TabLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: colors.primary,
+          tabBarActiveTintColor: colors.primary as string,
           headerShown: true,
           tabBarStyle: {
-            backgroundColor: 'white',
-            borderTopColor: colors.border,
+            backgroundColor: colors.card as string,
+            borderTopColor: colors.border as string,
             paddingBottom: 0,
           },
           headerStyle: {
-            backgroundColor: 'white',
+            backgroundColor: colors.card as string,
           },
           headerShadowVisible: false,
           headerTitleStyle: {
             fontWeight: '600',
+            color: colors.text as string,
           },
         }}
       >

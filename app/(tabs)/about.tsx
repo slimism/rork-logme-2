@@ -8,21 +8,19 @@ import { useThemeStore } from '@/store/themeStore';
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
 
-  const { darkMode, setDarkMode, toggleDarkMode } = useThemeStore();
+  const { darkMode, setDarkMode } = useThemeStore();
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.primary} />
+          <ChevronLeft size={24} color={colors.primary as string} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>About</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* App Version Section */}
         <Text style={styles.appVersionTitle}>App Version</Text>
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
@@ -33,8 +31,8 @@ export default function AboutScreen() {
             <Text style={styles.versionLabel}>Dark Mode</Text>
             <Switch
               testID="toggle-dark-mode"
-              trackColor={{ false: '#d1d5db', true: colors.primary + '80' }}
-              thumbColor={darkMode ? colors.primary : '#f4f3f4'}
+              trackColor={{ false: '#d1d5db', true: (colors.primary as string) + '80' }}
+              thumbColor={darkMode ? (colors.primary as string) : '#f4f3f4'}
               ios_backgroundColor="#d1d5db"
               value={darkMode}
               onValueChange={(val) => {
@@ -45,7 +43,6 @@ export default function AboutScreen() {
           </View>
         </View>
 
-        {/* Key Features Section */}
         <Text style={styles.outsideSectionTitle}>KEY FEATURES</Text>
         <View style={styles.featuresContainer}>
           <View style={styles.featureContainer}>
@@ -68,7 +65,6 @@ export default function AboutScreen() {
           </View>
         </View>
 
-        {/* About the App Section */}
         <Text style={styles.outsideSectionTitle}>ABOUT THE APP</Text>
         <View style={styles.whiteContainer}>
           <Text style={styles.aboutText}>
@@ -76,7 +72,6 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        {/* Contact Us Section */}
         <Text style={styles.outsideSectionTitle}>CONTACT US</Text>
         <View style={styles.whiteContainer}>
           <Text style={styles.contactText}>
@@ -91,7 +86,7 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background as string,
   },
   header: {
     flexDirection: 'row',
@@ -99,9 +94,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border as string,
   },
   backButton: {
     padding: 4,
@@ -109,7 +104,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.text as string,
   },
   headerSpacer: {
     width: 32,
@@ -123,19 +118,19 @@ const styles = StyleSheet.create({
   appVersionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.text as string,
     marginTop: 20,
     marginBottom: 8,
     marginHorizontal: 20,
   },
   versionSection: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     marginTop: 0,
     marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border as string,
     borderRadius: 8,
   },
   versionRow: {
@@ -145,16 +140,16 @@ const styles = StyleSheet.create({
   },
   versionLabel: {
     fontSize: 17,
-    color: colors.text,
+    color: colors.text as string,
     fontWeight: '400',
   },
   versionValue: {
     fontSize: 17,
-    color: colors.subtext,
+    color: colors.subtext as string,
     fontWeight: '400',
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     marginTop: 32,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -162,20 +157,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.subtext,
+    color: colors.subtext as string,
     marginBottom: 20,
     letterSpacing: 0.5,
   },
   outsideSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.text as string,
     marginTop: 32,
     marginBottom: 8,
     marginHorizontal: 20,
   },
   whiteContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -185,28 +180,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   featureContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     marginBottom: 4,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border as string,
   },
   featureItem: {
     fontSize: 17,
-    color: colors.text,
+    color: colors.text as string,
     fontWeight: '400',
   },
   aboutText: {
     fontSize: 17,
-    color: colors.text,
+    color: colors.text as string,
     lineHeight: 24,
     fontWeight: '400',
   },
   contactText: {
     fontSize: 17,
-    color: colors.text,
+    color: colors.text as string,
     lineHeight: 24,
     fontWeight: '400',
   },

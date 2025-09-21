@@ -1,15 +1,16 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from 'react-native-toast-message';
+import { useThemeStore } from '@/store/themeStore';
+import { colors } from '@/constants/colors';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -31,21 +32,25 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const { darkMode } = useThemeStore();
+  const statusBarStyle: 'light' | 'dark' = darkMode ? 'light' : 'dark';
+
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={statusBarStyle} />
       <Stack
         screenOptions={{
           headerBackTitle: "Back",
           headerStyle: {
-            backgroundColor: 'white',
+            backgroundColor: colors.card as string,
           },
           headerShadowVisible: false,
           headerTitleStyle: {
             fontWeight: '600',
+            color: colors.text as string,
           },
           contentStyle: {
-            backgroundColor: '#f8f8f8',
+            backgroundColor: colors.background as string,
           },
         }}
       >

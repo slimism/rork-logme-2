@@ -47,7 +47,7 @@ export const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.card as string,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -69,12 +69,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.text as string,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.subtext,
+    color: colors.subtext as string,
   },
   rightContent: {
     flexDirection: 'row',

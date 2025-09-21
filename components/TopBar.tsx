@@ -37,11 +37,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'white',
+    backgroundColor: colors.card as string,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border as string,
   },
   leftSection: {
     flexDirection: 'row',
@@ -56,19 +56,19 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text,
+    color: colors.text as string,
   },
   creditsContainer: {
     alignItems: 'flex-end',
   },
   creditsLabel: {
     fontSize: 12,
-    color: colors.subtext,
+    color: colors.subtext as string,
     marginBottom: 2,
   },
   creditsNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.text as string,
   },
 });
