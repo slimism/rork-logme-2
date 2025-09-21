@@ -984,6 +984,7 @@ export default function AddTakeScreen() {
           title: "New Log",
           headerLeft: () => <HeaderLeft />,
           headerBackVisible: false,
+          headerTitleAlign: 'center',
         }} 
       />
       
