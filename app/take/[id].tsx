@@ -985,19 +985,19 @@ export default function EditTakeScreen() {
         {/* Classification Section */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Classification</Text>
-          <View style={styles.classificationGrid}>
+          <View style={styles.classificationRow}>
             {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
-                  styles.classificationButton,
-                  classification === type && styles.classificationButtonActive
+                  styles.classificationTab,
+                  classification === type && styles.classificationTabActive
                 ]}
                 onPress={() => handleClassificationPress(type)}
               >
                 <Text style={[
-                  styles.classificationButtonText,
-                  classification === type && styles.classificationButtonTextActive
+                  styles.classificationTabText,
+                  classification === type && styles.classificationTabTextActive
                 ]}>
                   {type}
                 </Text>
@@ -1350,35 +1350,40 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
   },
-  classificationGrid: {
+  classificationRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'space-between',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 2,
   },
-  classificationButton: {
-    width: '48%',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'white',
+  classificationTab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
+    backgroundColor: 'transparent',
   },
-  classificationButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  classificationTabActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  classificationButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  classificationTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.subtext,
+  },
+  classificationTabTextActive: {
     color: colors.text,
-  },
-  classificationButtonTextActive: {
-    color: 'white',
+    fontWeight: '600',
   },
   shotDetailsRow: {
     flexDirection: 'row',
