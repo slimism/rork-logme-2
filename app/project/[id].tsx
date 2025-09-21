@@ -42,7 +42,7 @@ export default function ProjectScreen() {
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-      <ArrowLeft size={24} color={colors.text} />
+      <ArrowLeft size={24} color={darkMode ? '#FFFFFF' : colors.text} />
     </TouchableOpacity>
   );
 
@@ -229,7 +229,7 @@ export default function ProjectScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, darkMode && styles.containerDark]}>
       <Stack.Screen 
         options={{
           title: "Film Logs",
@@ -240,13 +240,13 @@ export default function ProjectScreen() {
         }} 
       />
       
-      <View style={styles.content}>
+      <View style={[styles.content, darkMode && styles.contentDark]}>
         {/* Search Field with Filter Button */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchContainer}>
+        <View style={[styles.searchRow, darkMode && styles.searchRowDark]}>
+          <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
             <Search size={20} color={colors.subtext} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, darkMode && styles.searchInputDark]}
               placeholder="Search film logs"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -260,21 +260,21 @@ export default function ProjectScreen() {
           </View>
           <TouchableOpacity 
             onPress={() => setShowFilters(!showFilters)} 
-            style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+            style={[styles.filterButton, darkMode && styles.filterButtonDark, showFilters && styles.filterButtonActive]}
           >
-            <SlidersHorizontal size={20} color={showFilters ? 'white' : colors.text} />
-            <Text style={[styles.filterButtonText, showFilters && styles.filterButtonTextActive]}>Filter</Text>
+            <SlidersHorizontal size={20} color={showFilters ? 'white' : (darkMode ? '#FFFFFF' : colors.text)} />
+            <Text style={[styles.filterButtonText, darkMode && styles.filterButtonTextDark, showFilters && styles.filterButtonTextActive]}>Filter</Text>
           </TouchableOpacity>
         </View>
         
         {/* Filter Panel */}
         {showFilters && (
-          <View style={styles.filterPanel}>
+          <View style={[styles.filterPanel, darkMode && styles.filterPanelDark]}>
             {/* Scene Number Filter */}
-            <View style={styles.sceneFilterContainer}>
-              <Text style={styles.sceneFilterLabel}>Scene:</Text>
+            <View style={[styles.sceneFilterContainer, darkMode && styles.sceneFilterContainerDark]}>
+              <Text style={[styles.sceneFilterLabel, darkMode && styles.sceneFilterLabelDark]}>Scene:</Text>
               <TextInput
-                style={styles.sceneFilterInput}
+                style={[styles.sceneFilterInput, darkMode && styles.sceneFilterInputDark]}
                 placeholder="Enter scene number"
                 value={sceneFilterInput}
                 onChangeText={setSceneFilterInput}
@@ -300,13 +300,15 @@ export default function ProjectScreen() {
               <TouchableOpacity
                 style={[
                   styles.filterTagButton,
+                  darkMode && styles.filterTagButtonDark,
                   filters.goodTakesOnly && styles.filterTagButtonActive
                 ]}
                 onPress={() => setFilters(prev => ({ ...prev, goodTakesOnly: !prev.goodTakesOnly }))}
               >
-                <Check size={16} color={filters.goodTakesOnly ? 'white' : colors.text} />
+                <Check size={16} color={filters.goodTakesOnly ? 'white' : (darkMode ? '#FFFFFF' : colors.text)} />
                 <Text style={[
                   styles.filterTagButtonText,
+                  darkMode && styles.filterTagButtonTextDark,
                   filters.goodTakesOnly && styles.filterTagButtonTextActive
                 ]}>Good Takes</Text>
               </TouchableOpacity>
@@ -316,6 +318,7 @@ export default function ProjectScreen() {
                   key={type}
                   style={[
                     styles.filterTagButton,
+                    darkMode && styles.filterTagButtonDark,
                     filters.classification === type && styles.filterTagButtonActive
                   ]}
                   onPress={() => setFilters(prev => ({ 
@@ -325,6 +328,7 @@ export default function ProjectScreen() {
                 >
                   <Text style={[
                     styles.filterTagButtonText,
+                    darkMode && styles.filterTagButtonTextDark,
                     filters.classification === type && styles.filterTagButtonTextActive
                   ]}>{type}</Text>
                 </TouchableOpacity>
@@ -345,7 +349,7 @@ export default function ProjectScreen() {
                   setSceneFilterInput('');
                 }}
               >
-                <Text style={styles.clearFiltersText}>Clear All</Text>
+                <Text style={[styles.clearFiltersText, darkMode && styles.clearFiltersTextDark]}>Clear All</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -361,18 +365,18 @@ export default function ProjectScreen() {
           <FlatList
             data={sortedScenes}
             renderItem={({ item: sceneNumber }) => (
-              <View key={sceneNumber} style={styles.sceneContainer}>
-                <View style={styles.sceneHeader}>
-                  <Text style={styles.sceneTitle}>Scene {sceneNumber}</Text>
+              <View key={sceneNumber} style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]}>
+                <View style={[styles.sceneHeader, darkMode && styles.sceneHeaderDark]}>
+                  <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>Scene {sceneNumber}</Text>
                 </View>
                 {Object.keys(organizedTakes[sceneNumber]).sort((a, b) => {
                   if (a === 'Unknown') return 1;
                   if (b === 'Unknown') return -1;
                   return parseInt(a) - parseInt(b);
                 }).map(shotNumber => (
-                  <View key={`${sceneNumber}-${shotNumber}`} style={styles.shotContainer}>
-                    <View style={styles.shotHeader}>
-                      <Text style={styles.shotTitle}>Shot {shotNumber}</Text>
+                  <View key={`${sceneNumber}-${shotNumber}`} style={[styles.shotContainer, darkMode && styles.shotContainerDark]}>
+                    <View style={[styles.shotHeader, darkMode && styles.shotHeaderDark]}>
+                      <Text style={[styles.shotTitle, darkMode && styles.shotTitleDark]}>Shot {shotNumber}</Text>
                     </View>
                     <View style={styles.takesContainer}>
                       {organizedTakes[sceneNumber][shotNumber].map((take, index) => (
@@ -413,35 +417,35 @@ export default function ProjectScreen() {
         onRequestClose={() => setShowExportModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, darkMode && styles.modalContainerDark]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Export Options</Text>
+              <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Export Options</Text>
               <TouchableOpacity onPress={() => setShowExportModal(false)} style={styles.modalCloseButton}>
-                <X size={24} color={colors.text} />
+                <X size={24} color={darkMode ? '#FFFFFF' : colors.text} />
               </TouchableOpacity>
             </View>
             
-            <Text style={styles.modalDescription}>
+            <Text style={[styles.modalDescription, darkMode && styles.modalDescriptionDark]}>
               Choose your export type:
             </Text>
             
             <View style={styles.exportOptions}>
               <TouchableOpacity 
-                style={styles.exportOption}
+                style={[styles.exportOption, darkMode && styles.exportOptionDark]}
                 onPress={() => handleExportConfirm(false)}
               >
-                <Text style={styles.exportOptionTitle}>Regular Export</Text>
-                <Text style={styles.exportOptionDescription}>
+                <Text style={[styles.exportOptionTitle, darkMode && styles.exportOptionTitleDark]}>Regular Export</Text>
+                <Text style={[styles.exportOptionDescription, darkMode && styles.exportOptionDescriptionDark]}>
                   Export all takes as they appear in the project view
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.exportOption}
+                style={[styles.exportOption, darkMode && styles.exportOptionDark]}
                 onPress={() => handleExportConfirm(true)}
               >
-                <Text style={styles.exportOptionTitle}>Smart Export</Text>
-                <Text style={styles.exportOptionDescription}>
+                <Text style={[styles.exportOptionTitle, darkMode && styles.exportOptionTitleDark]}>Smart Export</Text>
+                <Text style={[styles.exportOptionDescription, darkMode && styles.exportOptionDescriptionDark]}>
                   Regular export + separate tables for good takes, inserts, wastes, ambiences, and SFX
                 </Text>
               </TouchableOpacity>
@@ -789,6 +793,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8e8e8',
     gap: 8,
   },
+  filterButtonDark: {
+    backgroundColor: '#4B5563',
+  },
   filterButtonActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
@@ -815,6 +822,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginRight: 8,
     gap: 4,
+  },
+  filterTagButtonDark: {
+    backgroundColor: '#4B5563',
+    borderColor: '#6B7280',
   },
   filterTagButtonActive: {
     backgroundColor: colors.primary,
