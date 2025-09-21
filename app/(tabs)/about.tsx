@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { colors } from '@/constants/colors';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeStore } from '@/store/themeStore';
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
+
+  const { darkMode, setDarkMode, toggleDarkMode } = useThemeStore();
 
   return (
     <View style={styles.container}>
@@ -25,6 +28,20 @@ export default function AboutScreen() {
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
             <Text style={styles.versionValue}>1.0.0</Text>
+          </View>
+          <View style={[styles.versionRow, { marginTop: 16 }]}>
+            <Text style={styles.versionLabel}>Dark Mode</Text>
+            <Switch
+              testID="toggle-dark-mode"
+              trackColor={{ false: '#d1d5db', true: colors.primary + '80' }}
+              thumbColor={darkMode ? colors.primary : '#f4f3f4'}
+              ios_backgroundColor="#d1d5db"
+              value={darkMode}
+              onValueChange={(val) => {
+                console.log('[About] Dark mode toggled', val);
+                setDarkMode(val);
+              }}
+            />
           </View>
         </View>
 
