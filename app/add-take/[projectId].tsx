@@ -1348,7 +1348,7 @@ export default function AddTakeScreen() {
                         isDisabled && styles.disabledLabel,
                         validationErrors.has(fieldId) && styles.errorLabel
                       ]}>
-                        {fieldLabel}{!isDisabled && <Text style={styles.asterisk}> *</Text>}
+                        {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
                       </Text>
                       <View style={styles.buttonGroup}>
                         <TouchableOpacity 
