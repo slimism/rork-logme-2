@@ -1382,23 +1382,22 @@ const styles = StyleSheet.create({
   shotDetailsRow: {
     flexDirection: 'row',
     gap: 16,
-    justifyContent: 'center',
   },
   shotDetailsButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 12,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 140,
     height: 56,
   },
   shotDetailsButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#BDDFEB',
+    borderColor: '#BDDFEB',
   },
   shotDetailsButtonText: {
     fontSize: 16,
