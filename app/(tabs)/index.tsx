@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image, PanResponder, Animated, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -221,73 +222,75 @@ export default function ProjectsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.titleSection}>
-        <View style={styles.appHeader}>
-          <Image 
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
-            style={styles.appLogo} 
-          />
-          <Text style={styles.appTitle}>LogMe</Text>
-          <View style={styles.headerActions}>
-            <View style={styles.creditsContainer}>
-              <Text style={styles.creditsLabel}>Remaining Credits</Text>
-              <View style={styles.creditsRow}>
-                <Text style={styles.creditsNumber}>{tokens}</Text>
+    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+      <View style={styles.header}>
+        <View style={styles.titleSection}>
+          <View style={styles.appHeader}>
+            <Image 
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
+              style={styles.appLogo} 
+            />
+            <Text style={styles.appTitle}>LogMe</Text>
+            <View style={styles.headerActions}>
+              <View style={styles.creditsContainer}>
+                <Text style={styles.creditsLabel}>Remaining Credits</Text>
+                <View style={styles.creditsRow}>
+                  <Text style={styles.creditsNumber}>{tokens}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
+                <Plus size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          {isMultiSelectMode ? (
+            <View style={styles.multiSelectHeader}>
+              <Text style={styles.selectedCountText}>
+                {selectedProjects.length} selected
+              </Text>
+              <View style={styles.multiSelectActions}>
+                <TouchableOpacity onPress={cancelMultiSelect} style={styles.cancelButton}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                {selectedProjects.length > 0 && (
+                  <TouchableOpacity onPress={handleDeleteSelectedProjects} style={styles.deleteButton}>
+                    <Trash2 size={16} color="white" />
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
-            <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
-              <Plus size={20} color="white" />
+          ) : null}
+        </View>
+        
+        {!isMultiSelectMode && (
+          <View style={styles.searchContainer}>
+            <View style={styles.searchIcon}>
+              <Search size={20} color={colors.subtext} />
+            </View>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={colors.subtext}
+            />
+          </View>
+        )}
+
+        {remainingTrialLogs > 0 && !isMultiSelectMode && (
+          <View style={styles.trialBanner}>
+            <View style={styles.trialTextContainer}>
+              <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
+              <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
+              <Text style={styles.buyCreditsText}>Buy Credits</Text>
             </TouchableOpacity>
           </View>
-        </View>
-        {isMultiSelectMode ? (
-          <View style={styles.multiSelectHeader}>
-            <Text style={styles.selectedCountText}>
-              {selectedProjects.length} selected
-            </Text>
-            <View style={styles.multiSelectActions}>
-              <TouchableOpacity onPress={cancelMultiSelect} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              {selectedProjects.length > 0 && (
-                <TouchableOpacity onPress={handleDeleteSelectedProjects} style={styles.deleteButton}>
-                  <Trash2 size={16} color="white" />
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ) : null}
+        )}
       </View>
-      
-      {!isMultiSelectMode && (
-        <View style={styles.searchContainer}>
-          <View style={styles.searchIcon}>
-            <Search size={20} color={colors.subtext} />
-          </View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={colors.subtext}
-          />
-        </View>
-      )}
-
-      {remainingTrialLogs > 0 && !isMultiSelectMode && (
-        <View style={styles.trialBanner}>
-          <View style={styles.trialTextContainer}>
-            <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
-            <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
-            <Text style={styles.buyCreditsText}>Buy Credits</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+    </SafeAreaView>
   );
 
   return (
@@ -345,6 +348,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
+  },
+  headerSafeArea: {
+    backgroundColor: 'white',
   },
   header: {
     backgroundColor: 'white',
