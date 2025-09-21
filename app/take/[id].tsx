@@ -845,19 +845,18 @@ export default function EditTakeScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
-        <View style={styles.takeInfo}>
-          <Text style={styles.takeTitle}>
-            Scene {takeData.sceneNumber || 'Unknown'} - Shot {takeData.shotNumber || 'Unknown'}
-          </Text>
-          <Text style={styles.takeSubtitle}>
-            Created: {new Date(logSheet.createdAt).toLocaleDateString()}
-          </Text>
-          <Text style={styles.takeSubtitle}>
-            Last Updated: {new Date(logSheet.updatedAt).toLocaleDateString()}
-          </Text>
-        </View>
-
-        <View style={styles.fieldsSection}>
+        <View style={styles.mainContainer}>
+          <View style={styles.takeInfo}>
+            <Text style={styles.takeTitle}>
+              Scene {takeData.sceneNumber || 'Unknown'} - Shot {takeData.shotNumber || 'Unknown'}
+            </Text>
+            <Text style={styles.takeSubtitle}>
+              Created: {new Date(logSheet.createdAt).toLocaleDateString()}
+            </Text>
+            <Text style={styles.takeSubtitle}>
+              Last Updated: {new Date(logSheet.updatedAt).toLocaleDateString()}
+            </Text>
+          </View>
           {/* Scene, Shot, Take on same row */}
           <View style={styles.rowContainer}>
             {enabledFields.find((field: FieldType) => field.id === 'sceneNumber') && (
@@ -980,85 +979,85 @@ export default function EditTakeScreen() {
           
           {/* Notes field always last */}
           {notesField && renderField(notesField, allFieldIds)}
-        </View>
-
-        {/* Classification Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Classification</Text>
-          <View style={styles.classificationRow}>
-            {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.classificationTab,
-                  classification === type && styles.classificationTabActive
-                ]}
-                onPress={() => handleClassificationPress(type)}
-              >
-                <Text style={[
-                  styles.classificationTabText,
-                  classification === type && styles.classificationTabTextActive
-                ]}>
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Shot Details Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Shot Details</Text>
-          <View style={styles.shotDetailsRow}>
-            {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
-              const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
-              return (
+          
+          {/* Classification Section */}
+          <View style={styles.sectionSpacing}>
+            <Text style={styles.sectionTitle}>Classification</Text>
+            <View style={styles.classificationRow}>
+              {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
                 <TouchableOpacity
                   key={type}
                   style={[
-                    styles.shotDetailsButton,
-                    shotDetails === type && styles.shotDetailsButtonActive,
-                    isDisabled && styles.shotDetailsButtonDisabled
+                    styles.classificationTab,
+                    classification === type && styles.classificationTabActive
                   ]}
-                  onPress={() => !isDisabled && handleShotDetailPress(type)}
-                  disabled={isDisabled}
+                  onPress={() => handleClassificationPress(type)}
                 >
                   <Text style={[
-                    styles.shotDetailsButtonText,
-                    shotDetails === type && styles.shotDetailsButtonTextActive,
-                    isDisabled && styles.shotDetailsButtonTextDisabled
+                    styles.classificationTabText,
+                    classification === type && styles.classificationTabTextActive
                   ]}>
-                    {type === 'NO SLATE' ? 'No Slate' : type}
+                    {type}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View style={styles.addTakeSection}>
-          <View style={styles.addTakeRow}>
-            <TouchableOpacity
-              style={[
-                styles.goodTakeButton,
-                isGoodTake && styles.goodTakeButtonActive
-              ]}
-              onPress={() => setIsGoodTake(!isGoodTake)}
-            >
-              <Check size={20} color={isGoodTake ? 'white' : colors.success} />
-              <Text style={[
-                styles.goodTakeButtonText,
-                isGoodTake && styles.goodTakeButtonTextActive
-              ]}>
-                Good Take
-              </Text>
-            </TouchableOpacity>
-            <Button
-              title="Save Changes"
-              onPress={handleSaveTake}
-              style={styles.saveButton}
-              icon={<Save size={20} color="white" />}
-            />
+          {/* Shot Details Section */}
+          <View style={styles.sectionSpacing}>
+            <Text style={styles.sectionTitle}>Shot Details</Text>
+            <View style={styles.shotDetailsRow}>
+              {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
+                const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.shotDetailsButton,
+                      shotDetails === type && styles.shotDetailsButtonActive,
+                      isDisabled && styles.shotDetailsButtonDisabled
+                    ]}
+                    onPress={() => !isDisabled && handleShotDetailPress(type)}
+                    disabled={isDisabled}
+                  >
+                    <Text style={[
+                      styles.shotDetailsButtonText,
+                      shotDetails === type && styles.shotDetailsButtonTextActive,
+                      isDisabled && styles.shotDetailsButtonTextDisabled
+                    ]}>
+                      {type === 'NO SLATE' ? 'No Slate' : type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.sectionSpacing}>
+            <View style={styles.addTakeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.goodTakeButton,
+                  isGoodTake && styles.goodTakeButtonActive
+                ]}
+                onPress={() => setIsGoodTake(!isGoodTake)}
+              >
+                <Check size={20} color={isGoodTake ? 'white' : colors.success} />
+                <Text style={[
+                  styles.goodTakeButtonText,
+                  isGoodTake && styles.goodTakeButtonTextActive
+                ]}>
+                  Good Take
+                </Text>
+              </TouchableOpacity>
+              <Button
+                title="Save Changes"
+                onPress={handleSaveTake}
+                style={styles.saveButton}
+                icon={<Save size={20} color="white" />}
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -1191,9 +1190,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.subtext,
   },
-  takeInfo: {
+  mainContainer: {
     backgroundColor: 'white',
+    margin: 20,
+    borderRadius: 12,
     padding: 20,
+  },
+  takeInfo: {
+    marginBottom: 20,
   },
   takeTitle: {
     fontSize: 20,
@@ -1245,10 +1249,7 @@ const styles = StyleSheet.create({
   toggleTextDisabled: {
     color: colors.subtext,
   },
-  fieldsSection: {
-    backgroundColor: 'white',
-    padding: 20,
-  },
+
   fieldContainer: {
     marginBottom: 20,
   },
@@ -1545,20 +1546,15 @@ const styles = StyleSheet.create({
   recButtonTextInactive: {
     color: 'white',
   },
-  sectionContainer: {
-    backgroundColor: 'white',
-    padding: 20,
+  sectionSpacing: {
+    marginTop: 24,
   },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  addTakeSection: {
-    backgroundColor: 'white',
-    padding: 20,
-    marginBottom: 20,
-  },
+
   addTakeRow: {
     flexDirection: 'row',
     alignItems: 'center',
