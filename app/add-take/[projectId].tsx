@@ -1001,7 +1001,7 @@ export default function AddTakeScreen() {
             {enabledFields.find(f => f.id === 'sceneNumber') && (
               <View style={styles.topFieldContainer}>
                 <Text style={[styles.topFieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
-                  Scene
+                  Scene<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['sceneNumber'] = ref; }}
@@ -1039,7 +1039,7 @@ export default function AddTakeScreen() {
             {enabledFields.find(f => f.id === 'shotNumber') && (
               <View style={styles.topFieldContainer}>
                 <Text style={[styles.topFieldLabel, validationErrors.has('shotNumber') && styles.errorLabel]}>
-                  Shot
+                  Shot<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['shotNumber'] = ref; }}
@@ -1077,7 +1077,7 @@ export default function AddTakeScreen() {
             {enabledFields.find(f => f.id === 'takeNumber') && (
               <View style={styles.topFieldContainer}>
                 <Text style={[styles.topFieldLabel, validationErrors.has('takeNumber') && styles.errorLabel]}>
-                  Take
+                  Take<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['takeNumber'] = ref; }}
@@ -1124,7 +1124,7 @@ export default function AddTakeScreen() {
                   disabledFields.has('cameraFile') && styles.disabledLabel,
                   validationErrors.has('cameraFile') && styles.errorLabel
                 ]}>
-                  Camera File
+                  Camera File{!disabledFields.has('cameraFile') && <Text style={styles.asterisk}> *</Text>}
                 </Text>
                 <TouchableOpacity 
                   style={[styles.rangeButton, disabledFields.has('cameraFile') && styles.disabledButton]}
@@ -1233,7 +1233,7 @@ export default function AddTakeScreen() {
                   disabledFields.has('soundFile') && styles.disabledLabel,
                   validationErrors.has('soundFile') && styles.errorLabel
                 ]}>
-                  Sound File
+                  Sound File{!disabledFields.has('soundFile') && <Text style={styles.asterisk}> *</Text>}
                 </Text>
                 <TouchableOpacity 
                   style={[styles.rangeButton, disabledFields.has('soundFile') && styles.disabledButton]}
@@ -1348,7 +1348,7 @@ export default function AddTakeScreen() {
                         isDisabled && styles.disabledLabel,
                         validationErrors.has(fieldId) && styles.errorLabel
                       ]}>
-                        {fieldLabel}
+                        {fieldLabel}{!isDisabled && <Text style={styles.asterisk}> *</Text>}
                       </Text>
                       <View style={styles.buttonGroup}>
                         <TouchableOpacity 
