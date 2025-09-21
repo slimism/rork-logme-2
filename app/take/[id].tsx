@@ -1371,7 +1371,7 @@ const styles = StyleSheet.create({
     borderColor: '#BDDFEB',
   },
   classificationTabText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: '#666',
   },
