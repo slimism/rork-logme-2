@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, 
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
+import { useThemeStore } from '@/store/themeStore';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -13,6 +14,7 @@ import { ClassificationType } from '@/types';
 export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projects, logSheets } = useProjectStore();
+  const { darkMode } = useThemeStore();
 
   
   const [project, setProject] = useState(projects.find(p => p.id === id));
@@ -186,7 +188,8 @@ export default function ProjectScreen() {
         styles.takeCard,
         isFirstTake && styles.takeCardFirst,
         isLastTake && styles.takeCardLast,
-        !isFirstTake && !isLastTake && styles.takeCardMiddle
+        !isFirstTake && !isLastTake && styles.takeCardMiddle,
+        darkMode && styles.takeCardDark
       ]}>
         <TouchableOpacity 
           style={styles.takeMinimalView}
@@ -194,7 +197,7 @@ export default function ProjectScreen() {
         >
           <View style={styles.takeContent}>
             <View style={styles.takeHeader}>
-              <Text style={styles.takeTitle}>Take {takeNumber}</Text>
+              <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>Take {takeNumber}</Text>
               {take.data?.isGoodTake && (
                 <View style={styles.goodTakeIndicator}>
                   <Check size={12} color="#10B981" strokeWidth={3} />
@@ -203,11 +206,11 @@ export default function ProjectScreen() {
             </View>
             
             {details.length > 0 && (
-              <Text style={styles.takeDetails}>{details.filter(Boolean).join(', ')}</Text>
+              <Text style={[styles.takeDetails, darkMode && styles.takeDetailsDark]}>{details.filter(Boolean).join(', ')}</Text>
             )}
             
-            <Text style={styles.takeTime}>Created: {formatDateTime(take.createdAt)}</Text>
-            <Text style={styles.takeTime}>Last updated: {formatDateTime(take.updatedAt || take.createdAt)}</Text>
+            <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Created: {formatDateTime(take.createdAt)}</Text>
+            <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Last updated: {formatDateTime(take.updatedAt || take.createdAt)}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -455,8 +458,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f8f8',
   },
+  containerDark: {
+    backgroundColor: '#1F2937',
+  },
   content: {
     flex: 1,
+  },
+  contentDark: {
+    backgroundColor: '#1F2937',
   },
   headerButton: {
     padding: 8,
@@ -512,6 +521,9 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 0,
   },
+  takeCardDark: {
+    backgroundColor: '#374151',
+  },
   takeCardFirst: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
@@ -544,14 +556,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
+  takeTitleDark: {
+    color: '#FFFFFF',
+  },
   takeDetails: {
     fontSize: 14,
     color: colors.subtext,
     marginBottom: 4,
   },
+  takeDetailsDark: {
+    color: '#D1D5DB',
+  },
   takeTime: {
     fontSize: 14,
     color: colors.subtext,
+  },
+  takeTimeDark: {
+    color: '#D1D5DB',
   },
   takeFiles: {
     flexDirection: 'row',
@@ -620,18 +641,30 @@ const styles = StyleSheet.create({
   sceneContainer: {
     marginBottom: 32,
   },
+  sceneContainerDark: {
+    backgroundColor: 'transparent',
+  },
   sceneHeader: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 8,
+  },
+  sceneHeaderDark: {
+    backgroundColor: 'transparent',
   },
   sceneTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'black',
   },
+  sceneTitleDark: {
+    color: '#FFFFFF',
+  },
   shotContainer: {
     marginBottom: 24,
+  },
+  shotContainerDark: {
+    backgroundColor: 'transparent',
   },
   shotHeader: {
     backgroundColor: '#B8E6FF',
@@ -643,10 +676,16 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
+  shotHeaderDark: {
+    backgroundColor: '#4B5563',
+  },
   shotTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  shotTitleDark: {
+    color: '#FFFFFF',
   },
   takesContainer: {
     gap: 0,
@@ -696,17 +735,27 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: 12,
   },
+  filterPanelDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4B5563',
+  },
   sceneFilterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 12,
   },
+  sceneFilterContainerDark: {
+    backgroundColor: 'transparent',
+  },
   sceneFilterLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.text,
     marginRight: 8,
+  },
+  sceneFilterLabelDark: {
+    color: '#FFFFFF',
   },
   sceneFilterInput: {
     flex: 1,
@@ -717,6 +766,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 14,
     color: colors.text,
+  },
+  sceneFilterInputDark: {
+    backgroundColor: '#4B5563',
+    borderColor: '#6B7280',
+    color: '#FFFFFF',
   },
   clearSceneButton: {
     position: 'absolute',
@@ -744,6 +798,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
   },
+  filterButtonTextDark: {
+    color: '#FFFFFF',
+  },
   filterButtonTextActive: {
     color: 'white',
   },
@@ -768,6 +825,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
   },
+  filterTagButtonTextDark: {
+    color: '#FFFFFF',
+  },
   filterTagButtonTextActive: {
     color: 'white',
   },
@@ -783,12 +843,18 @@ const styles = StyleSheet.create({
     color: colors.subtext,
     fontWeight: '500',
   },
+  clearFiltersTextDark: {
+    color: '#D1D5DB',
+  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 16,
     gap: 12,
+  },
+  searchRowDark: {
+    backgroundColor: 'transparent',
   },
   searchContainer: {
     flex: 1,
@@ -799,6 +865,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
+  searchContainerDark: {
+    backgroundColor: '#4B5563',
+  },
   searchIcon: {
     marginRight: 12,
   },
@@ -806,6 +875,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text,
+  },
+  searchInputDark: {
+    color: '#FFFFFF',
   },
   clearSearchButton: {
     padding: 4,
@@ -825,6 +897,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
+  modalContainerDark: {
+    backgroundColor: '#374151',
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -836,6 +911,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
+  modalTitleDark: {
+    color: '#FFFFFF',
+  },
   modalCloseButton: {
     padding: 4,
   },
@@ -843,6 +921,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 20,
+  },
+  modalDescriptionDark: {
+    color: '#D1D5DB',
   },
   exportOptions: {
     gap: 12,
@@ -854,15 +935,25 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'white',
   },
+  exportOptionDark: {
+    backgroundColor: '#4B5563',
+    borderColor: '#6B7280',
+  },
   exportOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 4,
   },
+  exportOptionTitleDark: {
+    color: '#FFFFFF',
+  },
   exportOptionDescription: {
     fontSize: 14,
     color: colors.subtext,
     lineHeight: 20,
+  },
+  exportOptionDescriptionDark: {
+    color: '#D1D5DB',
   },
 });
