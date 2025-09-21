@@ -2063,12 +2063,11 @@ const styles = StyleSheet.create({
   },
   classificationRow: {
     flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
+    gap: 8,
   },
   classificationTab: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 20,
     alignItems: 'center',
@@ -2077,7 +2076,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
     height: 44,
-    minWidth: 80,
   },
   classificationTabActive: {
     backgroundColor: '#BDDFEB',
