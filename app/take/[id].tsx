@@ -1194,8 +1194,6 @@ const styles = StyleSheet.create({
   takeInfo: {
     backgroundColor: 'white',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   takeTitle: {
     fontSize: 20,
@@ -1249,7 +1247,6 @@ const styles = StyleSheet.create({
   },
   fieldsSection: {
     backgroundColor: 'white',
-    marginTop: 16,
     padding: 20,
   },
   fieldContainer: {
@@ -1274,8 +1271,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fieldInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1298,8 +1293,6 @@ const styles = StyleSheet.create({
   },
   rangeInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1315,8 +1308,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
@@ -1328,8 +1319,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.success,
     backgroundColor: 'white',
     gap: 8,
     height: 48,
@@ -1362,8 +1351,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
     height: 44,
   },
   classificationTabActive: {
@@ -1388,8 +1375,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1505,8 +1490,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: 'white',
   },
   rangeButtonText: {
@@ -1516,7 +1499,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
-    borderColor: colors.border,
   },
   disabledText: {
     color: colors.subtext,
@@ -1529,7 +1511,7 @@ const styles = StyleSheet.create({
   },
   errorInput: {
     borderColor: colors.error,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   asterisk: {
     color: colors.error,
@@ -1543,18 +1525,15 @@ const styles = StyleSheet.create({
   recButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderWidth: 1,
     borderRadius: 6,
     minWidth: 50,
     alignItems: 'center',
   },
   recButtonActive: {
     backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
   },
   recButtonInactive: {
     backgroundColor: '#9CA3AF',
-    borderColor: '#9CA3AF',
   },
   recButtonText: {
     fontSize: 12,
@@ -1568,7 +1547,6 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     backgroundColor: 'white',
-    marginTop: 16,
     padding: 20,
   },
   buttonRow: {
@@ -1578,7 +1556,6 @@ const styles = StyleSheet.create({
   },
   addTakeSection: {
     backgroundColor: 'white',
-    marginTop: 16,
     padding: 20,
     marginBottom: 20,
   },
