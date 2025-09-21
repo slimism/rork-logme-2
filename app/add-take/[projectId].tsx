@@ -1527,7 +1527,7 @@ export default function AddTakeScreen() {
         </View>
 
         {/* Shot Details Section */}
-        <View style={styles.sectionContainer}>
+        <View style={[styles.sectionContainer, styles.shotDetailsSection]}>
           <Text style={styles.sectionTitle}>Shot Details</Text>
           <View style={styles.shotDetailsRow}>
             {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
@@ -2109,26 +2109,29 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600',
   },
+  shotDetailsSection: {
+    marginTop: 16,
+  },
   shotDetailsRow: {
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
   },
   shotDetailsButton: {
+    flex: 1,
     paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     backgroundColor: '#f8f8f8',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 120,
     height: 48,
   },
   shotDetailsButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#BDDFEB',
+    borderColor: '#BDDFEB',
   },
   shotDetailsButtonText: {
     fontSize: 14,
