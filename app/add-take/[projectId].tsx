@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { ArrowLeft, Camera, Check, X } from 'lucide-react-native';
+import { ArrowLeft, Check, X } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { Button } from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType, TakeData } from '@/types';
 import Toast from 'react-native-toast-message';
@@ -1558,29 +1557,24 @@ export default function AddTakeScreen() {
         </View>
 
         <View style={styles.addTakeSection}>
-          <View style={styles.addTakeRow}>
-            <TouchableOpacity
-              style={[
-                styles.goodTakeButton,
-                isGoodTake && styles.goodTakeButtonActive
-              ]}
-              onPress={() => setIsGoodTake(!isGoodTake)}
-            >
-              <Check size={20} color={isGoodTake ? 'white' : colors.success} />
-              <Text style={[
-                styles.goodTakeButtonText,
-                isGoodTake && styles.goodTakeButtonTextActive
-              ]}>
-                Good Take
-              </Text>
-            </TouchableOpacity>
-            <Button
-              title="Add Take"
-              onPress={handleAddTake}
-              style={styles.addTakeButton}
-              icon={<Camera size={20} color="white" />}
+          <View style={styles.goodTakeRow}>
+            <Text style={styles.goodTakeLabel}>Good Take</Text>
+            <Switch
+              testID="good-take-switch"
+              value={isGoodTake}
+              onValueChange={setIsGoodTake}
+              trackColor={{ false: '#e5e7eb', true: '#BDDFEB' }}
+              thumbColor={Platform.OS === 'android' ? (isGoodTake ? '#60a5fa' : '#f4f3f4') : undefined}
             />
           </View>
+          <TouchableOpacity
+            testID="add-record-button"
+            style={styles.addRecordButton}
+            onPress={handleAddTake}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addRecordText}>Add Record</Text>
+          </TouchableOpacity>
         </View>
 
 
@@ -1781,6 +1775,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c3e50',
     flex: 1,
     height: 48,
+  },
+  goodTakeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  goodTakeLabel: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  addRecordButton: {
+    backgroundColor: '#BDDFEB',
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  addRecordText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0b0b0b',
   },
 
   rowContainer: {
