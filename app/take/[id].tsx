@@ -1343,6 +1343,7 @@ const styles = StyleSheet.create({
   classificationRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 8,
   },
   classificationTab: {
     flex: 1,
@@ -1369,17 +1370,17 @@ const styles = StyleSheet.create({
   },
   shotDetailsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   shotDetailsButton: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 24,
+    borderRadius: 32,
     backgroundColor: '#EDEDED',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
+    height: 56,
   },
   shotDetailsButtonActive: {
     backgroundColor: '#eeeeee',
