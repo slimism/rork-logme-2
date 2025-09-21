@@ -1369,17 +1369,17 @@ const styles = StyleSheet.create({
   },
   shotDetailsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
   },
   shotDetailsButton: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#eeeeee',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#EDEDED',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
+    height: 48,
   },
   shotDetailsButtonActive: {
     backgroundColor: '#eeeeee',
@@ -1388,10 +1388,10 @@ const styles = StyleSheet.create({
   shotDetailsButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#3B82F6',
   },
   shotDetailsButtonTextActive: {
-    color: colors.primary,
+    color: '#3B82F6',
   },
   shotDetailsButtonDisabled: {
     opacity: 0.5,
