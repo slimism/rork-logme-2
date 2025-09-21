@@ -8,11 +8,12 @@ import { useTokenStore } from '@/store/subscriptionStore';
 
 
 import { EmptyState } from '@/components/EmptyState';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
+  const colors = useColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -293,6 +294,8 @@ export default function ProjectsScreen() {
     </SafeAreaView>
   );
 
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       {renderHeader()}
@@ -344,16 +347,16 @@ export default function ProjectsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.cardSecondary,
   },
   headerSafeArea: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
   },
   header: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -464,7 +467,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.searchBackground,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -518,7 +521,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   projectCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
@@ -621,7 +624,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.modalBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,

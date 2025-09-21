@@ -1,20 +1,22 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/store/themeStore';
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
-
+  const colors = useColors();
   const { darkMode, setDarkMode } = useThemeStore();
+
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.primary as string} />
+          <ChevronLeft size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>About</Text>
         <View style={styles.headerSpacer} />
@@ -31,9 +33,9 @@ export default function AboutScreen() {
             <Text style={styles.versionLabel}>Dark Mode</Text>
             <Switch
               testID="toggle-dark-mode"
-              trackColor={{ false: '#d1d5db', true: (colors.primary as string) + '80' }}
-              thumbColor={darkMode ? (colors.primary as string) : '#f4f3f4'}
-              ios_backgroundColor="#d1d5db"
+              trackColor={{ false: colors.border, true: colors.primary + '80' }}
+              thumbColor={darkMode ? colors.primary : '#f4f3f4'}
+              ios_backgroundColor={colors.border}
               value={darkMode}
               onValueChange={(val) => {
                 console.log('[About] Dark mode toggled', val);
@@ -83,10 +85,10 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background as string,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -94,9 +96,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border as string,
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 4,
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text as string,
+    color: colors.text,
   },
   headerSpacer: {
     width: 32,
@@ -118,19 +120,19 @@ const styles = StyleSheet.create({
   appVersionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text as string,
+    color: colors.text,
     marginTop: 20,
     marginBottom: 8,
     marginHorizontal: 20,
   },
   versionSection: {
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     marginTop: 0,
     marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border as string,
+    borderBottomColor: colors.border,
     borderRadius: 8,
   },
   versionRow: {
@@ -140,16 +142,16 @@ const styles = StyleSheet.create({
   },
   versionLabel: {
     fontSize: 17,
-    color: colors.text as string,
+    color: colors.text,
     fontWeight: '400',
   },
   versionValue: {
     fontSize: 17,
-    color: colors.subtext as string,
+    color: colors.subtext,
     fontWeight: '400',
   },
   section: {
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     marginTop: 32,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -157,20 +159,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.subtext as string,
+    color: colors.subtext,
     marginBottom: 20,
     letterSpacing: 0.5,
   },
   outsideSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text as string,
+    color: colors.text,
     marginTop: 32,
     marginBottom: 8,
     marginHorizontal: 20,
   },
   whiteContainer: {
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     marginHorizontal: 16,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -180,28 +182,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   featureContainer: {
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     marginBottom: 4,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border as string,
+    borderBottomColor: colors.border,
   },
   featureItem: {
     fontSize: 17,
-    color: colors.text as string,
+    color: colors.text,
     fontWeight: '400',
   },
   aboutText: {
     fontSize: 17,
-    color: colors.text as string,
+    color: colors.text,
     lineHeight: 24,
     fontWeight: '400',
   },
   contactText: {
     fontSize: 17,
-    color: colors.text as string,
+    color: colors.text,
     lineHeight: 24,
     fontWeight: '400',
   },

@@ -4,7 +4,7 @@ import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check, X } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType, TakeData } from '@/types';
 import Toast from 'react-native-toast-message';
 
@@ -13,6 +13,7 @@ export default function AddTakeScreen() {
   const { projects, logSheets, addLogSheet, updateTakeNumbers } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
+  const colors = useColors();
   
   const [project, setProject] = useState(projects.find(p => p.id === projectId));
   const [takeData, setTakeData] = useState<TakeData>({});
@@ -973,6 +974,8 @@ export default function AddTakeScreen() {
     allFieldIds.push('notesForTake');
   }
 
+  const styles = createStyles(colors);
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -1678,10 +1681,10 @@ export default function AddTakeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -1724,13 +1727,13 @@ const styles = StyleSheet.create({
   },
   topFieldInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: 'white',
+    backgroundColor: colors.inputBackground,
     height: 48,
   },
   fieldContainer: {
@@ -1744,13 +1747,13 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: 'white',
+    backgroundColor: colors.inputBackground,
     minHeight: 48,
   },
   multilineInput: {
@@ -1905,9 +1908,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     borderRadius: 8,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.cardSecondary,
   },
   rangeButtonText: {
     fontSize: 12,
@@ -1932,7 +1935,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   disabledInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.cardSecondary,
     color: colors.disabled,
     borderColor: colors.disabled,
   },
@@ -1991,7 +1994,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.modalBackground,
     borderRadius: 12,
     padding: 24,
     margin: 20,
@@ -2092,9 +2095,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'white',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     height: 44,
   },
   classificationTabActive: {
@@ -2124,8 +2127,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    backgroundColor: '#f8f8f8',
+    borderColor: colors.border,
+    backgroundColor: colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     height: 48,

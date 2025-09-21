@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
 
 interface TopBarProps {
@@ -11,6 +11,9 @@ interface TopBarProps {
 export function TopBar({ showCredits = true }: TopBarProps) {
   const { tokens } = useTokenStore();
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+
+  const styles = createStyles(colors);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -32,16 +35,16 @@ export function TopBar({ showCredits = true }: TopBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card as string,
+    backgroundColor: colors.card,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border as string,
+    borderBottomColor: colors.border,
   },
   leftSection: {
     flexDirection: 'row',
@@ -56,19 +59,19 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text as string,
+    color: colors.text,
   },
   creditsContainer: {
     alignItems: 'flex-end',
   },
   creditsLabel: {
     fontSize: 12,
-    color: colors.subtext as string,
+    color: colors.subtext,
     marginBottom: 2,
   },
   creditsNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text as string,
+    color: colors.text,
   },
 });

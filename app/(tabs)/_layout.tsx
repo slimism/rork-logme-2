@@ -2,27 +2,30 @@ import React from "react";
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import { FileText, ShoppingBag, Clock } from "lucide-react-native";
-import { colors } from "@/constants/colors";
+import { useColors } from "@/constants/colors";
 
 export default function TabLayout() {
+  const colors = useColors();
+  
   return (
     <View style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: colors.primary as string,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.subtext,
           headerShown: true,
           tabBarStyle: {
-            backgroundColor: colors.card as string,
-            borderTopColor: colors.border as string,
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
             paddingBottom: 0,
           },
           headerStyle: {
-            backgroundColor: colors.card as string,
+            backgroundColor: colors.card,
           },
           headerShadowVisible: false,
           headerTitleStyle: {
             fontWeight: '600',
-            color: colors.text as string,
+            color: colors.text,
           },
         }}
       >
