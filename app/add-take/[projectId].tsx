@@ -1506,19 +1506,19 @@ export default function AddTakeScreen() {
         {/* Classification Section */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Classification</Text>
-          <View style={styles.classificationGrid}>
+          <View style={styles.classificationRow}>
             {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
-                  styles.classificationButton,
-                  classification === type && styles.classificationButtonActive
+                  styles.classificationTab,
+                  classification === type && styles.classificationTabActive
                 ]}
                 onPress={() => handleClassificationChange(type)}
               >
                 <Text style={[
-                  styles.classificationButtonText,
-                  classification === type && styles.classificationButtonTextActive
+                  styles.classificationTabText,
+                  classification === type && styles.classificationTabTextActive
                 ]}>
                   {type}
                 </Text>
@@ -2061,35 +2061,42 @@ const styles = StyleSheet.create({
   toggleButtonTextDisabled: {
     color: colors.disabled,
   },
-  classificationGrid: {
+  classificationRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  classificationButton: {
-    width: '48%',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
     backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 2,
+    gap: 2,
+  },
+  classificationTab: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
+    backgroundColor: 'transparent',
+    height: 36,
   },
-  classificationButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  classificationTabActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  classificationButtonText: {
-    fontSize: 14,
+  classificationTabText: {
+    fontSize: 13,
     fontWeight: '500',
     color: '#666',
   },
-  classificationButtonTextActive: {
-    color: 'white',
+  classificationTabTextActive: {
+    color: '#333',
+    fontWeight: '600',
   },
   shotDetailsRow: {
     flexDirection: 'row',
