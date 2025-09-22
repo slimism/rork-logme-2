@@ -814,6 +814,18 @@ export default function EditTakeScreen() {
     const fieldId = cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${i}`;
     allFieldIds.push(fieldId);
   }
+
+  // Add card number fields after camera fields when enabled
+  const cardFieldEnabled = !!enabledFields.find((field: FieldType) => field.id === 'cardNumber');
+  if (cardFieldEnabled) {
+    if (cameraConfiguration === 1) {
+      allFieldIds.push('cardNumber');
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        allFieldIds.push(`cardNumber${i}`);
+      }
+    }
+  }
   
   // Add custom fields
   customFields.forEach((_: string, index: number) => {
@@ -971,6 +983,45 @@ export default function EditTakeScreen() {
           
           {/* Camera files */}
           {renderCameraFields(cameraConfiguration, allFieldIds)}
+
+          {/* Card Numbers (when enabled) */}
+          {cardFieldEnabled && (
+            cameraConfiguration === 1 ? (
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark]}>Card Number</Text>
+                <TextInput
+                  ref={(ref) => { inputRefs.current['cardNumber'] = ref; }}
+                  style={[styles.fieldInput, darkMode && styles.fieldInputDark]}
+                  value={takeData.cardNumber || ''}
+                  onChangeText={(text) => updateTakeData('cardNumber', text)}
+                  placeholder={'Enter card number'}
+                  placeholderTextColor={darkMode ? '#888' : colors.subtext}
+                  returnKeyType="next"
+                />
+              </View>
+            ) : (
+              <View>
+                {Array.from({ length: cameraConfiguration }, (_, i) => {
+                  const fieldId = `cardNumber${i + 1}`;
+                  const label = `Card Number Camera ${i + 1}`;
+                  return (
+                    <View key={fieldId} style={styles.fieldContainer}>
+                      <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark]}>{label}</Text>
+                      <TextInput
+                        ref={(ref) => { inputRefs.current[fieldId] = ref; }}
+                        style={[styles.fieldInput, darkMode && styles.fieldInputDark]}
+                        value={takeData[fieldId] || ''}
+                        onChangeText={(text) => updateTakeData(fieldId, text)}
+                        placeholder={`Enter ${label}`}
+                        placeholderTextColor={darkMode ? '#888' : colors.subtext}
+                        returnKeyType="next"
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            )
+          )}
           
           {/* Sound file */}
           {enabledFields.find((field: FieldType) => field.id === 'soundFile') && renderField({ id: 'soundFile', label: 'Sound File' }, allFieldIds)}
