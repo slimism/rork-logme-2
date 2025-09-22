@@ -155,17 +155,33 @@ export default function AddTakeScreen() {
           episodeNumber, 
           sceneNumber, 
           shotNumber, 
-          takeNumber, 
-          cardNumber 
+          takeNumber
         } = lastLog.data;
         
         const autoFillData: TakeData = {};
         
-        // Always keep episode, scene, shot, and card number
+        // Always keep episode, scene, and shot number
         if (episodeNumber) autoFillData.episodeNumber = episodeNumber;
         if (sceneNumber) autoFillData.sceneNumber = sceneNumber;
         if (shotNumber) autoFillData.shotNumber = shotNumber;
-        if (cardNumber) autoFillData.cardNumber = cardNumber;
+
+        // Prefill card numbers from last log when enabled
+        const cardFieldEnabled = currentProject?.settings?.logSheetFields?.find(f => f.id === 'cardNumber')?.enabled;
+        const camCount = currentProject?.settings?.cameraConfiguration || 1;
+        if (cardFieldEnabled) {
+          if (camCount === 1) {
+            const lastSingle = lastLog.data?.cardNumber;
+            if (lastSingle) autoFillData.cardNumber = lastSingle;
+          } else {
+            for (let i = 1; i <= camCount; i++) {
+              const key = `cardNumber${i}`;
+              const lastVal = lastLog.data?.[key] ?? lastLog.data?.cardNumber;
+              if (lastVal) {
+                autoFillData[key] = lastVal;
+              }
+            }
+          }
+        }
         
         // Auto-increment take number
         if (takeNumber) {
@@ -958,6 +974,17 @@ export default function AddTakeScreen() {
   if (enabledFields.find(f => f.id === 'soundFile')) {
     allFieldIds.push('soundFile');
   }
+
+  // Add card number fields after camera fields
+  if (enabledFields.find(f => f.id === 'cardNumber')) {
+    if (cameraConfiguration === 1) {
+      allFieldIds.push('cardNumber');
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        allFieldIds.push(`cardNumber${i}`);
+      }
+    }
+  }
   
   // Add other fields (excluding core fields, camera, sound, and notes)
   fieldsToRender
@@ -1227,6 +1254,23 @@ export default function AddTakeScreen() {
             </View>
           )}
           
+          {/* Single-camera Card Number (when enabled) */}
+          {cameraConfiguration === 1 && (enabledFields.find(f => f.id === 'cardNumber')) && (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>Card Number</Text>
+              <TextInput
+                ref={(ref) => { inputRefs.current['cardNumber'] = ref; }}
+                style={[styles.fieldInput]}
+                value={takeData.cardNumber || ''}
+                onChangeText={(text) => updateTakeData('cardNumber', text)}
+                placeholder="Enter card number"
+                placeholderTextColor={colors.subtext}
+                returnKeyType="next"
+                onSubmitEditing={() => focusNextField('cardNumber', allFieldIds)}
+              />
+            </View>
+          )}
+
           {/* Sound file */}
           {enabledFields.find(f => f.id === 'soundFile') && (
             <View style={styles.fieldContainer}>
@@ -1465,6 +1509,31 @@ export default function AddTakeScreen() {
                         }}
                       />
                     )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Multi-camera Card Numbers (when enabled) */}
+          {cameraConfiguration > 1 && (enabledFields.find(f => f.id === 'cardNumber')) && (
+            <View style={styles.additionalCameraFields}>
+              {Array.from({ length: cameraConfiguration }, (_, i) => {
+                const fieldId = `cardNumber${i + 1}`;
+                const label = `Card Number Camera ${i + 1}`;
+                return (
+                  <View key={fieldId} style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>{label}</Text>
+                    <TextInput
+                      ref={(ref) => { inputRefs.current[fieldId] = ref; }}
+                      style={styles.fieldInput}
+                      value={takeData[fieldId] || ''}
+                      onChangeText={(text) => updateTakeData(fieldId, text)}
+                      placeholder={`Enter ${label}`}
+                      placeholderTextColor={colors.subtext}
+                      returnKeyType="next"
+                      onSubmitEditing={() => focusNextField(fieldId, allFieldIds)}
+                    />
                   </View>
                 );
               })}
