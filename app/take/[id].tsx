@@ -801,8 +801,8 @@ export default function EditTakeScreen() {
   const customFields = project.settings?.customFields || [];
   const cameraConfiguration = project.settings?.cameraConfiguration || 1;
 
-  // Filter out camera file field since we handle it separately, and notes field to put it last
-  const fieldsToRender = enabledFields.filter((field: FieldType) => field.id !== 'cameraFile' && field.id !== 'notesForTake');
+  // Filter out camera file and sound file fields since we handle them separately, and notes field to put it last
+  const fieldsToRender = enabledFields.filter((field: FieldType) => field.id !== 'cameraFile' && field.id !== 'soundFile' && field.id !== 'notesForTake');
   const notesField = enabledFields.find((field: FieldType) => field.id === 'notesForTake');
   
   // Build ordered field list for navigation
@@ -827,6 +827,12 @@ export default function EditTakeScreen() {
     }
   }
   
+  // Add sound file field to navigation if enabled
+  const soundFieldEnabled = !!enabledFields.find((field: FieldType) => field.id === 'soundFile');
+  if (soundFieldEnabled) {
+    allFieldIds.push('soundFile');
+  }
+
   // Add custom fields
   customFields.forEach((_: string, index: number) => {
     allFieldIds.push(`custom_${index}`);
