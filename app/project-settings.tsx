@@ -209,7 +209,7 @@ export default function ProjectSettingsScreen() {
           </Text>
           
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Director Name (Optional)</Text>
+            <Text style={styles.fieldLabel}>Director Name</Text>
             <TextInput
               style={styles.textInput}
               value={directorName}
@@ -220,7 +220,7 @@ export default function ProjectSettingsScreen() {
           </View>
           
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Cinematographer Name (Optional)</Text>
+            <Text style={styles.fieldLabel}>Cinematographer Name</Text>
             <TextInput
               style={styles.textInput}
               value={cinematographerName}
@@ -231,7 +231,7 @@ export default function ProjectSettingsScreen() {
           </View>
           
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Logger Name (Required) *</Text>
+            <Text style={styles.fieldLabel}>Logger Name *</Text>
             <TextInput
               style={styles.textInput}
               value={loggerName}
