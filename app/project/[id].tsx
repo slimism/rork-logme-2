@@ -42,7 +42,7 @@ export default function ProjectScreen() {
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-      <ArrowLeft size={24} color={darkMode ? '#FFFFFF' : colors.text} />
+      <ArrowLeft size={24} color={darkMode ? '#f2f2f2' : colors.text} />
     </TouchableOpacity>
   );
 
@@ -262,7 +262,7 @@ export default function ProjectScreen() {
             onPress={() => setShowFilters(!showFilters)} 
             style={[styles.filterButton, darkMode && styles.filterButtonDark, showFilters && styles.filterButtonActive]}
           >
-            <SlidersHorizontal size={20} color={showFilters ? 'white' : (darkMode ? '#FFFFFF' : colors.text)} />
+            <SlidersHorizontal size={20} color={showFilters ? 'white' : (darkMode ? '#f2f2f2' : colors.text)} />
             <Text style={[styles.filterButtonText, darkMode && styles.filterButtonTextDark, showFilters && styles.filterButtonTextActive]}>Filter</Text>
           </TouchableOpacity>
         </View>
@@ -305,7 +305,7 @@ export default function ProjectScreen() {
                 ]}
                 onPress={() => setFilters(prev => ({ ...prev, goodTakesOnly: !prev.goodTakesOnly }))}
               >
-                <Check size={16} color={filters.goodTakesOnly ? 'white' : (darkMode ? '#FFFFFF' : colors.text)} />
+                <Check size={16} color={filters.goodTakesOnly ? 'white' : (darkMode ? '#f2f2f2' : colors.text)} />
                 <Text style={[
                   styles.filterTagButtonText,
                   darkMode && styles.filterTagButtonTextDark,
@@ -421,7 +421,7 @@ export default function ProjectScreen() {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Export Options</Text>
               <TouchableOpacity onPress={() => setShowExportModal(false)} style={styles.modalCloseButton}>
-                <X size={24} color={darkMode ? '#FFFFFF' : colors.text} />
+                <X size={24} color={darkMode ? '#f2f2f2' : colors.text} />
               </TouchableOpacity>
             </View>
             
@@ -463,13 +463,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
   },
   containerDark: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#0b0b0b',
   },
   content: {
     flex: 1,
   },
   contentDark: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#0b0b0b',
   },
   headerButton: {
     padding: 8,
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   takeCardDark: {
-    backgroundColor: '#374151',
+    backgroundColor: '#1a1a1a',
   },
   takeCardFirst: {
     borderTopLeftRadius: 0,
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   takeTitleDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   takeDetails: {
     fontSize: 14,
@@ -569,14 +569,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   takeDetailsDark: {
-    color: '#D1D5DB',
+    color: '#b0b0b0',
   },
   takeTime: {
     fontSize: 14,
     color: colors.subtext,
   },
   takeTimeDark: {
-    color: '#D1D5DB',
+    color: '#b0b0b0',
   },
   takeFiles: {
     flexDirection: 'row',
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   sceneTitleDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   shotContainer: {
     marginBottom: 24,
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   shotHeaderDark: {
-    backgroundColor: '#4B5563',
+    backgroundColor: '#2a2a2a',
   },
   shotTitle: {
     fontSize: 18,
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   shotTitleDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   takesContainer: {
     gap: 0,
@@ -740,8 +740,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   filterPanelDark: {
-    backgroundColor: '#374151',
-    borderColor: '#4B5563',
+    backgroundColor: '#1a1a1a',
+    borderColor: '#2a2a2a',
   },
   sceneFilterContainer: {
     flexDirection: 'row',
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sceneFilterLabelDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   sceneFilterInput: {
     flex: 1,
@@ -772,9 +772,9 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   sceneFilterInputDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
-    color: '#FFFFFF',
+    backgroundColor: '#2a2a2a',
+    borderColor: '#2a2a2a',
+    color: '#f2f2f2',
   },
   clearSceneButton: {
     position: 'absolute',
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterButtonDark: {
-    backgroundColor: '#4B5563',
+    backgroundColor: '#2a2a2a',
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterButtonTextDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   filterButtonTextActive: {
     color: 'white',
@@ -824,8 +824,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filterTagButtonDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
+    backgroundColor: '#2a2a2a',
+    borderColor: '#2a2a2a',
   },
   filterTagButtonActive: {
     backgroundColor: colors.primary,
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterTagButtonTextDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   filterTagButtonTextActive: {
     color: 'white',
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   clearFiltersTextDark: {
-    color: '#D1D5DB',
+    color: '#b0b0b0',
   },
   searchRow: {
     flexDirection: 'row',
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   searchContainerDark: {
-    backgroundColor: '#4B5563',
+    backgroundColor: '#2a2a2a',
   },
   searchIcon: {
     marginRight: 12,
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   searchInputDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   clearSearchButton: {
     padding: 4,
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalContainerDark: {
-    backgroundColor: '#374151',
+    backgroundColor: '#1a1a1a',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -923,7 +923,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   modalTitleDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   modalCloseButton: {
     padding: 4,
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalDescriptionDark: {
-    color: '#D1D5DB',
+    color: '#b0b0b0',
   },
   exportOptions: {
     gap: 12,
@@ -947,8 +947,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   exportOptionDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
+    backgroundColor: '#2a2a2a',
+    borderColor: '#2a2a2a',
   },
   exportOptionTitle: {
     fontSize: 16,
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   exportOptionTitleDark: {
-    color: '#FFFFFF',
+    color: '#f2f2f2',
   },
   exportOptionDescription: {
     fontSize: 14,
@@ -965,6 +965,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   exportOptionDescriptionDark: {
-    color: '#D1D5DB',
+    color: '#b0b0b0',
   },
 });
