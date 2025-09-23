@@ -40,13 +40,28 @@ export default function ProjectsScreen() {
 
 
   const handleCreateProject = () => {
+    const remainingTrialLogs = getRemainingTrialLogs();
+    const isOnTrial = tokens === 0 && remainingTrialLogs > 0;
+
+    if (isOnTrial && projects.length >= 1) {
+      Alert.alert(
+        'Trial Limit Reached',
+        'On trial, you can create only 1 project. Buy a token to create more projects.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Buy Token', onPress: () => router.push('/store') }
+        ]
+      );
+      return;
+    }
+
     if (!canCreateProject()) {
       Alert.alert(
         'No Tokens Available',
         'You need tokens to create new projects. Each token allows you to create one complete project with unlimited logs.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy Tokens', onPress: () => router.push('/store') }
+          { text: 'Buy Token', onPress: () => router.push('/store') }
         ]
       );
       return;
@@ -234,7 +249,7 @@ export default function ProjectsScreen() {
             <Text style={styles.appTitle}>LogMe</Text>
             <View style={styles.headerActions}>
               <View style={styles.creditsContainer}>
-                <Text style={styles.creditsLabel}>Remaining Credits</Text>
+                <Text style={styles.creditsLabel}>Remaining Tokens</Text>
                 <View style={styles.creditsRow}>
                   <Text style={styles.creditsNumber}>{tokens}</Text>
                 </View>
@@ -286,7 +301,7 @@ export default function ProjectsScreen() {
               <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
-              <Text style={styles.buyCreditsText}>Buy Credits</Text>
+              <Text style={styles.buyCreditsText}>Buy Token</Text>
             </TouchableOpacity>
           </View>
         )}
