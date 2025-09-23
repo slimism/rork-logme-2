@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet, updateTakeNumbers } = useProjectStore();
+  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -332,53 +332,44 @@ export default function AddTakeScreen() {
     });
   };
 
-  // Helper function to check for duplicate file numbers
-  const checkForDuplicateFiles = () => {
+  // Helper function to find first duplicate file number and return metadata
+  const findFirstDuplicateFile = () => {
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-    const duplicates: string[] = [];
-    
-    // Check sound file
+    type DuplicateInfo = { label: string; fieldId: string; value: string; number: number } | null;
+
+    // Sound first
     if (takeData.soundFile && !disabledFields.has('soundFile')) {
-      const soundFileValue = takeData.soundFile;
-      const existingSheet = projectLogSheets.find(sheet => 
-        sheet.data?.soundFile === soundFileValue
-      );
-      
-      if (existingSheet) {
-        duplicates.push(`Sound File "${soundFileValue}"`);
+      const val = takeData.soundFile as string;
+      const exists = projectLogSheets.some(s => s.data?.soundFile === val);
+      if (exists) {
+        return { label: 'Sound File', fieldId: 'soundFile', value: val, number: parseInt(val) || 0 } as DuplicateInfo;
       }
     }
-    
-    // Check camera files
+
+    // Camera files
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
-        const cameraFileValue = takeData.cameraFile;
-        const existingSheet = projectLogSheets.find(sheet => 
-          sheet.data?.cameraFile === cameraFileValue
-        );
-        
-        if (existingSheet) {
-          duplicates.push(`Camera File "${cameraFileValue}"`);
+        const val = takeData.cameraFile as string;
+        const exists = projectLogSheets.some(s => s.data?.cameraFile === val);
+        if (exists) {
+          return { label: 'Camera File', fieldId: 'cameraFile', value: val, number: parseInt(val) || 0 } as DuplicateInfo;
         }
       }
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
-        if (takeData[fieldId] && !disabledFields.has(fieldId)) {
-          const cameraFileValue = takeData[fieldId];
-          const existingSheet = projectLogSheets.find(sheet => 
-            sheet.data?.[fieldId] === cameraFileValue
-          );
-          
-          if (existingSheet) {
-            duplicates.push(`Camera File ${i} "${cameraFileValue}"`);
+        const val = takeData[fieldId] as string | undefined;
+        if (val && !disabledFields.has(fieldId)) {
+          const exists = projectLogSheets.some(s => s.data?.[fieldId] === val);
+          if (exists) {
+            return { label: `Camera File ${i}`, fieldId, value: val, number: parseInt(val) || 0 } as DuplicateInfo;
           }
         }
       }
     }
-    
-    return duplicates;
+
+    return null;
   };
 
   // Helper function to validate mandatory fields
@@ -456,14 +447,28 @@ export default function AddTakeScreen() {
       return;
     }
     
-    // Check for duplicate file numbers
-    const duplicateFiles = checkForDuplicateFiles();
-    if (duplicateFiles.length > 0) {
-      const duplicateList = duplicateFiles.join(', ');
-      showNotification(`Duplicate File Numbers: ${duplicateList} already exist in this project`, 'error');
+    // Check for duplicate file numbers with before/after insert flow
+    const dup = findFirstDuplicateFile();
+    if (dup) {
+      const num = dup.number;
+      Alert.alert(
+        'Duplicate File Detected',
+        `${dup.label} ${dup.value} already exists. Where would you like to add the new log?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add Before',
+            onPress: () => addLogWithFilePosition('before', dup.fieldId, num),
+          },
+          {
+            text: 'Add After',
+            onPress: () => addLogWithFilePosition('after', dup.fieldId, num),
+          },
+        ]
+      );
       return;
     }
-    
+
     // Check for duplicate takes
     const sceneNumber = takeData.sceneNumber;
     const shotNumber = takeData.shotNumber;
@@ -574,6 +579,54 @@ export default function AddTakeScreen() {
     router.back();
   };
   
+  const addLogWithFilePosition = (position: 'before' | 'after', fieldId: string, duplicateNum: number) => {
+    if (tokens === 0) {
+      tokenStore.useTrial();
+    }
+
+    const camCount = project?.settings?.cameraConfiguration || 1;
+    const newData: TakeData = { ...takeData };
+
+    const before = position === 'before';
+    const targetNum = before ? duplicateNum : duplicateNum + 1;
+
+    // Shift existing logs for file sequences
+    const camCountAll = project?.settings?.cameraConfiguration || 1;
+    const fieldsToShift: string[] = [];
+    fieldsToShift.push('soundFile');
+    if (camCountAll === 1) {
+      fieldsToShift.push('cameraFile');
+    } else {
+      for (let i = 1; i <= camCountAll; i++) fieldsToShift.push(`cameraFile${i}`);
+    }
+    fieldsToShift.forEach(f => updateFileNumbers(projectId!, f, targetNum, 1));
+
+    // Set the chosen field to the target number
+    newData[fieldId] = String(targetNum).padStart(4, '0');
+
+    // For multi-cam, keep other camera fields as is; For REC inactive, drop those fields like addNewTake
+    if (camCount > 1) {
+      for (let i = 1; i <= camCount; i++) {
+        const camField = `cameraFile${i}`;
+        const isRecActive = cameraRecState[camField] ?? true;
+        if (!isRecActive) {
+          delete newData[camField];
+        }
+      }
+    }
+
+    const logSheet = addLogSheet(`Take ${stats.totalTakes + 1}`,'take','',projectId);
+    logSheet.data = {
+      ...newData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      cameraRecState: camCount > 1 ? cameraRecState : undefined
+    };
+
+    router.back();
+  };
+
   const addNewTake = () => {
     // Use trial log if no tokens available
     if (tokens === 0) {

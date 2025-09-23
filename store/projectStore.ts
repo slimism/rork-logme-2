@@ -19,6 +19,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -207,6 +208,50 @@ export const useProjectStore = create<ProjectState>()(
                   },
                   updatedAt: new Date().toISOString()
                 };
+              }
+            }
+            return logSheet;
+          })
+        }));
+      },
+
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number) => {
+        set((state) => ({
+          logSheets: state.logSheets.map((logSheet) => {
+            if (logSheet.projectId === projectId) {
+              const raw = logSheet.data?.[fieldId];
+              if (typeof raw === 'string' && raw.length > 0) {
+                if (raw.includes('-')) {
+                  const [startStr, endStr] = raw.split('-');
+                  const startNum = parseInt(startStr);
+                  const endNum = parseInt(endStr);
+                  if (!isNaN(startNum) && !isNaN(endNum)) {
+                    const newStart = startNum >= fromNumber ? startNum + increment : startNum;
+                    const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
+                    const formatted = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
+                    return {
+                      ...logSheet,
+                      data: {
+                        ...logSheet.data,
+                        [fieldId]: formatted,
+                      },
+                      updatedAt: new Date().toISOString(),
+                    };
+                  }
+                } else {
+                  const currentNum = parseInt(raw);
+                  if (!isNaN(currentNum) && currentNum >= fromNumber) {
+                    const formatted = String(currentNum + increment).padStart(4, '0');
+                    return {
+                      ...logSheet,
+                      data: {
+                        ...logSheet.data,
+                        [fieldId]: formatted,
+                      },
+                      updatedAt: new Date().toISOString(),
+                    };
+                  }
+                }
               }
             }
             return logSheet;
