@@ -142,15 +142,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         />
       </Animated.View>
 
-      {/* App name */}
-      <Animated.View 
-        style={[
-          styles.textContainer,
-          { opacity: fadeAnim }
-        ]}
-      >
-        <Text style={styles.appName}>LOGME</Text>
-      </Animated.View>
+
 
       {/* Developer credit */}
       <Animated.View 
@@ -205,16 +197,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
   },
-  textContainer: {
-    marginBottom: 40,
-  },
-  appName: {
-    fontSize: 42,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 4,
-    textAlign: 'center',
-  },
+
   creditContainer: {
     position: 'absolute',
     bottom: 60,
