@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, Switch } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Save, Check } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -1103,29 +1103,24 @@ export default function EditTakeScreen() {
           </View>
 
           <View style={styles.sectionSpacing}>
-            <View style={styles.addTakeRow}>
-              <TouchableOpacity
-                style={[
-                  styles.goodTakeButton,
-                  isGoodTake && styles.goodTakeButtonActive
-                ]}
-                onPress={() => setIsGoodTake(!isGoodTake)}
-              >
-                <Check size={20} color={isGoodTake ? 'white' : colors.success} />
-                <Text style={[
-                  styles.goodTakeButtonText,
-                  isGoodTake && styles.goodTakeButtonTextActive
-                ]}>
-                  Good Take
-                </Text>
-              </TouchableOpacity>
-              <Button
-                title="Save Changes"
-                onPress={handleSaveTake}
-                style={styles.saveButton}
-                icon={<Save size={20} color="white" />}
+            <View style={styles.goodTakeRow}>
+              <Text style={[styles.goodTakeLabel, darkMode && styles.goodTakeLabelDark]}>Good Take</Text>
+              <Switch
+                testID="good-take-switch"
+                value={isGoodTake}
+                onValueChange={setIsGoodTake}
+                trackColor={{ false: '#e5e7eb', true: '#BDDFEB' }}
+                thumbColor={Platform.OS === 'android' ? (isGoodTake ? '#60a5fa' : '#f4f3f4') : undefined}
               />
             </View>
+            <TouchableOpacity
+              testID="save-changes-button"
+              style={styles.saveChangesButton}
+              onPress={handleSaveTake}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveChangesText}>Save Changes</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -1407,31 +1402,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
 
-  goodTakeButton: {
+  goodTakeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: 'white',
-    gap: 8,
-    height: 48,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    marginBottom: 16,
   },
-  goodTakeButtonActive: {
-    backgroundColor: colors.success,
-  },
-  goodTakeButtonText: {
+  goodTakeLabel: {
     fontSize: 16,
+    color: colors.text,
     fontWeight: '500',
-    color: colors.success,
   },
-  goodTakeButtonTextActive: {
-    color: 'white',
+  goodTakeLabelDark: {
+    color: '#ffffff',
   },
-  saveButton: {
-    backgroundColor: '#2c3e50',
-    flex: 1,
+  saveChangesButton: {
+    backgroundColor: '#BDDFEB',
     height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  saveChangesText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0b0b0b',
   },
   classificationRow: {
     flexDirection: 'row',
@@ -1664,9 +1662,5 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  addTakeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+
 });
