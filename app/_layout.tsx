@@ -1,11 +1,11 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from 'react-native-toast-message';
 import { useThemeStore } from '@/store/themeStore';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -33,6 +33,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { darkMode } = useThemeStore();
+  const colors = useColors();
   const statusBarStyle: 'light' | 'dark' = darkMode ? 'light' : 'dark';
 
   return (
@@ -42,15 +43,15 @@ function RootLayoutNav() {
         screenOptions={{
           headerBackTitle: "Back",
           headerStyle: {
-            backgroundColor: colors.card as string,
+            backgroundColor: colors.card,
           },
           headerShadowVisible: false,
           headerTitleStyle: {
             fontWeight: '600',
-            color: colors.text as string,
+            color: colors.text,
           },
           contentStyle: {
-            backgroundColor: colors.background as string,
+            backgroundColor: colors.background,
           },
         }}
       >
