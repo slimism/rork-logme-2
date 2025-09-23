@@ -136,7 +136,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         ]}
       >
         <Image 
-          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/tu3cij9bjihf44jz25j56' }}
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sxgkwkx03y0dzrrkc8aoa' }}
           style={styles.logoImage}
           resizeMode="contain"
         />
@@ -168,7 +168,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1f1f20',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 42,
     fontWeight: '700',
-    color: '#2C3E50',
+    color: '#FFFFFF',
     letterSpacing: 4,
     textAlign: 'center',
   },
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   creditText: {
     fontSize: 12,
-    color: '#7F8C8D',
+    color: '#CCCCCC',
     fontWeight: '400',
     textAlign: 'center',
   },
