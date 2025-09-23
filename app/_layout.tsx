@@ -6,6 +6,7 @@ import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from 'react-native-toast-message';
 import { useThemeStore } from '@/store/themeStore';
 import { useColors } from '@/constants/colors';
+import { OrientationGuard } from '@/components/OrientationGuard';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -28,7 +29,11 @@ export default function RootLayout() {
     return <CustomSplashScreen onFinish={handleSplashFinish} />;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <OrientationGuard>
+      <RootLayoutNav />
+    </OrientationGuard>
+  );
 }
 
 function RootLayoutNav() {
