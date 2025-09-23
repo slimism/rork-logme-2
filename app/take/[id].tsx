@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, Switch, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Save, Check } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -46,6 +46,10 @@ export default function EditTakeScreen() {
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -843,6 +847,7 @@ export default function EditTakeScreen() {
     allFieldIds.push('notesForTake');
   }
 
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, darkMode && styles.containerDark]}
@@ -863,9 +868,17 @@ export default function EditTakeScreen() {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
+          isLandscape ? styles.scrollContentLandscape : null,
+        ]}
       >
-        <View style={[styles.mainContainer, darkMode && styles.mainContainerDark]}>
+        <View style={[
+          styles.mainContainer,
+          darkMode && styles.mainContainerDark,
+          isLandscape ? styles.mainContainerLandscape : null,
+        ]}>
           <View style={styles.takeInfo}>
             <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>
               Scene {takeData.sceneNumber || 'Unknown'} - Shot {takeData.shotNumber || 'Unknown'}
@@ -1239,9 +1252,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
+    alignItems: 'stretch',
+  },
+  scrollContentLandscape: {
+    paddingHorizontal: 16,
+    minWidth: '100%',
   },
   headerButton: {
     padding: 8,
@@ -1264,6 +1283,12 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 12,
     padding: 20,
+  },
+  mainContainerLandscape: {
+    margin: 0,
+    borderRadius: 0,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
   mainContainerDark: {
     backgroundColor: '#2a2a2a',
