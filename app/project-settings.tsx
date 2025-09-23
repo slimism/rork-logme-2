@@ -30,6 +30,8 @@ export default function ProjectSettingsScreen() {
   const [error, setError] = useState('');
   const [cameraConfiguration, setCameraConfiguration] = useState(1);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: boolean}>({});
   
   const [logSheetFields, setLogSheetFields] = useState<LogSheetField[]>([
     { id: 'sceneNumber', label: 'Scene number', enabled: true, required: true },
@@ -97,14 +99,27 @@ export default function ProjectSettingsScreen() {
     }
   };
 
-  const handleSaveSettings = () => {
+  const validateRequiredFields = () => {
+    const errors: {[key: string]: boolean} = {};
+    let hasErrors = false;
+
     if (!projectName.trim()) {
-      setError('Project name is required');
-      return;
+      errors.projectName = true;
+      hasErrors = true;
     }
 
     if (!loggerName.trim()) {
-      setError('Logger name is required');
+      errors.loggerName = true;
+      hasErrors = true;
+    }
+
+    setValidationErrors(errors);
+    return !hasErrors;
+  };
+
+  const handleSaveSettings = () => {
+    if (!validateRequiredFields()) {
+      setShowValidationModal(true);
       return;
     }
 
@@ -187,9 +202,17 @@ export default function ProjectSettingsScreen() {
           </TouchableOpacity>
           <View style={styles.projectInfo}>
             <TextInput
-              style={styles.projectNameInput}
+              style={[
+                styles.projectNameInput,
+                validationErrors.projectName && styles.errorInput
+              ]}
               value={projectName}
-              onChangeText={setProjectName}
+              onChangeText={(text) => {
+                setProjectName(text);
+                if (validationErrors.projectName && text.trim()) {
+                  setValidationErrors(prev => ({ ...prev, projectName: false }));
+                }
+              }}
               placeholder="Enter project name"
               placeholderTextColor={colors.subtext}
             />
@@ -233,9 +256,17 @@ export default function ProjectSettingsScreen() {
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Logger Name *</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                validationErrors.loggerName && styles.errorInput
+              ]}
               value={loggerName}
-              onChangeText={setLoggerName}
+              onChangeText={(text) => {
+                setLoggerName(text);
+                if (validationErrors.loggerName && text.trim()) {
+                  setValidationErrors(prev => ({ ...prev, loggerName: false }));
+                }
+              }}
               placeholder="Enter your name"
               placeholderTextColor={colors.subtext}
             />
@@ -385,6 +416,44 @@ export default function ProjectSettingsScreen() {
                 onPress={handleConfirmSave}
               >
                 <Text style={styles.confirmButtonText}>Create Project</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showValidationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowValidationModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <AlertTriangle size={24} color={colors.error} />
+              <Text style={styles.modalTitle}>Required Fields Missing</Text>
+            </View>
+            
+            <Text style={styles.modalMessage}>
+              Please fill in all required fields before saving your project settings.
+            </Text>
+            
+            <View style={styles.requiredFieldsList}>
+              {validationErrors.projectName && (
+                <Text style={styles.requiredFieldItem}>• Project Name</Text>
+              )}
+              {validationErrors.loggerName && (
+                <Text style={styles.requiredFieldItem}>• Logger Name</Text>
+              )}
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]} 
+                onPress={() => setShowValidationModal(false)}
+              >
+                <Text style={styles.confirmButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -698,5 +767,19 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: 16,
     fontWeight: '500',
     color: 'white',
+  },
+  errorInput: {
+    borderColor: colors.error,
+    borderWidth: 2,
+  },
+  requiredFieldsList: {
+    marginVertical: 12,
+    paddingLeft: 8,
+  },
+  requiredFieldItem: {
+    fontSize: 14,
+    color: colors.error,
+    marginBottom: 4,
+    fontWeight: '500',
   },
 });
