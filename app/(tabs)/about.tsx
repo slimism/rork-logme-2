@@ -23,7 +23,7 @@ export default function AboutScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.appVersionTitle}>App Version</Text>
+        <Text style={styles.appVersionTitle}>App</Text>
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
