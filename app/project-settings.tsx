@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Text, Switch, TextInput, TouchableOpacity, Image, Alert, KeyboardAvoidingView, Modal } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { ArrowLeft, Film, Info, Camera, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, Film, Camera, AlertTriangle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { useThemeStore } from '@/store/themeStore';
+
 import { Button } from '@/components/Button';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 
 interface LogSheetField {
   id: string;
@@ -20,7 +20,8 @@ export default function ProjectSettingsScreen() {
   const { addProject } = useProjectStore();
   const tokenStore = useTokenStore();
   const { tokens, canCreateProject } = tokenStore;
-  const { darkMode } = useThemeStore();
+
+  const colors = useColors();
   const [projectName, setProjectName] = useState('');
   const [projectLogo, setProjectLogo] = useState('');
   const [directorName, setDirectorName] = useState('');
@@ -149,13 +150,15 @@ export default function ProjectSettingsScreen() {
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-      <ArrowLeft size={24} color={darkMode ? '#FFFFFF' : colors.text} />
+      <ArrowLeft size={24} color={colors.text} />
     </TouchableOpacity>
   );
 
+  const styles = createStyles(colors);
+
   return (
     <KeyboardAvoidingView 
-      style={[styles.container, darkMode && styles.containerDark]}
+      style={styles.container}
       behavior='padding'
     >
       <Stack.Screen 
@@ -167,94 +170,94 @@ export default function ProjectSettingsScreen() {
       />
       
       <ScrollView 
-        style={[styles.content, darkMode && styles.contentDark]} 
+        style={styles.content} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.projectHeader, darkMode && styles.projectHeaderDark]}>
+        <View style={styles.projectHeader}>
           <TouchableOpacity style={styles.iconContainer} onPress={handleAddLogo}>
             {projectLogo ? (
               <Image source={{ uri: projectLogo }} style={styles.projectLogoImage} />
             ) : (
               <>
                 <Film size={24} color={colors.primary} />
-                <Camera size={16} color={colors.primary} style={[styles.cameraIcon, darkMode && styles.cameraIconDark]} />
+                <Camera size={16} color={colors.primary} style={styles.cameraIcon} />
               </>
             )}
           </TouchableOpacity>
           <View style={styles.projectInfo}>
             <TextInput
-              style={[styles.projectNameInput, darkMode && styles.projectNameInputDark]}
+              style={styles.projectNameInput}
               value={projectName}
               onChangeText={setProjectName}
               placeholder="Enter project name"
-              placeholderTextColor={darkMode ? '#9CA3AF' : colors.subtext}
+              placeholderTextColor={colors.subtext}
             />
             <TouchableOpacity onPress={handleAddLogo} style={styles.logoButton}>
-              <Text style={[styles.logoButtonText, darkMode && styles.logoButtonTextDark]}>
+              <Text style={styles.logoButtonText}>
                 {projectLogo ? 'Change Logo' : 'Add Logo'}
               </Text>
             </TouchableOpacity>
-            {error && <Text style={[styles.errorText, darkMode && styles.errorTextDark]}>{error}</Text>}
+            {error && <Text style={styles.errorText}>{error}</Text>}
           </View>
         </View>
 
-        <View style={[styles.section, darkMode && styles.sectionDark]}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Project Information</Text>
-          <Text style={[styles.sectionSubtitle, darkMode && styles.sectionSubtitleDark]}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Project Information</Text>
+          <Text style={styles.sectionSubtitle}>
             Add key personnel information that will appear on exported log sheets.
           </Text>
           
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark]}>Director Name (Optional)</Text>
+            <Text style={styles.fieldLabel}>Director Name (Optional)</Text>
             <TextInput
-              style={[styles.textInput, darkMode && styles.textInputDark]}
+              style={styles.textInput}
               value={directorName}
               onChangeText={setDirectorName}
               placeholder="Enter director name"
-              placeholderTextColor={darkMode ? '#9CA3AF' : colors.subtext}
+              placeholderTextColor={colors.subtext}
             />
           </View>
           
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark]}>Cinematographer Name (Optional)</Text>
+            <Text style={styles.fieldLabel}>Cinematographer Name (Optional)</Text>
             <TextInput
-              style={[styles.textInput, darkMode && styles.textInputDark]}
+              style={styles.textInput}
               value={cinematographerName}
               onChangeText={setCinematographerName}
               placeholder="Enter cinematographer name"
-              placeholderTextColor={darkMode ? '#9CA3AF' : colors.subtext}
+              placeholderTextColor={colors.subtext}
             />
           </View>
           
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark]}>Logger Name (Required) *</Text>
+            <Text style={styles.fieldLabel}>Logger Name (Required) *</Text>
             <TextInput
-              style={[styles.textInput, darkMode && styles.textInputDark]}
+              style={styles.textInput}
               value={loggerName}
               onChangeText={setLoggerName}
               placeholder="Enter your name"
-              placeholderTextColor={darkMode ? '#9CA3AF' : colors.subtext}
+              placeholderTextColor={colors.subtext}
             />
           </View>
         </View>
 
-        <View style={[styles.section, darkMode && styles.sectionDark]}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Camera Configuration</Text>
-          <Text style={[styles.sectionSubtitle, darkMode && styles.sectionSubtitleDark]}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Camera Configuration</Text>
+          <Text style={styles.sectionSubtitle}>
             Set the number of cameras used. This will create multiple camera file fields for each take.
           </Text>
           
-          <View style={[styles.cameraConfigRow, darkMode && styles.cameraConfigRowDark]}>
+          <View style={styles.cameraConfigRow}>
             <View style={styles.cameraConfigContent}>
               <View style={styles.checkbox}>
                 <Text style={styles.checkmark}>✓</Text>
               </View>
-              <Text style={[styles.cameraConfigLabel, darkMode && styles.cameraConfigLabelDark]}>Number of cameras used</Text>
+              <Text style={styles.cameraConfigLabel}>Number of cameras used</Text>
             </View>
             <View style={styles.cameraInputContainer}>
               <TextInput
-                style={[styles.cameraInput, darkMode && styles.cameraInputDark]}
+                style={styles.cameraInput}
                 value={cameraConfiguration.toString()}
                 onChangeText={(text) => {
                   if (text === '') {
@@ -270,25 +273,24 @@ export default function ProjectSettingsScreen() {
                 maxLength={2}
                 selectTextOnFocus={true}
               />
-              <Text style={[styles.cameraInputLabel, darkMode && styles.cameraInputLabelDark]}>cameras</Text>
+              <Text style={styles.cameraInputLabel}>cameras</Text>
             </View>
           </View>
 
         </View>
 
-        <View style={[styles.section, darkMode && styles.sectionDark]}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Log Sheet Fields</Text>
-          <Text style={[styles.sectionSubtitle, darkMode && styles.sectionSubtitleDark]}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Log Sheet Fields</Text>
+          <Text style={styles.sectionSubtitle}>
             Select the fields you want to include in your log sheets. Required fields cannot be disabled.
           </Text>
           
           {logSheetFields.map((field) => (
-            <View key={field.id} style={[styles.fieldRow, darkMode && styles.fieldRowDark]}>
+            <View key={field.id} style={styles.fieldRow}>
               <View style={styles.fieldInfo}>
                 <Text style={[
                   styles.switchFieldLabel,
-                  field.required && styles.requiredFieldLabel,
-                  darkMode && styles.switchFieldLabelDark
+                  field.required && styles.requiredFieldLabel
                 ]}>
                   {field.label}
                   {field.required && ' *'}
@@ -305,39 +307,39 @@ export default function ProjectSettingsScreen() {
           ))}
         </View>
 
-        <View style={[styles.section, darkMode && styles.sectionDark]}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Custom Fields</Text>
-          <Text style={[styles.sectionSubtitle, darkMode && styles.sectionSubtitleDark]}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Custom Fields</Text>
+          <Text style={styles.sectionSubtitle}>
             Add custom fields specific to your project needs.
           </Text>
           
           {customFields.map((field, index) => (
             <View key={index} style={styles.customFieldRow}>
               <TextInput
-                style={[styles.customFieldInput, darkMode && styles.customFieldInputDark]}
+                style={styles.customFieldInput}
                 value={field}
                 onChangeText={(value) => updateCustomField(index, value)}
                 placeholder="Enter custom field name"
-                placeholderTextColor={darkMode ? '#9CA3AF' : colors.subtext}
+                placeholderTextColor={colors.subtext}
               />
               {customFields.length > 1 && (
                 <TouchableOpacity 
                   onPress={() => removeCustomField(index)}
                   style={styles.removeButton}
                 >
-                  <Text style={[styles.removeButtonText, darkMode && styles.removeButtonTextDark]}>×</Text>
+                  <Text style={styles.removeButtonText}>×</Text>
                 </TouchableOpacity>
               )}
             </View>
           ))}
           
           <TouchableOpacity onPress={addCustomField} style={styles.addFieldButton}>
-            <Text style={[styles.addFieldText, darkMode && styles.addFieldTextDark]}>+ Add Custom Field</Text>
+            <Text style={styles.addFieldText}>+ Add Custom Field</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, darkMode && styles.footerDark]}>
+      <View style={styles.footer}>
         <Button
           title="Save Settings"
           onPress={handleSaveSettings}
@@ -352,19 +354,19 @@ export default function ProjectSettingsScreen() {
         onRequestClose={handleCancelSave}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <AlertTriangle size={24} color={colors.warning} />
-              <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Confirm Project Settings</Text>
+              <Text style={styles.modalTitle}>Confirm Project Settings</Text>
             </View>
             
-            <Text style={[styles.modalMessage, darkMode && styles.modalMessageDark]}>
+            <Text style={styles.modalMessage}>
               Once you create this project, you cannot change these settings later. Are you sure you want to proceed?
             </Text>
             
             {tokens > 0 && (
-              <View style={[styles.tokenWarning, darkMode && styles.tokenWarningDark]}>
-                <Text style={[styles.tokenWarningText, darkMode && styles.tokenWarningTextDark]}>
+              <View style={styles.tokenWarning}>
+                <Text style={styles.tokenWarningText}>
                   This will consume 1 token from your account.
                 </Text>
               </View>
@@ -375,14 +377,14 @@ export default function ProjectSettingsScreen() {
                 style={[styles.modalButton, styles.cancelButton]} 
                 onPress={handleCancelSave}
               >
-                <Text style={[styles.cancelButtonText, darkMode && styles.cancelButtonTextDark]}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.modalButton, styles.confirmButton]} 
                 onPress={handleConfirmSave}
               >
-                <Text style={[styles.confirmButtonText, darkMode && styles.confirmButtonTextDark]}>Create Project</Text>
+                <Text style={styles.confirmButtonText}>Create Project</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -392,19 +394,13 @@ export default function ProjectSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
-  },
-  containerDark: {
-    backgroundColor: '#1F2937',
+    backgroundColor: colors.cardSecondary,
   },
   content: {
     flex: 1,
-  },
-  contentDark: {
-    backgroundColor: '#1F2937',
   },
   headerButton: {
     padding: 8,
@@ -413,14 +409,10 @@ const styles = StyleSheet.create({
   projectHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  projectHeaderDark: {
-    backgroundColor: '#374151',
-    borderBottomColor: '#4B5563',
   },
   iconContainer: {
     width: 64,
@@ -441,12 +433,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 4,
     right: 4,
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 2,
-  },
-  cameraIconDark: {
-    backgroundColor: '#374151',
   },
   logoButton: {
     marginTop: 8,
@@ -456,9 +445,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '500',
-  },
-  logoButtonTextDark: {
-    color: '#60A5FA',
   },
   projectInfo: {
     flex: 1,
@@ -471,25 +457,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingVertical: 8,
   },
-  projectNameInputDark: {
-    color: '#FFFFFF',
-    borderBottomColor: '#4B5563',
-  },
   errorText: {
     color: colors.error,
     fontSize: 14,
     marginTop: 4,
   },
-  errorTextDark: {
-    color: '#F87171',
-  },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     marginTop: 16,
     padding: 20,
-  },
-  sectionDark: {
-    backgroundColor: '#374151',
   },
   sectionTitle: {
     fontSize: 18,
@@ -497,17 +473,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
-  sectionTitleDark: {
-    color: '#FFFFFF',
-  },
   sectionSubtitle: {
     fontSize: 14,
     color: colors.subtext,
     marginBottom: 20,
     lineHeight: 20,
-  },
-  sectionSubtitleDark: {
-    color: '#D1D5DB',
   },
   cameraConfigRow: {
     flexDirection: 'row',
@@ -516,9 +486,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border + '50',
-  },
-  cameraConfigRowDark: {
-    borderBottomColor: '#4B5563',
   },
   cameraConfigContent: {
     flexDirection: 'row',
@@ -543,9 +510,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  cameraConfigLabelDark: {
-    color: '#FFFFFF',
-  },
   cameraInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -559,21 +523,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: 'white',
+    backgroundColor: colors.inputBackground,
     width: 60,
     textAlign: 'center',
-  },
-  cameraInputDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
-    color: '#FFFFFF',
   },
   cameraInputLabel: {
     fontSize: 16,
     color: colors.subtext,
-  },
-  cameraInputLabelDark: {
-    color: '#D1D5DB',
   },
   infoRow: {
     flexDirection: 'row',
@@ -595,18 +551,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border + '50',
   },
-  fieldRowDark: {
-    borderBottomColor: '#4B5563',
-  },
   fieldInfo: {
     flex: 1,
   },
   switchFieldLabel: {
     fontSize: 16,
     color: colors.text,
-  },
-  switchFieldLabelDark: {
-    color: '#FFFFFF',
   },
   requiredFieldLabel: {
     fontWeight: '500',
@@ -625,12 +575,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: 'white',
-  },
-  customFieldInputDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
-    color: '#FFFFFF',
+    backgroundColor: colors.inputBackground,
   },
   removeButton: {
     marginLeft: 12,
@@ -646,9 +591,6 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: 'bold',
   },
-  removeButtonTextDark: {
-    color: '#F87171',
-  },
   addFieldButton: {
     paddingVertical: 12,
     alignItems: 'center',
@@ -658,18 +600,11 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
-  addFieldTextDark: {
-    color: '#60A5FA',
-  },
   footer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-  },
-  footerDark: {
-    backgroundColor: '#374151',
-    borderTopColor: '#4B5563',
   },
   saveButton: {
     backgroundColor: '#2c3e50',
@@ -683,9 +618,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
-  fieldLabelDark: {
-    color: '#FFFFFF',
-  },
   textInput: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -694,12 +626,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: 'white',
-  },
-  textInputDark: {
-    backgroundColor: '#4B5563',
-    borderColor: '#6B7280',
-    color: '#FFFFFF',
+    backgroundColor: colors.inputBackground,
   },
   modalOverlay: {
     flex: 1,
@@ -709,14 +636,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: colors.modalBackground,
     borderRadius: 12,
     padding: 24,
     width: '100%',
     maxWidth: 400,
-  },
-  modalContentDark: {
-    backgroundColor: '#374151',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -730,17 +654,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
-  modalTitleDark: {
-    color: '#FFFFFF',
-  },
   modalMessage: {
     fontSize: 16,
     color: colors.text,
     lineHeight: 22,
     marginBottom: 16,
-  },
-  modalMessageDark: {
-    color: '#D1D5DB',
   },
   tokenWarning: {
     backgroundColor: colors.warning + '20',
@@ -748,17 +666,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 20,
   },
-  tokenWarningDark: {
-    backgroundColor: '#92400E20',
-  },
   tokenWarningText: {
     fontSize: 14,
     color: colors.warning,
     fontWeight: '500',
     textAlign: 'center',
-  },
-  tokenWarningTextDark: {
-    color: '#FBBF24',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -782,15 +694,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text,
   },
-  cancelButtonTextDark: {
-    color: '#FFFFFF',
-  },
   confirmButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'white',
-  },
-  confirmButtonTextDark: {
     color: 'white',
   },
 });
