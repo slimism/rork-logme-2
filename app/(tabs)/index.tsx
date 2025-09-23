@@ -190,15 +190,15 @@ export default function ProjectsScreen() {
                 <View style={styles.projectMeta}>
                   <View style={styles.metaItem}>
                     <Film size={14} color={colors.subtext} />
-                    <Text style={styles.metaText}>{stats.shots} Cameras</Text>
+                    <Text style={styles.metaText}>{item.settings?.cameraConfiguration || 1} Camera{(item.settings?.cameraConfiguration || 1) > 1 ? 's' : ''}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <User size={14} color={colors.subtext} />
-                    <Text style={styles.metaText}>Logger: J. Doe</Text>
+                    <Text style={styles.metaText}>Logger: {item.settings?.loggerName || 'Unknown'}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Clock size={14} color={colors.subtext} />
-                    <Text style={styles.metaText}>Started: 09:12 AM</Text>
+                    <Text style={styles.metaText}>Started: {new Date(item.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Film size={14} color={colors.subtext} />
