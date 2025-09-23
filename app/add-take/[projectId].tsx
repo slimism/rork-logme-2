@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { ArrowLeft, Check, X } from 'lucide-react-native';
+import { ArrowLeft, Check, X, AlertCircle } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
 import { useColors } from '@/constants/colors';
@@ -31,6 +31,9 @@ export default function AddTakeScreen() {
   const [showInsertModal, setShowInsertModal] = useState<boolean>(false);
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
+  const [notification, setNotification] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
+  const notificationOpacity = useRef(new Animated.Value(0)).current;
+  const notificationTranslateY = useRef(new Animated.Value(-100)).current;
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
@@ -49,6 +52,46 @@ export default function AddTakeScreen() {
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  const showNotification = (message: string, type: 'error' | 'info' = 'error') => {
+    setNotification({ message, type });
+    
+    // Animate in
+    Animated.parallel([
+      Animated.timing(notificationOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(notificationTranslateY, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+      hideNotification();
+    }, 4000);
+  };
+
+  const hideNotification = () => {
+    Animated.parallel([
+      Animated.timing(notificationOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(notificationTranslateY, {
+        toValue: -100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setNotification(null);
+    });
+  };
 
   // Helper function to get the highest file number from all logs for a specific camera
   const getHighestFileNumber = (fieldId: string, projectLogSheets: any[]) => {
@@ -384,13 +427,7 @@ export default function AddTakeScreen() {
     
     if (missingFields.length > 0) {
       const fieldList = missingFields.join(', ');
-      Toast.show({
-        type: 'error',
-        text1: 'Missing Required Fields',
-        text2: `Please fill in: ${fieldList}`,
-        position: 'top',
-        visibilityTime: 4000,
-      });
+      showNotification(`Missing Required Fields: ${fieldList}`, 'error');
       return false;
     }
     
@@ -423,13 +460,7 @@ export default function AddTakeScreen() {
     const duplicateFiles = checkForDuplicateFiles();
     if (duplicateFiles.length > 0) {
       const duplicateList = duplicateFiles.join(', ');
-      Toast.show({
-        type: 'error',
-        text1: 'Duplicate File Numbers',
-        text2: `${duplicateList} already exist in this project`,
-        position: 'top',
-        visibilityTime: 4000,
-      });
+      showNotification(`Duplicate File Numbers: ${duplicateList} already exist in this project`, 'error');
       return;
     }
     
@@ -1745,6 +1776,41 @@ export default function AddTakeScreen() {
         </View>
       </Modal>
       
+      {/* iOS-style Notification */}
+      {notification && (
+        <Animated.View
+          style={[
+            styles.notificationContainer,
+            {
+              opacity: notificationOpacity,
+              transform: [{ translateY: notificationTranslateY }],
+            },
+          ]}
+        >
+          <View style={[
+            styles.notification,
+            notification.type === 'error' ? styles.notificationError : styles.notificationInfo
+          ]}>
+            <View style={styles.notificationContent}>
+              <AlertCircle 
+                size={20} 
+                color={notification.type === 'error' ? '#DC2626' : '#2563EB'} 
+                style={styles.notificationIcon}
+              />
+              <Text style={[
+                styles.notificationText,
+                notification.type === 'error' ? styles.notificationTextError : styles.notificationTextInfo
+              ]}>
+                {notification.message}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={hideNotification} style={styles.notificationClose}>
+              <X size={18} color={notification.type === 'error' ? '#DC2626' : '#2563EB'} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+      
       <Toast />
     </KeyboardAvoidingView>
   );
@@ -2220,5 +2286,62 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   shotDetailsButtonTextDisabled: {
     color: colors.disabled,
+  },
+  notificationContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 80,
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+  },
+  notification: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  notificationError: {
+    backgroundColor: '#FEF2F2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+  },
+  notificationInfo: {
+    backgroundColor: '#EFF6FF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
+  },
+  notificationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  notificationIcon: {
+    marginRight: 12,
+  },
+  notificationText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 20,
+  },
+  notificationTextError: {
+    color: '#DC2626',
+  },
+  notificationTextInfo: {
+    color: '#2563EB',
+  },
+  notificationClose: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
