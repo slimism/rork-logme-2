@@ -12,7 +12,7 @@ import { useColors } from '@/constants/colors';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
-  const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
+  const { tokens, canCreateProject, getRemainingTrialLogs, isOnTrial } = useTokenStore();
   const colors = useColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -40,10 +40,10 @@ export default function ProjectsScreen() {
 
 
   const handleCreateProject = () => {
-    const remainingTrialLogs = getRemainingTrialLogs();
-    const isOnTrial = tokens === 0 && remainingTrialLogs > 0;
+    const userIsOnTrial = isOnTrial();
 
-    if (isOnTrial && projects.length >= 1) {
+    // Check if user is on trial and already has 1 project
+    if (userIsOnTrial && projects.length >= 1) {
       Alert.alert(
         'Trial Limit Reached',
         'On trial, you can create only 1 project. Buy a token to create more projects.',
@@ -55,6 +55,7 @@ export default function ProjectsScreen() {
       return;
     }
 
+    // Check if user can create project (has tokens or is eligible for trial)
     if (!canCreateProject()) {
       Alert.alert(
         'No Tokens Available',
@@ -294,11 +295,13 @@ export default function ProjectsScreen() {
           </View>
         )}
 
-        {remainingTrialLogs > 0 && !isMultiSelectMode && (
+        {remainingTrialLogs > 0 && tokens === 0 && !isMultiSelectMode && (
           <View style={styles.trialBanner}>
             <View style={styles.trialTextContainer}>
               <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
-              <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
+              <Text style={styles.trialSubtitle}>
+                {remainingTrialLogs} logs remaining • {projects.length >= 1 ? 'Project limit reached' : '1 project allowed'}
+              </Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
               <Text style={styles.buyCreditsText}>Buy Token</Text>

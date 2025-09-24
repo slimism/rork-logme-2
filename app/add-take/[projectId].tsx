@@ -459,9 +459,14 @@ export default function AddTakeScreen() {
   const handleAddTake = () => {
     // Check if user can add more logs
     if (!canAddLog()) {
+      const remainingLogs = getRemainingTrialLogs();
+      const message = remainingLogs === 0 
+        ? 'You have used all 15 trial logs. Purchase a token to get unlimited logs for a project.'
+        : 'You need tokens to create more logs. Purchase a token to get unlimited logs for a project.';
+      
       Alert.alert(
-        'Out of Free Logs',
-        'You have used all your free trial logs. Purchase a token to get unlimited logs for a project.',
+        'Cannot Add Log',
+        message,
         [
           { text: 'OK', style: 'default' },
           {
