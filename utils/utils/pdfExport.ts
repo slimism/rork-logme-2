@@ -332,17 +332,15 @@ const generateSmartExportSections = (
     }).join('');
     
     return `
-      <div class="page">
-        <h2>${title} (${takes.length} takes)</h2>
-        <table>
-          <thead>
-            <tr>${tableHeaders}</tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-      </div>
+      <h2>${title} (${takes.length} takes)</h2>
+      <table>
+        <thead>
+          <tr>${tableHeaders}</tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
     `;
   };
   

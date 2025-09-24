@@ -334,17 +334,15 @@ const generateSmartExportSections = (
     }).join('');
     
     return `
-      <div class="page">
-        <h2>${title} (${takes.length} takes)</h2>
-        <table>
-          <thead>
-            <tr>${tableHeaders}</tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-      </div>
+      <h2>${title} (${takes.length} takes)</h2>
+      <table>
+        <thead>
+          <tr>${tableHeaders}</tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
     `;
   };
   
@@ -502,7 +500,7 @@ const generateFilmLogHTML = (
   // Add smart export sections if requested
   if (isSmartExport) {
     const smartSections = generateSmartExportSections(logSheets, fieldList, customFields);
-    content += `\n      <div class="page-break"></div>\n    ` + smartSections;
+    content += smartSections;
   }
   
   // Add page numbers
