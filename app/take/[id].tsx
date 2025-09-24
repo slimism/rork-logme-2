@@ -807,7 +807,7 @@ export default function EditTakeScreen() {
           </View>
           <View style={styles.rangeContainer}>
             <TextInput
-              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput, darkMode && styles.fieldInputDark]}
               value={soundRange.from}
               onChangeText={(text) => setSoundRange(prev => ({ ...prev, from: text }))}
               onBlur={() => setSoundRange(prev => ({ ...prev, from: formatFileNumber(prev.from) }))}
@@ -819,7 +819,7 @@ export default function EditTakeScreen() {
             />
             <Text style={styles.rangeSeparator}>-</Text>
             <TextInput
-              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput, darkMode && styles.fieldInputDark]}
               value={soundRange.to}
               onChangeText={(text) => setSoundRange(prev => ({ ...prev, to: text }))}
               onBlur={() => setSoundRange(prev => ({ ...prev, to: formatFileNumber(prev.to) }))}
@@ -858,7 +858,8 @@ export default function EditTakeScreen() {
             style={[
               styles.fieldInput, 
               isDisabled && styles.disabledInput,
-              hasError && styles.errorInput
+              hasError && styles.errorInput,
+              darkMode && styles.fieldInputDark,
             ]}
             value={value}
             onChangeText={(text) => updateTakeData(field.id, text)}
@@ -892,7 +893,8 @@ export default function EditTakeScreen() {
             styles.fieldInput,
             isMultiline && styles.multilineInput,
             isDisabled && styles.disabledInput,
-            hasError && styles.errorInput
+            hasError && styles.errorInput,
+            darkMode && styles.fieldInputDark,
           ]}
           value={isDisabled ? '' : value}
           onChangeText={(text) => updateTakeData(field.id, text)}
@@ -950,7 +952,7 @@ export default function EditTakeScreen() {
             </View>
             <View style={styles.rangeContainer}>
               <TextInput
-                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput, darkMode && styles.fieldInputDark]}
                 value={cameraRange.from}
                 onChangeText={(text) => setCameraRange(prev => ({ ...prev, from: text }))}
                 onBlur={() => setCameraRange(prev => ({ ...prev, from: formatFileNumber(prev.from) }))}
@@ -962,7 +964,7 @@ export default function EditTakeScreen() {
               />
               <Text style={styles.rangeSeparator}>-</Text>
               <TextInput
-                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput, darkMode && styles.fieldInputDark]}
                 value={cameraRange.to}
                 onChangeText={(text) => setCameraRange(prev => ({ ...prev, to: text }))}
                 onBlur={() => setCameraRange(prev => ({ ...prev, to: formatFileNumber(prev.to) }))}
@@ -1020,7 +1022,8 @@ export default function EditTakeScreen() {
               style={[
                 styles.fieldInput, 
                 isDisabled && styles.disabledInput,
-                validationErrors.has(fieldId) && styles.errorInput
+                validationErrors.has(fieldId) && styles.errorInput,
+                darkMode && styles.fieldInputDark,
               ]}
               value={isDisabled ? '' : (takeData[fieldId] || '')}
               onChangeText={(text) => updateTakeData(fieldId, text)}
@@ -1135,8 +1138,8 @@ export default function EditTakeScreen() {
         options={{
           title: "Edit Take",
           headerLeft: () => <HeaderLeft />,
-
           headerBackVisible: false,
+          headerTitleAlign: 'center',
         }} 
       />
       
@@ -1348,7 +1351,8 @@ export default function EditTakeScreen() {
                 key={type}
                 style={[
                   styles.classificationTab,
-                  classification === type && styles.classificationTabActive
+                  classification === type && styles.classificationTabActive,
+                  darkMode && styles.classificationTabDark
                 ]}
                 onPress={() => handleClassificationPress(type)}
               >
@@ -1375,7 +1379,8 @@ export default function EditTakeScreen() {
                   style={[
                     styles.shotDetailsButton,
                     shotDetails === type && styles.shotDetailsButtonActive,
-                    isDisabled && styles.shotDetailsButtonDisabled
+                    isDisabled && styles.shotDetailsButtonDisabled,
+                    darkMode && styles.shotDetailsButtonDark
                   ]}
                   onPress={() => !isDisabled && handleShotDetailPress(type)}
                   disabled={isDisabled}
@@ -1652,12 +1657,14 @@ const styles = StyleSheet.create({
   },
   takeInfo: {
     marginBottom: 20,
+    alignItems: 'center',
   },
   takeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 8,
+    textAlign: 'center',
   },
   takeTitleDark: {
     color: '#ffffff',
@@ -1666,6 +1673,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.subtext,
     marginBottom: 4,
+    textAlign: 'center',
   },
   takeSubtitleDark: {
     color: '#cccccc',
@@ -1745,7 +1753,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   fieldInputDark: {
-    backgroundColor: '#3a3a3a',
+    backgroundColor: '#2a2a2a',
     color: '#ffffff',
   },
   disabledInput: {
@@ -1865,6 +1873,16 @@ const styles = StyleSheet.create({
   },
   shotDetailsButtonTextActive: {
     color: 'white',
+  },
+  classificationTabDark: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#2a2a2a',
+    borderWidth: 1,
+  },
+  shotDetailsButtonDark: {
+    backgroundColor: '#151515',
+    borderColor: '#2a2a2a',
+    borderWidth: 1,
   },
   shotDetailsButtonDisabled: {
     opacity: 0.5,
