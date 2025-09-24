@@ -1589,7 +1589,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     margin: 0,
     borderRadius: 0,
-    padding: 0,
+    paddingHorizontal: 16,
     shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
@@ -1598,7 +1598,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
-    marginTop: 24,
+    marginTop: 16,
   },
   goodTakeButton: {
     paddingHorizontal: 20,
@@ -1627,7 +1627,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     margin: 0,
     borderRadius: 0,
-    padding: 0,
+    paddingHorizontal: 16,
     shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
@@ -1636,6 +1636,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
+    marginTop: 16,
   },
   shotDetailsSection: {
     marginTop: 16,
