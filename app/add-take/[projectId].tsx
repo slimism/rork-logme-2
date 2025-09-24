@@ -601,6 +601,16 @@ export default function AddTakeScreen() {
     }
     fieldsToShift.forEach(f => updateFileNumbers(projectId!, f, targetNum, 1));
 
+    // Also increment Take numbers by 1 starting from the appropriate position
+    const sceneNum = (takeData.sceneNumber ?? '').toString();
+    const shotNum = (takeData.shotNumber ?? '').toString();
+    const baseTakeNum = parseInt((takeData.takeNumber ?? '0').toString(), 10) || 0;
+    const newTakeNum = before ? Math.max(1, baseTakeNum) : baseTakeNum + 1;
+    if (sceneNum && shotNum) {
+      updateTakeNumbers(projectId!, sceneNum, shotNum, newTakeNum, 1);
+      newData.takeNumber = String(newTakeNum);
+    }
+
     // Set the chosen field to the target number
     newData[fieldId] = String(targetNum).padStart(4, '0');
 
