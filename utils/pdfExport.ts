@@ -115,6 +115,7 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               max-width: 200px;
               word-wrap: break-word;
             }
+            .page-break { page-break-before: always; }
           </style>
         </head>
         <body>
@@ -244,6 +245,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               font-style: italic;
               padding: 20px;
             }
+            .page-break { page-break-before: always; }
           </style>
         </head>
         <body>
@@ -500,7 +502,7 @@ const generateFilmLogHTML = (
   // Add smart export sections if requested
   if (isSmartExport) {
     const smartSections = generateSmartExportSections(logSheets, fieldList, customFields);
-    content += smartSections;
+    content += `\n      <div class="page-break"></div>\n    ` + smartSections;
   }
   
   // Add page numbers
