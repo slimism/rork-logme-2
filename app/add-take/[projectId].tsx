@@ -1855,7 +1855,7 @@ export default function AddTakeScreen() {
               onPress={handleAddTake}
               activeOpacity={0.8}
             >
-              <Text style={styles.addTakeText}>Add Take</Text>
+              <Text style={styles.addTakeText}>Add Log</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2088,6 +2088,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
+    marginTop: 24,
   },
   addTakeButton: {
     backgroundColor: '#BDDFEB',
@@ -2176,7 +2177,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#22C55E',
+    borderColor: '#637760',
     backgroundColor: 'white',
     height: 48,
     alignItems: 'center',
@@ -2184,12 +2185,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     minWidth: 120,
   },
   goodTakeButtonActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#637760',
   },
   goodTakeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#22C55E',
+    color: '#637760',
   },
   goodTakeButtonTextActive: {
     color: 'white',
