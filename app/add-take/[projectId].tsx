@@ -692,8 +692,8 @@ export default function AddTakeScreen() {
         
         fieldsToShift.forEach(fieldId => {
           const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          // Shift all file numbers > newFileNum (not >= newFileNum + 1)
-          updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
+          // Shift all file numbers >= newFileNum (including the duplicate target)
+          updateFileNumbers(projectId!, fieldId, newFileNum, 1);
         });
         
       } else if (duplicateInfo.type === 'file') {
@@ -731,8 +731,8 @@ export default function AddTakeScreen() {
         
         fieldsToShift.forEach(fieldId => {
           const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          // Shift all file numbers > newFileNum (not >= newFileNum + 1)
-          updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
+          // Shift all file numbers >= newFileNum (including the duplicate target)
+          updateFileNumbers(projectId!, fieldId, newFileNum, 1);
         });
         
         // Also shift take numbers if same scene/shot
