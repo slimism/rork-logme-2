@@ -500,7 +500,7 @@ const generateFilmLogHTML = (
   // Add smart export sections if requested
   if (isSmartExport) {
     const smartSections = generateSmartExportSections(logSheets, fieldList, customFields);
-    content += smartSections;
+    content += `\n<div class=\"page-break\"></div>\n<div>\n  ${smartSections}\n</div>`;
   }
   
   // Add page numbers
