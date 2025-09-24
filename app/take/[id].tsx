@@ -1438,7 +1438,7 @@ export default function EditTakeScreen() {
               style={styles.checkboxRow}
               onPress={() => setWasteOptions(prev => ({ ...prev, camera: !prev.camera }))}
             >
-              <View style={[styles.checkbox, wasteOptions.camera && styles.checkboxChecked]}>
+              <View style={[styles.checkbox, (darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder), wasteOptions.camera && styles.checkboxChecked]>
                 {wasteOptions.camera && <Check size={16} color="white" />}
               </View>
               <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Camera file waste</Text>
@@ -1447,7 +1447,7 @@ export default function EditTakeScreen() {
               style={styles.checkboxRow}
               onPress={() => setWasteOptions(prev => ({ ...prev, sound: !prev.sound }))}
             >
-              <View style={[styles.checkbox, wasteOptions.sound && styles.checkboxChecked]}>
+              <View style={[styles.checkbox, (darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder), wasteOptions.sound && styles.checkboxChecked]>
                 {wasteOptions.sound && <Check size={16} color="white" />}
               </View>
               <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Sound file waste</Text>
@@ -1832,6 +1832,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: colors.border,
     height: 44,
   },
   classificationTabActive: {
@@ -1856,14 +1858,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 32,
-    backgroundColor: '#EDEDED',
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
   },
   shotDetailsButtonActive: {
-    backgroundColor: '#eeeeee',
-    borderColor: '#eeeeee',
+    backgroundColor: '#BDDFEB',
+    borderColor: '#BDDFEB',
   },
   shotDetailsButtonText: {
     fontSize: 14,
@@ -1938,6 +1942,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkboxLightBorder: {
+    borderColor: colors.text,
+  },
+  checkboxDarkBorder: {
+    borderColor: '#ffffff',
   },
   checkboxChecked: {
     backgroundColor: colors.primary,
