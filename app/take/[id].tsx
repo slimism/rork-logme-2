@@ -1152,7 +1152,7 @@ export default function EditTakeScreen() {
         ]}
       >
         <View style={[
-          styles.mainContainer,
+          styles.formContainer,
           darkMode && styles.mainContainerDark,
           isLandscape ? styles.mainContainerLandscape : null,
         ]}>
@@ -1168,11 +1168,11 @@ export default function EditTakeScreen() {
             </Text>
           </View>
           {/* Scene, Shot, Take on same row */}
-          <View style={styles.rowContainer}>
+          <View style={styles.topRowContainer}>
             {enabledFields.find((field: FieldType) => field.id === 'sceneNumber') && (
-              <View style={styles.thirdWidth}>
+              <View style={styles.topFieldContainer}>
                 <Text style={[
-                  styles.fieldLabel, 
+                  styles.topFieldLabel, 
                   darkMode && styles.fieldLabelDark,
                   validationErrors.has('sceneNumber') && styles.errorLabel
                 ]}>
@@ -1180,14 +1180,14 @@ export default function EditTakeScreen() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.fieldInput, 
+                    styles.topFieldInput, 
                     darkMode && styles.fieldInputDark,
                     disabledFields.has('sceneNumber') && styles.disabledInput,
                     validationErrors.has('sceneNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('sceneNumber') ? '' : (takeData.sceneNumber || '')}
                   onChangeText={(text) => updateTakeData('sceneNumber', text)}
-                  placeholder={disabledFields.has('sceneNumber') ? '' : 'Enter scene'}
+                  placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
                   onFocus={(event) => {
@@ -1205,9 +1205,9 @@ export default function EditTakeScreen() {
               </View>
             )}
             {enabledFields.find((field: FieldType) => field.id === 'shotNumber') && (
-              <View style={styles.thirdWidth}>
+              <View style={styles.topFieldContainer}>
                 <Text style={[
-                  styles.fieldLabel, 
+                  styles.topFieldLabel, 
                   darkMode && styles.fieldLabelDark,
                   disabledFields.has('shotNumber') && styles.disabledLabel,
                   validationErrors.has('shotNumber') && styles.errorLabel
@@ -1216,14 +1216,14 @@ export default function EditTakeScreen() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.fieldInput, 
+                    styles.topFieldInput, 
                     darkMode && styles.fieldInputDark,
                     disabledFields.has('shotNumber') && styles.disabledInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
                   onChangeText={(text) => updateTakeData('shotNumber', text)}
-                  placeholder={disabledFields.has('shotNumber') ? '' : 'Enter shot'}
+                  placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
                   onFocus={(event) => {
@@ -1241,23 +1241,23 @@ export default function EditTakeScreen() {
               </View>
             )}
             {enabledFields.find((field: FieldType) => field.id === 'takeNumber') && (
-              <View style={styles.thirdWidth}>
+              <View style={styles.topFieldContainer}>
                 <Text style={[
-                  styles.fieldLabel, 
+                  styles.topFieldLabel, 
                   darkMode && styles.fieldLabelDark,
                   disabledFields.has('takeNumber') && styles.disabledLabel,
                   validationErrors.has('takeNumber') && styles.errorLabel
                 ]}>Take</Text>
                 <TextInput
                   style={[
-                    styles.fieldInput, 
+                    styles.topFieldInput, 
                     darkMode && styles.fieldInputDark,
                     disabledFields.has('takeNumber') && styles.disabledInput,
                     validationErrors.has('takeNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
                   onChangeText={(text) => updateTakeData('takeNumber', text)}
-                  placeholder={disabledFields.has('takeNumber') ? '' : 'Enter take'}
+                  placeholder={disabledFields.has('takeNumber') ? '' : ''}
                   placeholderTextColor={darkMode ? '#888' : colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
@@ -1337,72 +1337,78 @@ export default function EditTakeScreen() {
           
           {/* Notes field always last */}
           {notesField && renderField(notesField, allFieldIds)}
-          
-          {/* Classification Section */}
-          <View style={styles.sectionSpacing}>
-            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Classification</Text>
-            <View style={styles.classificationRow}>
-              {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
+        </View>
+
+        {/* Classification Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Classification</Text>
+          <View style={styles.classificationRow}>
+            {(['Waste', 'Insert', 'Ambience', 'SFX'] as ClassificationType[]).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.classificationTab,
+                  classification === type && styles.classificationTabActive
+                ]}
+                onPress={() => handleClassificationPress(type)}
+              >
+                <Text style={[
+                  styles.classificationTabText,
+                  classification === type && styles.classificationTabTextActive
+                ]}>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Shot Details Section */}
+        <View style={[styles.sectionContainer, styles.shotDetailsSection]}>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Shot Details</Text>
+          <View style={styles.shotDetailsRow}>
+            {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
+              const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
+              return (
                 <TouchableOpacity
                   key={type}
                   style={[
-                    styles.classificationTab,
-                    classification === type && styles.classificationTabActive
+                    styles.shotDetailsButton,
+                    shotDetails === type && styles.shotDetailsButtonActive,
+                    isDisabled && styles.shotDetailsButtonDisabled
                   ]}
-                  onPress={() => handleClassificationPress(type)}
+                  onPress={() => !isDisabled && handleShotDetailPress(type)}
+                  disabled={isDisabled}
                 >
                   <Text style={[
-                    styles.classificationTabText,
-                    classification === type && styles.classificationTabTextActive
+                    styles.shotDetailsButtonText,
+                    shotDetails === type && styles.shotDetailsButtonTextActive,
+                    isDisabled && styles.shotDetailsButtonTextDisabled
                   ]}>
-                    {type}
+                    {type === 'NO SLATE' ? 'No Slate' : type}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              );
+            })}
           </View>
+        </View>
 
-          {/* Shot Details Section */}
-          <View style={styles.sectionSpacing}>
-            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Shot Details</Text>
-            <View style={styles.shotDetailsRow}>
-              {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
-                const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
-                return (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.shotDetailsButton,
-                      shotDetails === type && styles.shotDetailsButtonActive,
-                      isDisabled && styles.shotDetailsButtonDisabled
-                    ]}
-                    onPress={() => !isDisabled && handleShotDetailPress(type)}
-                    disabled={isDisabled}
-                  >
-                    <Text style={[
-                      styles.shotDetailsButtonText,
-                      shotDetails === type && styles.shotDetailsButtonTextActive,
-                      isDisabled && styles.shotDetailsButtonTextDisabled
-                    ]}>
-                      {type === 'NO SLATE' ? 'No Slate' : type}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.sectionSpacing}>
-            <View style={styles.goodTakeRow}>
-              <Text style={[styles.goodTakeLabel, darkMode && styles.goodTakeLabelDark]}>Good Take</Text>
-              <Switch
-                testID="good-take-switch"
-                value={isGoodTake}
-                onValueChange={setIsGoodTake}
-                trackColor={{ false: '#e5e7eb', true: '#BDDFEB' }}
-                thumbColor={Platform.OS === 'android' ? (isGoodTake ? '#60a5fa' : '#f4f3f4') : undefined}
-              />
-            </View>
+        <View style={styles.addTakeSection}>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              testID="good-take-button"
+              style={[
+                styles.goodTakeButton,
+                isGoodTake && styles.goodTakeButtonActive
+              ]}
+              onPress={() => setIsGoodTake(!isGoodTake)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.goodTakeButtonText,
+                isGoodTake && styles.goodTakeButtonTextActive
+              ]}>Good Take</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               testID="save-changes-button"
               style={styles.saveChangesButton}
@@ -1540,6 +1546,100 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
   },
+  formContainer: {
+    backgroundColor: 'transparent',
+    margin: 0,
+    borderRadius: 0,
+    padding: 16,
+    shadowColor: 'transparent',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  topRowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  topFieldContainer: {
+    flex: 1,
+  },
+  topFieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  topFieldInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: 'white',
+    height: 48,
+  },
+  addTakeSection: {
+    backgroundColor: 'transparent',
+    margin: 0,
+    borderRadius: 0,
+    padding: 0,
+    shadowColor: 'transparent',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+    marginTop: 24,
+  },
+  goodTakeButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#54a349',
+    backgroundColor: 'white',
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+  },
+  goodTakeButtonActive: {
+    backgroundColor: '#54a349',
+  },
+  goodTakeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#54a349',
+  },
+  goodTakeButtonTextActive: {
+    color: 'white',
+  },
+  sectionContainer: {
+    backgroundColor: 'transparent',
+    margin: 0,
+    borderRadius: 0,
+    padding: 0,
+    shadowColor: 'transparent',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  shotDetailsSection: {
+    marginTop: 16,
+  },
   mainContainerLandscape: {
     margin: 0,
     borderRadius: 0,
@@ -1571,11 +1671,10 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.subtext,
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    color: colors.text,
+    marginBottom: 16,
   },
   sectionTitleDark: {
     color: '#cccccc',
@@ -1629,7 +1728,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.text,
     marginBottom: 8,
   },
@@ -1701,11 +1800,11 @@ const styles = StyleSheet.create({
   },
   saveChangesButton: {
     backgroundColor: '#BDDFEB',
+    flex: 1,
     height: 48,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
   saveChangesText: {
     fontSize: 16,
@@ -1732,7 +1831,7 @@ const styles = StyleSheet.create({
     borderColor: '#BDDFEB',
   },
   classificationTabText: {
-    fontSize: 12,
+    fontSize: 11.2,
     fontWeight: '500',
     color: '#666',
   },
@@ -1760,11 +1859,11 @@ const styles = StyleSheet.create({
   },
   shotDetailsButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
+    fontWeight: '500',
+    color: '#666',
   },
   shotDetailsButtonTextActive: {
-    color: '#3B82F6',
+    color: 'white',
   },
   shotDetailsButtonDisabled: {
     opacity: 0.5,
@@ -1939,8 +2038,8 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
+    alignItems: 'center',
   },
 
 
