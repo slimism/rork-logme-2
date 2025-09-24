@@ -14,8 +14,6 @@ interface TokenState {
   getRemainingTrialLogs: () => number;
 }
 
-const TRIAL_LOG_LIMIT = 15;
-
 export const useTokenStore = create<TokenState>()(
   persist(
     (set, get) => ({
@@ -38,7 +36,7 @@ export const useTokenStore = create<TokenState>()(
       
       useTrial: () => {
         const state = get();
-        if (state.trialLogsUsed < TRIAL_LOG_LIMIT && !state.trialCompleted) {
+        if (!state.trialCompleted) {
           set({ trialLogsUsed: state.trialLogsUsed + 1 });
           return true;
         }
@@ -47,17 +45,17 @@ export const useTokenStore = create<TokenState>()(
       
       canCreateProject: () => {
         const state = get();
-        return state.tokens > 0 || (!state.trialCompleted && state.trialLogsUsed < TRIAL_LOG_LIMIT);
+        return state.tokens > 0 || !state.trialCompleted;
       },
       
       canAddLog: () => {
         const state = get();
-        return state.tokens > 0 || (!state.trialCompleted && state.trialLogsUsed < TRIAL_LOG_LIMIT);
+        return state.tokens > 0 || !state.trialCompleted;
       },
       
       getRemainingTrialLogs: () => {
         const state = get();
-        return Math.max(0, TRIAL_LOG_LIMIT - state.trialLogsUsed);
+        return state.trialCompleted ? 0 : Infinity;
       },
     }),
     {
