@@ -1350,8 +1350,8 @@ export default function EditTakeScreen() {
                 key={type}
                 style={[
                   styles.classificationTab,
-                  classification === type && styles.classificationTabActive,
-                  darkMode && styles.classificationTabDark
+                  darkMode && styles.classificationTabDark,
+                  classification === type && styles.classificationTabActive
                 ]}
                 onPress={() => handleClassificationPress(type)}
               >
@@ -1377,9 +1377,9 @@ export default function EditTakeScreen() {
                   key={type}
                   style={[
                     styles.shotDetailsButton,
+                    darkMode && styles.shotDetailsButtonDark,
                     shotDetails === type && styles.shotDetailsButtonActive,
-                    isDisabled && styles.shotDetailsButtonDisabled,
-                    darkMode && styles.shotDetailsButtonDark
+                    isDisabled && styles.shotDetailsButtonDisabled
                   ]}
                   onPress={() => !isDisabled && handleShotDetailPress(type)}
                   disabled={isDisabled}
@@ -1521,7 +1521,7 @@ export default function EditTakeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#ffffff',
   },
   containerDark: {
     backgroundColor: '#1a1a1a',
@@ -1760,6 +1760,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   fieldInputDark: {
     backgroundColor: '#2a2a2a',
@@ -1786,6 +1788,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   rangeSeparator: {
     fontSize: 16,
