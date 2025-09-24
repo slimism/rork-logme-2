@@ -8,7 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { ChevronLeft, Calendar, Hourglass, Infinity } from 'lucide-react-native';
+import { Calendar, Hourglass, Infinity } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
 import { iapService, IAPProduct } from '@/services/iapService';
@@ -143,9 +143,7 @@ export default function Store() {
     <View style={[styles.container, darkMode && styles.containerDark]}>
       {/* Header */}
       <View style={[styles.header, darkMode && styles.headerDark, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>Store</Text>
         <View style={styles.headerSpacer} />
       </View>

@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, Linking } from 'react-native';
 import { useColors } from '@/constants/colors';
-import { ChevronLeft } from 'lucide-react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/store/themeStore';
 
@@ -15,9 +15,7 @@ export default function AboutScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>About</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -77,7 +75,21 @@ export default function AboutScreen() {
         <Text style={styles.outsideSectionTitle}>CONTACT US</Text>
         <View style={styles.whiteContainer}>
           <Text style={styles.contactText}>
-            For feedback, bug reports, or concerns, please reach us at logme.film@gmail.com
+            For feedback, bug reports, or concerns, please reach us at 
+            <Text
+              testID="contact-email-link"
+              onPress={() => {
+                const subject = encodeURIComponent('LogMeApp: Contact Us Form');
+                const email = 'logme.film@gmail.com';
+                const url = `mailto:${email}?subject=${subject}`;
+                Linking.openURL(url).catch((err) => {
+                  console.log('[About] Failed to open mail app', err);
+                });
+              }}
+              style={{ color: colors.primary, textDecorationLine: 'underline' }}
+            >
+              logme.film@gmail.com
+            </Text>
           </Text>
         </View>
       </ScrollView>
