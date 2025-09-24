@@ -1834,24 +1834,30 @@ export default function AddTakeScreen() {
         </View>
 
         <View style={styles.addTakeSection}>
-          <View style={styles.goodTakeRow}>
-            <Text style={styles.goodTakeLabel}>Good Take</Text>
-            <Switch
-              testID="good-take-switch"
-              value={isGoodTake}
-              onValueChange={setIsGoodTake}
-              trackColor={{ false: '#e5e7eb', true: '#BDDFEB' }}
-              thumbColor={Platform.OS === 'android' ? (isGoodTake ? '#60a5fa' : '#f4f3f4') : undefined}
-            />
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              testID="good-take-button"
+              style={[
+                styles.goodTakeButton,
+                isGoodTake && styles.goodTakeButtonActive
+              ]}
+              onPress={() => setIsGoodTake(!isGoodTake)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.goodTakeButtonText,
+                isGoodTake && styles.goodTakeButtonTextActive
+              ]}>Good Take</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="add-take-button"
+              style={styles.addTakeButton}
+              onPress={handleAddTake}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.addTakeText}>Add Take</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            testID="add-record-button"
-            style={styles.addRecordButton}
-            onPress={handleAddTake}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.addRecordText}>Add Record</Text>
-          </TouchableOpacity>
         </View>
 
 
@@ -2028,9 +2034,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flex: 1,
   },
   topFieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: 8,
   },
   topFieldInput: {
@@ -2048,9 +2054,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: 24,
   },
   fieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: 8,
   },
   fieldInput: {
@@ -2084,32 +2090,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     elevation: 0,
   },
   addTakeButton: {
-    backgroundColor: '#2c3e50',
-    flex: 1,
-    height: 48,
-  },
-  goodTakeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  goodTakeLabel: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  addRecordButton: {
     backgroundColor: '#BDDFEB',
+    flex: 1,
     height: 48,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
-  addRecordText: {
+  addTakeText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0b0b0b',
@@ -2153,8 +2141,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   buttonRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
+    alignItems: 'center',
   },
   toggleButton: {
     paddingHorizontal: 20,
@@ -2184,24 +2172,24 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     gap: 12,
   },
   goodTakeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.success,
+    borderColor: '#22C55E',
     backgroundColor: 'white',
-    gap: 8,
     height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
   },
   goodTakeButtonActive: {
-    backgroundColor: colors.success,
+    backgroundColor: '#22C55E',
   },
   goodTakeButtonText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: colors.success,
+    fontWeight: '600',
+    color: '#22C55E',
   },
   goodTakeButtonTextActive: {
     color: 'white',
