@@ -42,7 +42,8 @@ export default function EditTakeScreen() {
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [duplicateMessage, setDuplicateMessage] = useState('');
+  const [duplicateInfo, setDuplicateInfo] = useState<any>(null);
+  const [duplicateAction, setDuplicateAction] = useState<'before' | 'after' | null>(null);
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -272,82 +273,86 @@ export default function EditTakeScreen() {
     }));
   };
 
-  // Helper function to check for duplicate file numbers
-  const checkForDuplicateFiles = () => {
-    if (!logSheet) return [];
+  // Helper function to find first duplicate take number within same scene and shot
+  const findDuplicateTake = () => {
+    if (!logSheet) return null;
     
     const projectLogSheets = logSheets.filter(sheet => 
       sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id // Exclude current take
     );
-    const duplicates: string[] = [];
+    const sceneNumber = takeData.sceneNumber;
+    const shotNumber = takeData.shotNumber;
+    const takeNumber = takeData.takeNumber;
     
-    // Check sound file
-    if (takeData.soundFile && !disabledFields.has('soundFile')) {
-      const soundFileValue = takeData.soundFile;
-      const existingSheet = projectLogSheets.find(sheet => 
-        sheet.data?.soundFile === soundFileValue
+    if (sceneNumber && shotNumber && takeNumber) {
+      const existingTake = projectLogSheets.find(sheet => 
+        sheet.data?.sceneNumber === sceneNumber &&
+        sheet.data?.shotNumber === shotNumber &&
+        sheet.data?.takeNumber === takeNumber
       );
       
-      if (existingSheet) {
-        duplicates.push(`Sound File "${soundFileValue}"`);
+      if (existingTake) {
+        return {
+          type: 'take',
+          label: 'Take',
+          fieldId: 'takeNumber',
+          value: takeNumber,
+          number: parseInt(takeNumber) || 0,
+          sceneNumber,
+          shotNumber,
+          existingEntry: existingTake
+        };
       }
     }
     
-    // Check camera files
+    return null;
+  };
+
+  // Helper function to find first duplicate file number across all scenes and shots
+  const findFirstDuplicateFile = () => {
+    if (!logSheet) return null;
+    
+    const projectLogSheets = logSheets.filter(sheet => 
+      sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id // Exclude current take
+    );
+    type DuplicateInfo = { type: string; label: string; fieldId: string; value: string; number: number; existingEntry: any } | null;
+
+    // Sound first - check across all scenes and shots
+    if (takeData.soundFile && !disabledFields.has('soundFile')) {
+      const val = takeData.soundFile as string;
+      const existingEntry = projectLogSheets.find(s => s.data?.soundFile === val);
+      if (existingEntry) {
+        return { type: 'file', label: 'Sound File', fieldId: 'soundFile', value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
+      }
+    }
+    
+    // Camera files - check across all scenes and shots
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
-        const cameraFileValue = takeData.cameraFile;
-        const existingSheet = projectLogSheets.find(sheet => 
-          sheet.data?.cameraFile === cameraFileValue
-        );
-        
-        if (existingSheet) {
-          duplicates.push(`Camera File "${cameraFileValue}"`);
+        const val = takeData.cameraFile as string;
+        const existingEntry = projectLogSheets.find(s => s.data?.cameraFile === val);
+        if (existingEntry) {
+          return { type: 'file', label: 'Camera File', fieldId: 'cameraFile', value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
         }
       }
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
-        if (takeData[fieldId] && !disabledFields.has(fieldId)) {
-          const cameraFileValue = takeData[fieldId];
-          const existingSheet = projectLogSheets.find(sheet => 
-            sheet.data?.[fieldId] === cameraFileValue
-          );
-          
-          if (existingSheet) {
-            duplicates.push(`Camera File ${i} "${cameraFileValue}"`);
+        const val = takeData[fieldId] as string | undefined;
+        if (val && !disabledFields.has(fieldId)) {
+          const existingEntry = projectLogSheets.find(s => s.data?.[fieldId] === val);
+          if (existingEntry) {
+            return { type: 'file', label: `Camera File ${i}`, fieldId, value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
           }
         }
       }
     }
     
-    return duplicates;
+    return null;
   };
 
-  const checkForDuplicateTake = () => {
-    if (!logSheet) return false;
-    
-    const sceneNumber = takeData.sceneNumber;
-    const shotNumber = takeData.shotNumber;
-    const takeNumber = takeData.takeNumber;
-    
-    // Only check for duplicates if we have scene, shot, and take numbers
-    if (!sceneNumber || !shotNumber || !takeNumber) {
-      return false;
-    }
-    
-    // Check if there's another take with the same scene, shot, and take number (excluding current take)
-    const duplicateTake = logSheets.find(sheet => 
-      sheet.id !== logSheet.id && // Exclude current take
-      sheet.projectId === logSheet.projectId &&
-      sheet.data?.sceneNumber === sceneNumber &&
-      sheet.data?.shotNumber === shotNumber &&
-      sheet.data?.takeNumber === takeNumber
-    );
-    
-    return duplicateTake;
-  };
+
 
   // Helper function to validate mandatory fields
   const validateMandatoryFields = () => {
@@ -416,37 +421,309 @@ export default function EditTakeScreen() {
       return;
     }
     
-    // Check for duplicate file numbers
-    const duplicateFiles = checkForDuplicateFiles();
-    if (duplicateFiles.length > 0) {
-      const duplicateList = duplicateFiles.join(', ');
-      Toast.show({
-        type: 'error',
-        text1: 'Duplicate File Numbers',
-        text2: `${duplicateList} already exist in this project`,
-        position: 'top',
-        visibilityTime: 4000,
-      });
+    // Check for take number duplicates within same scene and shot first
+    const duplicateTake = findDuplicateTake();
+    if (duplicateTake) {
+      setDuplicateInfo(duplicateTake);
+      Alert.alert(
+        'Duplicate Detected',
+        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Insert Before',
+            onPress: () => {
+              setDuplicateAction('before');
+              handleSaveWithDuplicateHandling('before', duplicateTake);
+            },
+          },
+          {
+            text: 'Insert After',
+            onPress: () => {
+              setDuplicateAction('after');
+              handleSaveWithDuplicateHandling('after', duplicateTake);
+            },
+          },
+        ]
+      );
       return;
     }
     
-    // Check for duplicate takes
-    const duplicateTake = checkForDuplicateTake();
-    if (duplicateTake) {
-      console.log('Duplicate take detected:', {
-        current: { scene: takeData.sceneNumber, shot: takeData.shotNumber, take: takeData.takeNumber },
-        duplicate: { scene: duplicateTake.data?.sceneNumber, shot: duplicateTake.data?.shotNumber, take: duplicateTake.data?.takeNumber }
-      });
-      
-      Toast.show({
-        type: 'error',
-        text1: 'Duplicate Take',
-        text2: `Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}, Take ${takeData.takeNumber} already exists`,
-        position: 'top',
-        visibilityTime: 4000,
-      });
+    // Check for duplicate file numbers across all scenes and shots
+    const duplicateFile = findFirstDuplicateFile();
+    if (duplicateFile) {
+      setDuplicateInfo(duplicateFile);
+      Alert.alert(
+        'Duplicate Detected',
+        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Insert Before',
+            onPress: () => {
+              setDuplicateAction('before');
+              handleSaveWithDuplicateHandling('before', duplicateFile);
+            },
+          },
+          {
+            text: 'Insert After',
+            onPress: () => {
+              setDuplicateAction('after');
+              handleSaveWithDuplicateHandling('after', duplicateFile);
+            },
+          },
+        ]
+      );
       return;
     }
+    
+    // No duplicate, save normally
+    saveNormally();
+  };
+  
+  const handleSaveWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
+    if (!logSheet || !project) return;
+    
+    const { updateTakeNumbers, updateFileNumbers } = useProjectStore.getState();
+    const camCount = project?.settings?.cameraConfiguration || 1;
+    const existingEntry = duplicateInfo.existingEntry;
+    
+    if (position === 'before') {
+      // Insert Before special logic
+      let newLogData = { ...takeData };
+      
+      if (duplicateInfo.type === 'take') {
+        // For take duplicates: copy the duplicate target's camera file and sound file to the new log
+        if (existingEntry.data?.soundFile) {
+          newLogData.soundFile = existingEntry.data.soundFile;
+        }
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          newLogData.cameraFile = existingEntry.data.cameraFile;
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              newLogData[fieldId] = existingEntry.data[fieldId];
+            }
+          }
+        }
+        
+        // Shift the duplicate target and all subsequent entries by +1 for take numbers (within same scene/shot)
+        const sceneNumber = takeData.sceneNumber!;
+        const shotNumber = takeData.shotNumber!;
+        const takeNumber = parseInt(takeData.takeNumber || '1');
+        updateTakeNumbers(logSheet.projectId!, sceneNumber, shotNumber, takeNumber, 1);
+        
+        // Shift all file numbers from the duplicate target onwards (across all scenes/shots)
+        const fieldsToShift: string[] = ['soundFile'];
+        if (camCount === 1) {
+          fieldsToShift.push('cameraFile');
+        } else {
+          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
+        }
+        
+        fieldsToShift.forEach(fieldId => {
+          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
+          if (targetFileNum > 0) {
+            updateFileNumbers(logSheet.projectId!, fieldId, targetFileNum, 1);
+          }
+        });
+        
+      } else if (duplicateInfo.type === 'file') {
+        // For file duplicates: copy the duplicate target's identifiers
+        if (existingEntry.data?.soundFile) {
+          newLogData.soundFile = existingEntry.data.soundFile;
+        }
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          newLogData.cameraFile = existingEntry.data.cameraFile;
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              newLogData[fieldId] = existingEntry.data[fieldId];
+            }
+          }
+        }
+        if (existingEntry.data?.takeNumber) {
+          newLogData.takeNumber = existingEntry.data.takeNumber;
+        }
+        
+        // Shift the duplicate target and all subsequent entries by +1
+        const fieldsToShift: string[] = ['soundFile'];
+        if (camCount === 1) {
+          fieldsToShift.push('cameraFile');
+        } else {
+          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
+        }
+        
+        fieldsToShift.forEach(fieldId => {
+          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
+          if (targetFileNum > 0) {
+            updateFileNumbers(logSheet.projectId!, fieldId, targetFileNum, 1);
+          }
+        });
+        
+        // Also shift take numbers if same scene/shot
+        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && existingEntry.data?.takeNumber) {
+          const takeNum = parseInt(existingEntry.data.takeNumber);
+          if (!isNaN(takeNum)) {
+            updateTakeNumbers(logSheet.projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, takeNum, 1);
+          }
+        }
+      }
+      
+      // Update current log with new data
+      const finalTakeData = { ...newLogData };
+      if (camCount > 1) {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fieldId] ?? true;
+          if (!isRecActive) {
+            delete finalTakeData[fieldId];
+          }
+        }
+      }
+      
+      const updatedData = {
+        ...finalTakeData,
+        classification,
+        shotDetails,
+        isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+        cameraRecState: camCount > 1 ? cameraRecState : undefined
+      };
+      
+      updateLogSheet(logSheet.id, updatedData);
+      
+    } else {
+      // Insert After logic
+      let newLogData = { ...takeData };
+      
+      if (duplicateInfo.type === 'take') {
+        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        if (existingEntry.data?.soundFile) {
+          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
+          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
+        }
+        
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
+          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
+              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
+            }
+          }
+        }
+        
+        if (existingEntry.data?.takeNumber) {
+          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        }
+        
+        // Shift all subsequent entries (after the new log) by +1 onwards
+        const sceneNumber = existingEntry.data?.sceneNumber!;
+        const shotNumber = existingEntry.data?.shotNumber!;
+        const newTakeNumber = parseInt(newLogData.takeNumber || '1');
+        
+        // For take numbers, shift all entries in the same scene/shot that have take numbers > newTakeNumber
+        updateTakeNumbers(logSheet.projectId!, sceneNumber, shotNumber, newTakeNumber + 1, 1);
+        
+        // Shift file numbers for all subsequent entries across all scenes/shots
+        const fieldsToShift: string[] = ['soundFile'];
+        if (camCount === 1) {
+          fieldsToShift.push('cameraFile');
+        } else {
+          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
+        }
+        
+        fieldsToShift.forEach(fieldId => {
+          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          // Shift all file numbers >= newFileNum (including the duplicate target)
+          updateFileNumbers(logSheet.projectId!, fieldId, newFileNum, 1);
+        });
+        
+      } else if (duplicateInfo.type === 'file') {
+        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        if (existingEntry.data?.soundFile) {
+          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
+          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
+        }
+        
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
+          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
+              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
+            }
+          }
+        }
+        
+        if (existingEntry.data?.takeNumber) {
+          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        }
+        
+        // Shift all subsequent entries (after the new log) by +1 onwards
+        const fieldsToShift: string[] = ['soundFile'];
+        if (camCount === 1) {
+          fieldsToShift.push('cameraFile');
+        } else {
+          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
+        }
+        
+        fieldsToShift.forEach(fieldId => {
+          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          // Shift all file numbers >= newFileNum (including the duplicate target)
+          updateFileNumbers(logSheet.projectId!, fieldId, newFileNum, 1);
+        });
+        
+        // Also shift take numbers if same scene/shot
+        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
+          const newTakeNum = parseInt(newLogData.takeNumber);
+          // Shift all take numbers >= newTakeNum in the same scene/shot (including the duplicate target)
+          updateTakeNumbers(logSheet.projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum, 1);
+        }
+      }
+      
+      // Update current log with new data
+      const finalTakeData = { ...newLogData };
+      if (camCount > 1) {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fieldId] ?? true;
+          if (!isRecActive) {
+            delete finalTakeData[fieldId];
+          }
+        }
+      }
+      
+      const updatedData = {
+        ...finalTakeData,
+        classification,
+        shotDetails,
+        isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+        cameraRecState: camCount > 1 ? cameraRecState : undefined
+      };
+      
+      updateLogSheet(logSheet.id, updatedData);
+    }
+    
+    router.back();
+  };
+  
+  const saveNormally = () => {
+    if (!logSheet || !project) return;
     
     try {
       // Prepare final take data with REC state considerations
@@ -1214,28 +1491,7 @@ export default function EditTakeScreen() {
         </View>
       </Modal>
 
-      {/* Duplicate Take Modal */}
-      <Modal
-        visible={showDuplicateModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDuplicateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
-            <Text style={[styles.modalTitle, darkMode && styles.modalTitleDark]}>Duplicate Take Detected</Text>
-            <Text style={[styles.modalDescription, darkMode && styles.modalDescriptionDark]}>{duplicateMessage}</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={() => setShowDuplicateModal(false)}
-              >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
       
       <Toast />
     </KeyboardAvoidingView>
