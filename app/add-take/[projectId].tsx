@@ -650,17 +650,37 @@ export default function AddTakeScreen() {
       let newLogData = { ...takeData };
       
       if (duplicateInfo.type === 'take') {
-        // For take duplicates: increment take number by 1
-        const takeNumber = parseInt(takeData.takeNumber || '1');
-        const newTakeNumber = takeNumber + 1;
-        newLogData.takeNumber = newTakeNumber.toString();
+        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        if (existingEntry.data?.soundFile) {
+          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
+          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
+        }
         
-        // Shift all subsequent takes in same scene/shot
-        const sceneNumber = takeData.sceneNumber!;
-        const shotNumber = takeData.shotNumber!;
-        updateTakeNumbers(projectId!, sceneNumber, shotNumber, newTakeNumber, 1);
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
+          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
+              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
+            }
+          }
+        }
         
-        // Increment file numbers and shift subsequent ones
+        if (existingEntry.data?.takeNumber) {
+          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        }
+        
+        // Shift all subsequent entries (after the new log) by +1 onwards
+        const sceneNumber = existingEntry.data?.sceneNumber!;
+        const shotNumber = existingEntry.data?.shotNumber!;
+        const newTakeNumber = parseInt(newLogData.takeNumber || '1');
+        updateTakeNumbers(projectId!, sceneNumber, shotNumber, newTakeNumber + 1, 1);
+        
+        // Shift file numbers for all subsequent entries
         const fieldsToShift: string[] = ['soundFile'];
         if (camCount === 1) {
           fieldsToShift.push('cameraFile');
@@ -669,14 +689,36 @@ export default function AddTakeScreen() {
         }
         
         fieldsToShift.forEach(fieldId => {
-          const currentNum = parseInt(takeData[fieldId] || '0') || 0;
-          const nextNum = currentNum + 1;
-          newLogData[fieldId] = String(nextNum).padStart(4, '0');
-          updateFileNumbers(projectId!, fieldId, nextNum, 1);
+          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
         });
         
       } else if (duplicateInfo.type === 'file') {
-        // For file duplicates: increment file numbers and shift subsequent ones
+        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        if (existingEntry.data?.soundFile) {
+          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
+          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
+        }
+        
+        if (camCount === 1 && existingEntry.data?.cameraFile) {
+          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
+          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
+        } else if (camCount > 1) {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (existingEntry.data?.[fieldId]) {
+              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
+              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
+            }
+          }
+        }
+        
+        if (existingEntry.data?.takeNumber) {
+          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        }
+        
+        // Shift all subsequent entries (after the new log) by +1 onwards
         const fieldsToShift: string[] = ['soundFile'];
         if (camCount === 1) {
           fieldsToShift.push('cameraFile');
@@ -685,18 +727,14 @@ export default function AddTakeScreen() {
         }
         
         fieldsToShift.forEach(fieldId => {
-          const currentNum = parseInt(takeData[fieldId] || '0') || 0;
-          const nextNum = currentNum + 1;
-          newLogData[fieldId] = String(nextNum).padStart(4, '0');
-          updateFileNumbers(projectId!, fieldId, nextNum, 1);
+          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
         });
         
-        // Also increment take number if same scene/shot
-        if (takeData.sceneNumber && takeData.shotNumber && takeData.takeNumber) {
-          const takeNum = parseInt(takeData.takeNumber);
-          const newTakeNum = takeNum + 1;
-          newLogData.takeNumber = newTakeNum.toString();
-          updateTakeNumbers(projectId!, takeData.sceneNumber, takeData.shotNumber, newTakeNum, 1);
+        // Also shift take numbers if same scene/shot
+        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
+          const newTakeNum = parseInt(newLogData.takeNumber);
+          updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum + 1, 1);
         }
       }
       
