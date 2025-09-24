@@ -678,9 +678,11 @@ export default function AddTakeScreen() {
         const sceneNumber = existingEntry.data?.sceneNumber!;
         const shotNumber = existingEntry.data?.shotNumber!;
         const newTakeNumber = parseInt(newLogData.takeNumber || '1');
+        
+        // For take numbers, shift all entries in the same scene/shot that have take numbers > newTakeNumber
         updateTakeNumbers(projectId!, sceneNumber, shotNumber, newTakeNumber + 1, 1);
         
-        // Shift file numbers for all subsequent entries
+        // Shift file numbers for all subsequent entries across all scenes/shots
         const fieldsToShift: string[] = ['soundFile'];
         if (camCount === 1) {
           fieldsToShift.push('cameraFile');
@@ -690,6 +692,7 @@ export default function AddTakeScreen() {
         
         fieldsToShift.forEach(fieldId => {
           const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          // Shift all file numbers > newFileNum (not >= newFileNum + 1)
           updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
         });
         
@@ -728,12 +731,14 @@ export default function AddTakeScreen() {
         
         fieldsToShift.forEach(fieldId => {
           const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
+          // Shift all file numbers > newFileNum (not >= newFileNum + 1)
           updateFileNumbers(projectId!, fieldId, newFileNum + 1, 1);
         });
         
         // Also shift take numbers if same scene/shot
         if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
           const newTakeNum = parseInt(newLogData.takeNumber);
+          // Shift all take numbers > newTakeNum in the same scene/shot
           updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum + 1, 1);
         }
       }
