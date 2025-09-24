@@ -2177,7 +2177,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#637760',
+    borderColor: '#54a349',
     backgroundColor: 'white',
     height: 48,
     alignItems: 'center',
@@ -2185,12 +2185,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     minWidth: 120,
   },
   goodTakeButtonActive: {
-    backgroundColor: '#637760',
+    backgroundColor: '#54a349',
   },
   goodTakeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#637760',
+    color: '#54a349',
   },
   goodTakeButtonTextActive: {
     color: 'white',
@@ -2402,7 +2402,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     borderColor: '#BDDFEB',
   },
   classificationTabText: {
-    fontSize: 14,
+    fontSize: 11.2,
     fontWeight: '500',
     color: '#666',
   },
