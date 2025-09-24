@@ -75,8 +75,7 @@ export default function AboutScreen() {
         <Text style={styles.outsideSectionTitle}>CONTACT US</Text>
         <View style={styles.whiteContainer}>
           <Text style={styles.contactText}>
-            For feedback, bug reports, or concerns, please reach us at 
-            <Text
+            For feedback, bug reports, or concerns, please reach us at <Text
               testID="contact-email-link"
               onPress={() => {
                 const subject = encodeURIComponent('LogMeApp: Contact Us Form');
