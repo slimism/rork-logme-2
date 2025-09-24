@@ -166,24 +166,7 @@ export default function ProjectScreen() {
       details.push(take.data.shotDetails);
     }
     
-    // Format created and updated dates
-    const formatDateTime = (dateString: string) => {
-      if (!dateString) return 'Unknown';
-      try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Unknown';
-        return date.toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-      } catch {
-        return 'Unknown';
-      }
-    };
+
     
     return (
       <View style={[
@@ -211,8 +194,22 @@ export default function ProjectScreen() {
               <Text style={[styles.takeDetails, darkMode && styles.takeDetailsDark]}>{details.filter(Boolean).join(', ')}</Text>
             )}
             
-            <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Created: {formatDateTime(take.createdAt)}</Text>
-            <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Last updated: {formatDateTime(take.updatedAt || take.createdAt)}</Text>
+            {/* Camera Files */}
+            {take.data?.cameraFile && (
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>
+                Camera: {Array.isArray(take.data.cameraFile) ? take.data.cameraFile.join(', ') : take.data.cameraFile}
+              </Text>
+            )}
+            
+            {/* Sound File */}
+            {take.data?.soundFile && (
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Sound: {take.data.soundFile}</Text>
+            )}
+            
+            {/* Description */}
+            {take.data?.descriptionOfShot && (
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Description: {take.data.descriptionOfShot}</Text>
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -249,7 +246,7 @@ export default function ProjectScreen() {
             <Search size={20} color={colors.subtext} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, darkMode && styles.searchInputDark]}
-              placeholder="Search film logs"
+              placeholder="Search descriptions"
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.subtext}
