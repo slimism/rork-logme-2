@@ -738,8 +738,8 @@ export default function AddTakeScreen() {
         // Also shift take numbers if same scene/shot
         if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
           const newTakeNum = parseInt(newLogData.takeNumber);
-          // Shift all take numbers > newTakeNum in the same scene/shot
-          updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum + 1, 1);
+          // Shift all take numbers >= newTakeNum in the same scene/shot (including the duplicate target)
+          updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum, 1);
         }
       }
       

@@ -125,12 +125,14 @@ export default function ProjectScreen() {
       scenes[sceneNumber][shotNumber].push(sheet);
     });
     
-    // Sort takes within each shot by most recent first
+    // Sort takes within each shot by take number in descending order
     Object.keys(scenes).forEach(sceneKey => {
       Object.keys(scenes[sceneKey]).forEach(shotKey => {
-        scenes[sceneKey][shotKey].sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        scenes[sceneKey][shotKey].sort((a, b) => {
+          const takeA = parseInt(a.data?.takeNumber || '0');
+          const takeB = parseInt(b.data?.takeNumber || '0');
+          return takeB - takeA; // Descending order (highest take number first)
+        });
       });
     });
     
