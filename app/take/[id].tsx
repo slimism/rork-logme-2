@@ -1438,8 +1438,13 @@ export default function EditTakeScreen() {
               style={styles.checkboxRow}
               onPress={() => setWasteOptions(prev => ({ ...prev, camera: !prev.camera }))}
             >
-              <View style={[styles.checkbox, (darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder), wasteOptions.camera && styles.checkboxChecked]>
-                {wasteOptions.camera && <Check size={16} color="white" />}
+              <View style={[
+                styles.checkbox,
+                darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder,
+                wasteOptions.camera ? styles.checkboxChecked : undefined
+              ]}
+              >
+                {wasteOptions.camera ? <Check size={16} color="white" /> : null}
               </View>
               <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Camera file waste</Text>
             </TouchableOpacity>
@@ -1447,8 +1452,13 @@ export default function EditTakeScreen() {
               style={styles.checkboxRow}
               onPress={() => setWasteOptions(prev => ({ ...prev, sound: !prev.sound }))}
             >
-              <View style={[styles.checkbox, (darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder), wasteOptions.sound && styles.checkboxChecked]>
-                {wasteOptions.sound && <Check size={16} color="white" />}
+              <View style={[
+                styles.checkbox,
+                darkMode ? styles.checkboxDarkBorder : styles.checkboxLightBorder,
+                wasteOptions.sound ? styles.checkboxChecked : undefined
+              ]}
+              >
+                {wasteOptions.sound ? <Check size={16} color="white" /> : null}
               </View>
               <Text style={[styles.checkboxLabel, darkMode && styles.checkboxLabelDark]}>Sound file waste</Text>
             </TouchableOpacity>
