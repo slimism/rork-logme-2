@@ -1155,7 +1155,7 @@ export default function EditTakeScreen() {
         ]}
       >
         <View style={[
-          styles.formContainer,
+          styles.sectionContainer,
           darkMode && styles.mainContainerDark,
           isLandscape ? styles.mainContainerLandscape : null,
         ]}>
