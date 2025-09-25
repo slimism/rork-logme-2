@@ -223,11 +223,21 @@ export default function ProjectScreen() {
             )}
 
             {cameraFiles.length > 0 && (
-              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Camera: {cameraFiles.join(', ')}</Text>
+              <View style={styles.cameraList}>
+                {cameraFiles.map((file, idx) => (
+                  <Text
+                    key={`cam-${idx}`}
+                    style={[styles.takeTime, darkMode && styles.takeTimeDark]}
+                    testID={`camera-file-${idx + 1}`}
+                  >
+                    {`Camera ${idx + 1}: ${file}`}
+                  </Text>
+                ))}
+              </View>
             )}
 
             {take.data?.soundFile && (
-              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Sound: {take.data.soundFile}</Text>
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">Sound: {take.data.soundFile}</Text>
             )}
 
             {take.data?.descriptionOfShot && (
@@ -1034,5 +1044,8 @@ const styles = StyleSheet.create({
   },
   recentlyCreatedList: {
     gap: 0,
+  },
+  cameraList: {
+    marginTop: 2,
   },
 });
