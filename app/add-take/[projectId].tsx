@@ -553,6 +553,36 @@ export default function AddTakeScreen() {
           }
         }
         
+        // Take number logic: only copy if same shot, otherwise use last take + 1 in current shot
+        const currentSceneNumber = takeData.sceneNumber;
+        const currentShotNumber = takeData.shotNumber;
+        const targetSceneNumber = existingEntry.data?.sceneNumber;
+        const targetShotNumber = existingEntry.data?.shotNumber;
+        
+        if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+          // Same shot: copy the take number (will be shifted by updateTakeNumbers)
+          if (existingEntry.data?.takeNumber) {
+            newLogData.takeNumber = existingEntry.data.takeNumber;
+          }
+        } else {
+          // Different shot: find the last take number in current shot and add 1
+          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+          const sameShotTakes = projectLogSheets.filter(sheet => 
+            sheet.data?.sceneNumber === currentSceneNumber &&
+            sheet.data?.shotNumber === currentShotNumber
+          );
+          
+          let lastTakeNumber = 0;
+          sameShotTakes.forEach(sheet => {
+            const takeNum = parseInt(sheet.data?.takeNumber || '0');
+            if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
+              lastTakeNumber = takeNum;
+            }
+          });
+          
+          newLogData.takeNumber = (lastTakeNumber + 1).toString();
+        }
+        
         // Shift the duplicate target and all subsequent entries by +1 for take numbers (within same scene/shot)
         const sceneNumber = takeData.sceneNumber!;
         const shotNumber = takeData.shotNumber!;
@@ -716,9 +746,35 @@ export default function AddTakeScreen() {
           }
         }
         
-        if (existingEntry.data?.takeNumber) {
-          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        // Take number logic: only copy and increment if same shot, otherwise use last take + 1 in current shot
+        const currentSceneNumber = takeData.sceneNumber;
+        const currentShotNumber = takeData.shotNumber;
+        const targetSceneNumber = existingEntry.data?.sceneNumber;
+        const targetShotNumber = existingEntry.data?.shotNumber;
+        
+        if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+          // Same shot: copy and increment the take number
+          if (existingEntry.data?.takeNumber) {
+            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+            newLogData.takeNumber = String(duplicateTakeNum + 1);
+          }
+        } else {
+          // Different shot: find the last take number in current shot and add 1
+          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+          const sameShotTakes = projectLogSheets.filter(sheet => 
+            sheet.data?.sceneNumber === currentSceneNumber &&
+            sheet.data?.shotNumber === currentShotNumber
+          );
+          
+          let lastTakeNumber = 0;
+          sameShotTakes.forEach(sheet => {
+            const takeNum = parseInt(sheet.data?.takeNumber || '0');
+            if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
+              lastTakeNumber = takeNum;
+            }
+          });
+          
+          newLogData.takeNumber = (lastTakeNumber + 1).toString();
         }
         
         // Shift all subsequent entries (after the new log) by +1 onwards
