@@ -601,7 +601,7 @@ export default function EditTakeScreen() {
       let newLogData = { ...takeData };
       
       if (duplicateInfo.type === 'take') {
-        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        // Always increment camera file and sound file
         if (existingEntry.data?.soundFile) {
           const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
           newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
@@ -620,18 +620,28 @@ export default function EditTakeScreen() {
           }
         }
         
-        if (existingEntry.data?.takeNumber) {
-          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        // Check if new log is in same scene and shot as duplicate target
+        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
+        const duplicateShotNumber = existingEntry.data?.shotNumber;
+        const newLogSceneNumber = newLogData.sceneNumber;
+        const newLogShotNumber = newLogData.shotNumber;
+        
+        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
+        
+        if (isSameSceneAndShot) {
+          // Copy take number from duplicate target
+          if (existingEntry.data?.takeNumber) {
+            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+            newLogData.takeNumber = String(duplicateTakeNum);
+          }
+          
+          // Increment the duplicate target and all subsequent takes in same scene/shot by 1
+          const duplicateTakeNum = parseInt(existingEntry.data?.takeNumber || '1');
+          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, duplicateTakeNum, 1);
+        } else {
+          // Different scene/shot: don't copy take number, keep the original take number from new log
+          // Take number should remain as it was set in the form
         }
-        
-        // Shift all subsequent entries (after the new log) by +1 onwards
-        const sceneNumber = existingEntry.data?.sceneNumber!;
-        const shotNumber = existingEntry.data?.shotNumber!;
-        const newTakeNumber = parseInt(newLogData.takeNumber || '1');
-        
-        // For take numbers, shift all entries in the same scene/shot that have take numbers > newTakeNumber
-        updateTakeNumbers(logSheet.projectId!, sceneNumber, shotNumber, newTakeNumber + 1, 1);
         
         // Shift file numbers for all subsequent entries across all scenes/shots
         const fieldsToShift: string[] = ['soundFile'];
@@ -648,7 +658,7 @@ export default function EditTakeScreen() {
         });
         
       } else if (duplicateInfo.type === 'file') {
-        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
+        // Always increment camera file and sound file
         if (existingEntry.data?.soundFile) {
           const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
           newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
@@ -667,9 +677,27 @@ export default function EditTakeScreen() {
           }
         }
         
-        if (existingEntry.data?.takeNumber) {
-          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-          newLogData.takeNumber = String(duplicateTakeNum + 1);
+        // Check if new log is in same scene and shot as duplicate target
+        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
+        const duplicateShotNumber = existingEntry.data?.shotNumber;
+        const newLogSceneNumber = newLogData.sceneNumber;
+        const newLogShotNumber = newLogData.shotNumber;
+        
+        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
+        
+        if (isSameSceneAndShot) {
+          // Copy take number from duplicate target
+          if (existingEntry.data?.takeNumber) {
+            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
+            newLogData.takeNumber = String(duplicateTakeNum);
+          }
+          
+          // Increment the duplicate target and all subsequent takes in same scene/shot by 1
+          const duplicateTakeNum = parseInt(existingEntry.data?.takeNumber || '1');
+          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, duplicateTakeNum, 1);
+        } else {
+          // Different scene/shot: don't copy take number, keep the original take number from new log
+          // Take number should remain as it was set in the form
         }
         
         // Shift all subsequent entries (after the new log) by +1 onwards
@@ -685,13 +713,6 @@ export default function EditTakeScreen() {
           // Shift all file numbers >= newFileNum (including the duplicate target)
           updateFileNumbers(logSheet.projectId!, fieldId, newFileNum, 1);
         });
-        
-        // Also shift take numbers if same scene/shot
-        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
-          const newTakeNum = parseInt(newLogData.takeNumber);
-          // Shift all take numbers >= newTakeNum in the same scene/shot (including the duplicate target)
-          updateTakeNumbers(logSheet.projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum, 1);
-        }
       }
       
       // Update current log with new data
