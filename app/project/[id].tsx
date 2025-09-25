@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -78,6 +78,16 @@ export default function ProjectScreen() {
   };
 
 
+
+  // Get recently created logs (2 most recent)
+  const recentlyCreatedLogs = React.useMemo(() => {
+    if (projectLogSheets.length === 0) return [];
+    
+    // Sort by creation date (most recent first) and take the first 2
+    return [...projectLogSheets]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 2);
+  }, [projectLogSheets]);
 
   // Filter and organize takes hierarchically by scene -> shot -> take
   const organizedTakes = React.useMemo(() => {
@@ -354,16 +364,39 @@ export default function ProjectScreen() {
           </View>
         )}
         
-        {Object.keys(organizedTakes).length === 0 ? (
+        {Object.keys(organizedTakes).length === 0 && recentlyCreatedLogs.length === 0 ? (
           <EmptyState
             title={projectLogSheets.length === 0 ? "No Takes Yet" : "No Matching Takes"}
             message={projectLogSheets.length === 0 ? "Start logging your film takes by tapping the + button." : searchQuery ? "No takes match your search. Try a different search term." : "Try adjusting your filters to see more takes."}
             icon={<Plus size={48} color={colors.primary} />}
           />
         ) : (
-          <FlatList
-            data={sortedScenes}
-            renderItem={({ item: sceneNumber }) => (
+          <ScrollView 
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Recently Created Logs Section */}
+            {recentlyCreatedLogs.length > 0 && Object.keys(organizedTakes).length > 0 && (
+              <View style={[styles.recentlyCreatedContainer, darkMode && styles.recentlyCreatedContainerDark]}>
+                <View style={[styles.recentlyCreatedHeader, darkMode && styles.recentlyCreatedHeaderDark]}>
+                  <Text style={[styles.recentlyCreatedTitle, darkMode && styles.recentlyCreatedTitleDark]}>Recently Created</Text>
+                </View>
+                <View style={styles.recentlyCreatedList}>
+                  {recentlyCreatedLogs.map((take, index) => (
+                    <View key={take.id}>
+                      {renderTake({ 
+                        item: take, 
+                        index, 
+                        totalTakes: recentlyCreatedLogs.length 
+                      })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {/* Regular Scene Organization */}
+            {sortedScenes.map(sceneNumber => (
               <View key={sceneNumber} style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]}>
                 <View style={[styles.sceneHeader, darkMode && styles.sceneHeaderDark]}>
                   <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>Scene {sceneNumber}</Text>
@@ -391,11 +424,8 @@ export default function ProjectScreen() {
                   </View>
                 ))}
               </View>
-            )}
-            keyExtractor={(item) => item}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
+            ))}
+          </ScrollView>
         )}
 
         <View style={styles.fabContainer}>
@@ -965,5 +995,30 @@ const styles = StyleSheet.create({
   },
   exportOptionDescriptionDark: {
     color: '#b0b0b0',
+  },
+  recentlyCreatedContainer: {
+    marginBottom: 32,
+  },
+  recentlyCreatedContainerDark: {
+    backgroundColor: 'transparent',
+  },
+  recentlyCreatedHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  recentlyCreatedHeaderDark: {
+    backgroundColor: 'transparent',
+  },
+  recentlyCreatedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  recentlyCreatedTitleDark: {
+    color: colors.primary,
+  },
+  recentlyCreatedList: {
+    gap: 0,
   },
 });
