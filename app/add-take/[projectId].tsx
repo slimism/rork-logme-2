@@ -12,7 +12,7 @@ export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
   const tokenStore = useTokenStore();
-  const { getRemainingTrialLogs, tokens, canAddLog, assignTokenToProject, getProjectLogCount } = tokenStore;
+  const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
   
   const [project, setProject] = useState(projects.find(p => p.id === projectId));
@@ -457,59 +457,21 @@ export default function AddTakeScreen() {
   };
 
   const handleAddTake = () => {
-    // Check if user can add more logs to this specific project
-    if (!canAddLog(projectId!)) {
-      const projectLogCount = getProjectLogCount(projectId!);
-      const remainingTrialLogs = getRemainingTrialLogs();
-      
-      if (projectLogCount === -1) {
-        // This shouldn't happen, but just in case
-        console.error('Project has unlimited logs but canAddLog returned false');
-        return;
-      }
-      
-      if (tokens > 0) {
-        // User has tokens, offer to assign one to this project
-        Alert.alert(
-          'Assign Token to Project',
-          'You need to assign a token to this project to add more logs. This will give you unlimited logs for this project.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Assign Token',
-              onPress: () => {
-                const success = assignTokenToProject(projectId!);
-                if (success) {
-                  // Continue with adding the log
-                  continueAddingTake();
-                } else {
-                  Alert.alert('Error', 'Failed to assign token to project.');
-                }
-              },
-            },
-          ]
-        );
-      } else {
-        // No tokens, trial exhausted
-        Alert.alert(
-          'Trial Limit Reached',
-          `You have used all ${remainingTrialLogs === 0 ? '15' : '15'} trial logs. Purchase tokens to get unlimited logs for your projects.`,
-          [
-            { text: 'OK', style: 'default' },
-            {
-              text: 'Buy Tokens',
-              onPress: () => router.push('/store'),
-            },
-          ]
-        );
-      }
+    // Check if user can add more logs
+    if (!canAddLog()) {
+      Alert.alert(
+        'Out of Free Logs',
+        'You have used all your free trial logs. Purchase a token to get unlimited logs for a project.',
+        [
+          { text: 'OK', style: 'default' },
+          {
+            text: 'Buy Tokens',
+            onPress: () => router.push('/store'),
+          },
+        ]
+      );
       return;
     }
-    
-    continueAddingTake();
-  };
-  
-  const continueAddingTake = () => {
     
     // Validate mandatory fields first
     if (!validateMandatoryFields()) {
@@ -563,10 +525,9 @@ export default function AddTakeScreen() {
   };
   
   const addLogWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
-    // Use trial log if project doesn't have unlimited logs
-    const projectLogCount = getProjectLogCount(projectId!);
-    if (projectLogCount !== -1) {
-      tokenStore.useTrial(projectId!);
+    // Use trial log if no tokens available
+    if (tokens === 0) {
+      tokenStore.useTrial();
     }
     
     const camCount = project?.settings?.cameraConfiguration || 1;
@@ -873,10 +834,9 @@ export default function AddTakeScreen() {
 
 
   const addNewTake = () => {
-    // Use trial log if project doesn't have unlimited logs
-    const projectLogCount = getProjectLogCount(projectId!);
-    if (projectLogCount !== -1) {
-      tokenStore.useTrial(projectId!);
+    // Use trial log if no tokens available
+    if (tokens === 0) {
+      tokenStore.useTrial();
     }
     
     const logSheet = addLogSheet(

@@ -67,20 +67,6 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       deleteProject: (id: string) => {
-        // Import token store dynamically to avoid circular dependency
-        const { useTokenStore } = require('@/store/subscriptionStore');
-        const tokenStore = useTokenStore.getState();
-        
-        // Check if this is the trial project and reset trial if so
-        if (tokenStore.trialProjectId === id) {
-          tokenStore.resetTrial();
-        }
-        
-        // Clean up project log count tracking
-        const currentCounts = { ...tokenStore.projectLogCounts };
-        delete currentCounts[id];
-        tokenStore.setProjectLogCount(id, 0);
-        
         set((state) => ({
           projects: state.projects.filter((project) => project.id !== id),
           folders: state.folders.filter((folder) => folder.projectId !== id),

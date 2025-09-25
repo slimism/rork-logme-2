@@ -12,7 +12,7 @@ import { useColors } from '@/constants/colors';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
-  const { tokens, canCreateProject, getRemainingTrialLogs, trialProjectId, projectLogCounts } = useTokenStore();
+  const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const colors = useColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -40,29 +40,30 @@ export default function ProjectsScreen() {
 
 
   const handleCreateProject = () => {
+    const remainingTrialLogs = getRemainingTrialLogs();
+    const isOnTrial = tokens === 0 && remainingTrialLogs > 0;
+
+    if (isOnTrial && projects.length >= 1) {
+      Alert.alert(
+        'Trial Limit Reached',
+        'On trial, you can create only 1 project. Buy a token to create more projects.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Buy Token', onPress: () => router.push('/store') }
+        ]
+      );
+      return;
+    }
+
     if (!canCreateProject()) {
-      const remainingTrialLogs = getRemainingTrialLogs();
-      const hasTrialProject = trialProjectId !== null;
-      
-      if (hasTrialProject) {
-        Alert.alert(
-          'Trial Limit Reached',
-          'You can only create 1 project during your trial period. Buy tokens to create more projects.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Buy Tokens', onPress: () => router.push('/store') }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'No Tokens Available',
-          'You need tokens to create new projects. Each token allows you to create one complete project with unlimited logs.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Buy Tokens', onPress: () => router.push('/store') }
-          ]
-        );
-      }
+      Alert.alert(
+        'No Tokens Available',
+        'You need tokens to create new projects. Each token allows you to create one complete project with unlimited logs.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Buy Token', onPress: () => router.push('/store') }
+        ]
+      );
       return;
     }
     
@@ -293,14 +294,14 @@ export default function ProjectsScreen() {
           </View>
         )}
 
-        {remainingTrialLogs > 0 && trialProjectId && !isMultiSelectMode && (
+        {remainingTrialLogs > 0 && !isMultiSelectMode && (
           <View style={styles.trialBanner}>
             <View style={styles.trialTextContainer}>
               <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
-              <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining in your trial project</Text>
+              <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
-              <Text style={styles.buyCreditsText}>Buy Tokens</Text>
+              <Text style={styles.buyCreditsText}>Buy Token</Text>
             </TouchableOpacity>
           </View>
         )}
