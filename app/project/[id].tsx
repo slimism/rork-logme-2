@@ -160,8 +160,10 @@ export default function ProjectScreen() {
 
 
 
-  const renderTake = ({ item: take, index, totalTakes }: { item: any, index: number, totalTakes: number }) => {
+  const renderTake = ({ item: take, index, totalTakes, isRecentlyCreated = false }: { item: any, index: number, totalTakes: number, isRecentlyCreated?: boolean }) => {
     const takeNumber = take.data?.takeNumber || '1';
+    const sceneNumber = take.data?.sceneNumber || 'Unknown';
+    const shotNumber = take.data?.shotNumber || 'Unknown';
     const isFirstTake = index === 0;
     const isLastTake = index === totalTakes - 1;
 
@@ -192,7 +194,9 @@ export default function ProjectScreen() {
         >
           <View style={styles.takeContent}>
             <View style={styles.takeHeader}>
-              <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>Take {takeNumber}</Text>
+              <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>
+                {isRecentlyCreated ? `Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}` : `Take ${takeNumber}`}
+              </Text>
               {take.data?.isGoodTake && (
                 <View style={styles.goodTakeIndicator}>
                   <Check size={12} color="#10B981" strokeWidth={3} />
@@ -387,7 +391,8 @@ export default function ProjectScreen() {
                       {renderTake({ 
                         item: take, 
                         index, 
-                        totalTakes: recentlyCreatedLogs.length 
+                        totalTakes: recentlyCreatedLogs.length,
+                        isRecentlyCreated: true
                       })}
                     </View>
                   ))}
