@@ -846,6 +846,7 @@ export default function EditTakeScreen() {
           <View style={styles.fieldHeaderRow}>
             <Text style={[
               styles.fieldLabel, 
+              darkMode && styles.fieldLabelDark,
               isDisabled && styles.disabledLabel,
               hasError && styles.errorLabel
             ]}>
@@ -894,6 +895,7 @@ export default function EditTakeScreen() {
           <View style={styles.fieldHeaderRow}>
             <Text style={[
               styles.fieldLabel, 
+              darkMode && styles.fieldLabelDark,
               isDisabled && styles.disabledLabel,
               hasError && styles.errorLabel
             ]}>
@@ -936,6 +938,7 @@ export default function EditTakeScreen() {
       <View key={field.id} style={[styles.fieldContainer, customStyle]}>
         <Text style={[
           styles.fieldLabel, 
+          darkMode && styles.fieldLabelDark,
           isDisabled && styles.disabledLabel,
           hasError && styles.errorLabel
         ]}>
@@ -995,7 +998,7 @@ export default function EditTakeScreen() {
         fields.push(
           <View key={fieldId} style={styles.fieldContainer}>
             <View style={styles.fieldHeaderRow}>
-              <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>{fieldLabel}</Text>
+              <Text style={[styles.fieldLabel, darkMode && styles.fieldLabelDark, isDisabled && styles.disabledLabel]}>{fieldLabel}</Text>
               <TouchableOpacity
                 style={[styles.rangeButtonSmall, isDisabled && styles.disabledButton]}
                 onPress={() => setCameraRangeEnabled(false)}
@@ -1037,6 +1040,7 @@ export default function EditTakeScreen() {
             <View style={styles.fieldHeaderRow}>
               <Text style={[
                 styles.fieldLabel, 
+                darkMode && styles.fieldLabelDark,
                 isDisabled && styles.disabledLabel,
                 validationErrors.has(fieldId) && styles.errorLabel
               ]}>
