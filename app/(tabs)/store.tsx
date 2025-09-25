@@ -151,7 +151,7 @@ export default function Store() {
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
         {/* Status Cards */}
         <View style={[styles.statusCard, styles.firstStatusCard, darkMode && styles.statusCardDark]}>
-          <Text style={[styles.statusLabel, darkMode && styles.statusLabelDark]}>Remaining Credits</Text>
+          <Text style={[styles.statusLabel, darkMode && styles.statusLabelDark]}>Remaining Tokens</Text>
           <Text style={[styles.statusValue, darkMode && styles.statusValueDark]}>{tokens}</Text>
         </View>
 
@@ -171,18 +171,18 @@ export default function Store() {
           
           <View style={styles.infoItem}>
             <Hourglass size={20} color={colors.primary} style={styles.infoIcon} />
-            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Free trial includes 15 logs across all projects.</Text>
+            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>The free trial includes 15 logs for a single project only.</Text>
           </View>
           
           <View style={styles.infoItem}>
             <Infinity size={20} color={colors.primary} style={styles.infoIcon} />
-            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Credits never expire and can be used anytime.</Text>
+            <Text style={[styles.infoText, darkMode && styles.infoTextDark]}>Tokens never expire and can be used anytime.</Text>
           </View>
         </View>
 
         {/* Purchase Credits */}
         <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Purchase Credits</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Purchase Tokens</Text>
           
           <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
             <View style={styles.purchaseInfo}>
