@@ -508,11 +508,44 @@ export default function EditTakeScreen() {
           }
         }
         
-        // Shift the duplicate target and all subsequent entries by +1 for take numbers (within same scene/shot)
-        const sceneNumber = takeData.sceneNumber!;
-        const shotNumber = takeData.shotNumber!;
-        const takeNumber = parseInt(takeData.takeNumber || '1');
-        updateTakeNumbers(logSheet.projectId!, sceneNumber, shotNumber, takeNumber, 1);
+        // Handle take number logic based on whether new log is in same scene/shot as duplicate target
+        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
+        const duplicateShotNumber = existingEntry.data?.shotNumber;
+        const newLogSceneNumber = newLogData.sceneNumber;
+        const newLogShotNumber = newLogData.shotNumber;
+        
+        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
+        
+        if (isSameSceneAndShot) {
+          // Same scene/shot: copy take number from duplicate target
+          if (existingEntry.data?.takeNumber) {
+            newLogData.takeNumber = existingEntry.data.takeNumber;
+          }
+          
+          // Shift the duplicate target and all subsequent entries by +1 for take numbers (within same scene/shot)
+          const takeNumber = parseInt(existingEntry.data?.takeNumber || '1');
+          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, takeNumber, 1);
+        } else {
+          // Different scene/shot: set take number to last take number in the new log's scene/shot + 1
+          const projectLogSheets = logSheets.filter(sheet => 
+            sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id
+          );
+          
+          const sameShotTakes = projectLogSheets.filter(sheet => 
+            sheet.data?.sceneNumber === newLogSceneNumber &&
+            sheet.data?.shotNumber === newLogShotNumber
+          );
+          
+          let maxTakeNumber = 0;
+          sameShotTakes.forEach(sheet => {
+            const takeNum = parseInt(sheet.data?.takeNumber || '0');
+            if (takeNum > maxTakeNumber) {
+              maxTakeNumber = takeNum;
+            }
+          });
+          
+          newLogData.takeNumber = String(maxTakeNumber + 1);
+        }
         
         // Shift all file numbers from the duplicate target onwards (across all scenes/shots)
         const fieldsToShift: string[] = ['soundFile'];
