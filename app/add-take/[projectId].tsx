@@ -18,7 +18,7 @@ export default function AddTakeScreen() {
   const [project, setProject] = useState(projects.find(p => p.id === projectId));
   const [takeData, setTakeData] = useState<TakeData>({});
   const [classification, setClassification] = useState<ClassificationType | null>(null);
-  const [shotDetails, setShotDetails] = useState<ShotDetailsType | null>(null);
+  const [shotDetails, setShotDetails] = useState<ShotDetailsType[]>([]);
   const [isGoodTake, setIsGoodTake] = useState<boolean>(false);
   const [, setLastShotDescription] = useState<string>('');
   const [stats, setStats] = useState({ totalTakes: 0, scenes: 0 });
@@ -970,15 +970,15 @@ export default function AddTakeScreen() {
     setClassification(newClassification);
     
     // Reset shot details if incompatible
-    if ((newClassification === 'Ambience' || newClassification === 'SFX') && shotDetails === 'MOS') {
-      setShotDetails(null);
+    if ((newClassification === 'Ambience' || newClassification === 'SFX') && shotDetails.includes('MOS')) {
+      setShotDetails(prev => prev.filter(s => s !== 'MOS'));
     }
     
     // Calculate new disabled fields based on the new classification
     const fieldsToDisable = new Set<string>();
     
     // Keep existing MOS disabled fields if MOS is still active
-    if (shotDetails === 'MOS') {
+    if (shotDetails.includes('MOS')) {
       fieldsToDisable.add('soundFile');
     }
     
@@ -1132,39 +1132,32 @@ export default function AddTakeScreen() {
   };
 
   const handleShotDetailsChange = (type: ShotDetailsType) => {
-    const newShotDetails = shotDetails === type ? null : type;
-    
+    let newSelection: ShotDetailsType[];
+    const isSelected = shotDetails.includes(type);
+
     if (type === 'MOS') {
-      // Check if MOS should be disabled
       if (classification === 'Ambience' || classification === 'SFX') {
-        return; // Don't allow MOS selection
+        return;
       }
-      
-      if (newShotDetails === 'MOS') {
-        // Disable sound file for MOS
+      if (!isSelected) {
+        newSelection = [...shotDetails, type];
         const currentDisabled = new Set(disabledFields);
         currentDisabled.add('soundFile');
         setDisabledFields(currentDisabled);
-        
-        // Clear sound file value
-        setTakeData(prev => ({
-          ...prev,
-          soundFile: ''
-        }));
+        setTakeData(prev => ({ ...prev, soundFile: '' }));
       } else {
-        // Re-enable sound file when MOS is deselected (unless disabled by other reasons)
+        newSelection = shotDetails.filter(s => s !== type);
         const currentDisabled = new Set(disabledFields);
-        
-        // Only remove soundFile from disabled if it's not disabled by classification
         if (classification !== 'Waste' || wasteOptions.sound) {
           currentDisabled.delete('soundFile');
         }
-        
         setDisabledFields(currentDisabled);
       }
+    } else {
+      newSelection = isSelected ? shotDetails.filter(s => s !== type) : [...shotDetails, type];
     }
-    
-    setShotDetails(newShotDetails);
+
+    setShotDetails(newSelection);
   };
 
   const renderField = (field: any, allFieldIds: string[], style?: any) => {
@@ -1900,7 +1893,7 @@ export default function AddTakeScreen() {
                   key={type}
                   style={[
                     styles.shotDetailsButton,
-                    shotDetails === type && styles.shotDetailsButtonActive,
+                    shotDetails.includes(type) && styles.shotDetailsButtonActive,
                     isDisabled && styles.shotDetailsButtonDisabled
                   ]}
                   onPress={() => !isDisabled && handleShotDetailsChange(type)}
@@ -1908,7 +1901,7 @@ export default function AddTakeScreen() {
                 >
                   <Text style={[
                     styles.shotDetailsButtonText,
-                    shotDetails === type && styles.shotDetailsButtonTextActive,
+                    shotDetails.includes(type) && styles.shotDetailsButtonTextActive,
                     isDisabled && styles.shotDetailsButtonTextDisabled
                   ]}>
                     {type === 'NO SLATE' ? 'No Slate' : type}
