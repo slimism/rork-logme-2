@@ -4,6 +4,7 @@ import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useTokenStore } from '@/store/subscriptionStore';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -15,6 +16,7 @@ export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projects, logSheets } = useProjectStore();
   const { darkMode } = useThemeStore();
+  const { getProjectLogCount, trialProjectId, getRemainingTrialLogs, assignTokenToProject, tokens } = useTokenStore();
 
   
   const [project, setProject] = useState(projects.find(p => p.id === id));
@@ -254,6 +256,56 @@ export default function ProjectScreen() {
       />
       
       <View style={[styles.content, darkMode && styles.contentDark]}>
+        {/* Project Status Banner */}
+        {id && (
+          <View style={[styles.projectStatusBanner, darkMode && styles.projectStatusBannerDark]}>
+            {getProjectLogCount(id) === -1 ? (
+              <View style={styles.statusContent}>
+                <Text style={[styles.statusTitle, darkMode && styles.statusTitleDark]}>Unlimited Logs</Text>
+                <Text style={[styles.statusSubtitle, darkMode && styles.statusSubtitleDark]}>This project has unlimited logs</Text>
+              </View>
+            ) : trialProjectId === id ? (
+              <View style={styles.statusContent}>
+                <Text style={[styles.statusTitle, darkMode && styles.statusTitleDark]}>Trial Project</Text>
+                <Text style={[styles.statusSubtitle, darkMode && styles.statusSubtitleDark]}>{getRemainingTrialLogs()} logs remaining</Text>
+              </View>
+            ) : (
+              <View style={styles.statusContent}>
+                <Text style={[styles.statusTitle, darkMode && styles.statusTitleDark]}>Limited Project</Text>
+                <Text style={[styles.statusSubtitle, darkMode && styles.statusSubtitleDark]}>Assign a token for unlimited logs</Text>
+              </View>
+            )}
+            
+            {getProjectLogCount(id) !== -1 && tokens > 0 && (
+              <TouchableOpacity 
+                style={styles.assignTokenButton}
+                onPress={() => {
+                  Alert.alert(
+                    'Assign Token',
+                    'Assign a token to this project for unlimited logs?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Assign Token',
+                        onPress: () => {
+                          const success = assignTokenToProject(id);
+                          if (success) {
+                            Alert.alert('Success', 'Token assigned! This project now has unlimited logs.');
+                          } else {
+                            Alert.alert('Error', 'Failed to assign token.');
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.assignTokenText}>Assign Token</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        
         {/* Search Field with Filter Button */}
         <View style={[styles.searchRow, darkMode && styles.searchRowDark]}>
           <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
@@ -1025,5 +1077,52 @@ const styles = StyleSheet.create({
   },
   recentlyCreatedList: {
     gap: 0,
+  },
+  projectStatusBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  projectStatusBannerDark: {
+    backgroundColor: '#1a1a1a',
+    borderColor: '#2a2a2a',
+  },
+  statusContent: {
+    flex: 1,
+  },
+  statusTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  statusTitleDark: {
+    color: '#f2f2f2',
+  },
+  statusSubtitle: {
+    fontSize: 12,
+    color: colors.subtext,
+  },
+  statusSubtitleDark: {
+    color: '#b0b0b0',
+  },
+  assignTokenButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  assignTokenText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: '500',
   },
 });

@@ -19,7 +19,7 @@ interface LogSheetField {
 export default function ProjectSettingsScreen() {
   const { addProject } = useProjectStore();
   const tokenStore = useTokenStore();
-  const { tokens, canCreateProject } = tokenStore;
+  const { tokens, canCreateProject, trialProjectId } = tokenStore;
 
   const colors = useColors();
   const [projectName, setProjectName] = useState('');
@@ -148,13 +148,19 @@ export default function ProjectSettingsScreen() {
       loggerName: loggerName.trim(),
     };
 
-    // Consume token if user has tokens
+    const project = addProject(projectName, projectSettings, projectLogo);
+    
+    // Handle token/trial logic after project creation
     if (tokens > 0) {
-      const tokenConsumed = tokenStore.useToken();
-      console.log('Token consumed:', tokenConsumed);
+      // User has tokens - assign unlimited logs to this project
+      const tokenConsumed = tokenStore.assignTokenToProject(project.id);
+      console.log('Token assigned to project:', tokenConsumed);
+    } else {
+      // User is on trial - this becomes the trial project
+      // No need to do anything special here, the trial logic is handled in useTrial
+      console.log('Project created as trial project');
     }
 
-    const project = addProject(projectName, projectSettings, projectLogo);
     setShowConfirmModal(false);
     router.replace(`/project/${project.id}`);
   };
@@ -395,13 +401,19 @@ export default function ProjectSettingsScreen() {
               Once you create this project, you cannot change these settings later. Are you sure you want to proceed?
             </Text>
             
-            {tokens > 0 && (
+            {tokens > 0 ? (
               <View style={styles.tokenWarning}>
                 <Text style={styles.tokenWarningText}>
-                  This will consume 1 token from your account.
+                  This will consume 1 token from your account and give you unlimited logs for this project.
                 </Text>
               </View>
-            )}
+            ) : trialProjectId === null ? (
+              <View style={styles.tokenWarning}>
+                <Text style={styles.tokenWarningText}>
+                  This will be your trial project with 15 free logs.
+                </Text>
+              </View>
+            ) : null}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
