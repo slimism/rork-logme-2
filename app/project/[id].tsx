@@ -167,8 +167,7 @@ export default function ProjectScreen() {
     const isFirstTake = index === 0;
     const isLastTake = index === totalTakes - 1;
 
-    // Format classification and shot details in one row
-    const details = [];
+    const details: string[] = [];
     if (take.data?.classification) {
       details.push(take.data.classification);
     }
@@ -177,9 +176,24 @@ export default function ProjectScreen() {
     } else if (take.data?.shotDetails) {
       details.push(take.data.shotDetails);
     }
-    
 
-    
+    const cameraFiles: string[] = (() => {
+      const files: string[] = [];
+      const data = take.data ?? {};
+      if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
+        files.push(data.cameraFile);
+      }
+      Object.keys(data).forEach((key) => {
+        if (key.startsWith('cameraFile') && key !== 'cameraFile') {
+          const val = data[key];
+          if (typeof val === 'string' && val.trim().length > 0) {
+            files.push(val);
+          }
+        }
+      });
+      return files;
+    })();
+
     return (
       <View style={[
         styles.takeCard,
@@ -203,24 +217,19 @@ export default function ProjectScreen() {
                 </View>
               )}
             </View>
-            
+
             {details.length > 0 && (
               <Text style={[styles.takeDetails, darkMode && styles.takeDetailsDark]}>{details.filter(Boolean).join(', ')}</Text>
             )}
-            
-            {/* Camera Files */}
-            {take.data?.cameraFile && (
-              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>
-                Camera: {Array.isArray(take.data.cameraFile) ? take.data.cameraFile.join(', ') : take.data.cameraFile}
-              </Text>
+
+            {cameraFiles.length > 0 && (
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Camera: {cameraFiles.join(', ')}</Text>
             )}
-            
-            {/* Sound File */}
+
             {take.data?.soundFile && (
               <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Sound: {take.data.soundFile}</Text>
             )}
-            
-            {/* Description */}
+
             {take.data?.descriptionOfShot && (
               <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Description: {take.data.descriptionOfShot}</Text>
             )}
