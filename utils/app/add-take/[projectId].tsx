@@ -219,7 +219,7 @@ export default function AddTakeScreen() {
 
   const handleAddTake = () => {
     // Check if user can add more logs
-    if (!canAddLog()) {
+    if (!canAddLog(projectId!)) {
       Alert.alert(
         'Out of Free Logs',
         'You have used all your free trial logs. Purchase a token to get unlimited logs for a project.',
@@ -289,7 +289,7 @@ export default function AddTakeScreen() {
     
     // Use trial log if no tokens available
     if (tokens === 0) {
-      tokenStore.useTrial();
+      tokenStore.useTrial(projectId!);
     }
     
     const sceneNumber = takeData.sceneNumber;
@@ -347,7 +347,7 @@ export default function AddTakeScreen() {
   const addNewTake = () => {
     // Use trial log if no tokens available
     if (tokens === 0) {
-      tokenStore.useTrial();
+      tokenStore.useTrial(projectId!);
     }
     
     const logSheet = addLogSheet(
