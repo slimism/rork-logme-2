@@ -326,7 +326,12 @@ const generateSmartExportSections = (
     
     const tableRows = takes.map(take => {
       const cells = fieldList.map(fieldId => {
-        const value = take.data?.[fieldId] || '';
+        const cls = take.data?.classification;
+        const isAmbOrSfx = cls === 'Ambience' || cls === 'SFX';
+        let value = take.data?.[fieldId] || '';
+        if (isAmbOrSfx && (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber')) {
+          value = '';
+        }
         const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
         return `<td class="${cellClass}">${value}</td>`;
       }).join('');

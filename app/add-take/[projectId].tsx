@@ -663,7 +663,7 @@ export default function AddTakeScreen() {
       );
       
       // Handle REC state for multiple cameras
-      const finalTakeData = { ...newLogData };
+      let finalTakeData = { ...newLogData };
       if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
@@ -817,7 +817,7 @@ export default function AddTakeScreen() {
       );
       
       // Handle REC state for multiple cameras
-      const finalTakeData = { ...newLogData };
+      let finalTakeData = { ...newLogData };
       if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
@@ -858,7 +858,7 @@ export default function AddTakeScreen() {
     );
     
     // Prepare final take data with REC state considerations
-    const finalTakeData = { ...takeData };
+    let finalTakeData = { ...takeData };
     
     // For multiple cameras, only include file data for cameras with active REC
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
