@@ -163,9 +163,12 @@ export default function ProjectScreen() {
     const isFirstTake = index === 0;
     const isLastTake = index === totalTakes - 1;
 
+    const classification = (take.data?.classification ?? null) as ClassificationType | null;
+    const isAmbSfx = isAmbienceSfx || classification === 'Ambience' || classification === 'SFX';
+
     const details: string[] = [];
-    if (take.data?.classification) {
-      details.push(take.data.classification);
+    if (classification) {
+      details.push(classification);
     }
     if (take.data?.shotDetails && Array.isArray(take.data.shotDetails)) {
       details.push(...take.data.shotDetails);
@@ -174,7 +177,7 @@ export default function ProjectScreen() {
     }
 
     const cameraFiles: string[] = (() => {
-      if (isAmbienceSfx) return [];
+      if (isAmbSfx) return [];
       const files: string[] = [];
       const data = take.data ?? {};
       if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
@@ -182,7 +185,7 @@ export default function ProjectScreen() {
       }
       Object.keys(data).forEach((key) => {
         if (key.startsWith('cameraFile') && key !== 'cameraFile') {
-          const val = data[key];
+          const val = (data as any)[key];
           if (typeof val === 'string' && val.trim().length > 0) {
             files.push(val);
           }
@@ -192,8 +195,8 @@ export default function ProjectScreen() {
     })();
 
     const titleText = (() => {
-      if (isAmbienceSfx) {
-        const cls = take.data?.classification ?? '';
+      if (isAmbSfx) {
+        const cls = classification ?? '';
         return cls ? `${cls}` : 'Ambience / SFX';
       }
       const takeNumber = take.data?.takeNumber || '1';
@@ -419,7 +422,8 @@ export default function ProjectScreen() {
                         item: take, 
                         index, 
                         totalTakes: recentlyCreatedLogs.length,
-                        isRecentlyCreated: true
+                        isRecentlyCreated: true,
+                        isAmbienceSfx: take.data?.classification === 'Ambience' || take.data?.classification === 'SFX'
                       })}
                     </View>
                   ))}
