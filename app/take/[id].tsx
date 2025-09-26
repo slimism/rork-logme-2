@@ -147,33 +147,45 @@ export default function EditTakeScreen() {
 
   useEffect(() => {
     const newDisabledFields = new Set<string>();
+    const camCount = project?.settings?.cameraConfiguration || 1;
+
     if (classification === 'SFX' || classification === 'Ambience') {
-      newDisabledFields.add('cameraFile');
-      newDisabledFields.add('cameraFile1');
-      newDisabledFields.add('cameraFile2');
-      newDisabledFields.add('cameraFile3');
+      if (camCount === 1) {
+        newDisabledFields.add('cameraFile');
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          newDisabledFields.add(`cameraFile${i}`);
+        }
+      }
       newDisabledFields.add('shotNumber');
       newDisabledFields.add('takeNumber');
     }
+
     if (shotDetails === 'MOS') {
       newDisabledFields.add('soundFile');
     }
+
     if (classification === 'Waste') {
       if (!wasteOptions.camera) {
-        newDisabledFields.add('cameraFile');
-        newDisabledFields.add('cameraFile1');
-        newDisabledFields.add('cameraFile2');
-        newDisabledFields.add('cameraFile3');
+        if (camCount === 1) {
+          newDisabledFields.add('cameraFile');
+        } else {
+          for (let i = 1; i <= camCount; i++) {
+            newDisabledFields.add(`cameraFile${i}`);
+          }
+        }
       }
       if (!wasteOptions.sound) {
         newDisabledFields.add('soundFile');
       }
     }
+
     if (classification === 'Insert' && insertSoundSpeed === false) {
       newDisabledFields.add('soundFile');
     }
+
     setDisabledFields(newDisabledFields);
-  }, [classification, shotDetails, wasteOptions, insertSoundSpeed]);
+  }, [classification, shotDetails, wasteOptions, insertSoundSpeed, project]);
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
@@ -460,6 +472,14 @@ export default function EditTakeScreen() {
     saveNormally();
   };
 
+  const pruneDisabled = (data: Record<string, string>) => {
+    const cleaned: Record<string, string> = { ...data };
+    disabledFields.forEach((f) => {
+      if (f in cleaned) delete cleaned[f];
+    });
+    return cleaned;
+  };
+
   const handleSaveWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
     if (!logSheet || !project) return;
     const { updateTakeNumbers, updateFileNumbers } = useProjectStore.getState();
@@ -559,7 +579,7 @@ export default function EditTakeScreen() {
         }
       }
 
-      const finalTakeData = { ...newLogData };
+      let finalTakeData = { ...newLogData };
       if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
@@ -570,6 +590,7 @@ export default function EditTakeScreen() {
         }
       }
 
+      finalTakeData = pruneDisabled(finalTakeData);
       const updatedData = {
         ...finalTakeData,
         classification,
@@ -667,7 +688,7 @@ export default function EditTakeScreen() {
         });
       }
 
-      const finalTakeData = { ...newLogData };
+      let finalTakeData = { ...newLogData };
       if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
@@ -677,6 +698,7 @@ export default function EditTakeScreen() {
           }
         }
       }
+      finalTakeData = pruneDisabled(finalTakeData);
       const updatedData = {
         ...finalTakeData,
         classification,
@@ -694,7 +716,7 @@ export default function EditTakeScreen() {
   const saveNormally = () => {
     if (!logSheet || !project) return;
     try {
-      const finalTakeData = { ...takeData };
+      let finalTakeData = { ...takeData };
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
       if (cameraConfiguration > 1) {
         for (let i = 1; i <= cameraConfiguration; i++) {
@@ -705,6 +727,7 @@ export default function EditTakeScreen() {
           }
         }
       }
+      finalTakeData = pruneDisabled(finalTakeData);
       const updatedData = {
         ...finalTakeData,
         classification: classification || '',
