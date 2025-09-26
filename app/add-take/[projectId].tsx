@@ -29,6 +29,7 @@ export default function AddTakeScreen() {
   const [showWasteModal, setShowWasteModal] = useState<boolean>(false);
   const [wasteOptions, setWasteOptions] = useState<{ camera: boolean; sound: boolean }>({ camera: false, sound: false });
   const [showInsertModal, setShowInsertModal] = useState<boolean>(false);
+  const [insertSoundSpeed, setInsertSoundSpeed] = useState<boolean | null>(null);
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
@@ -672,6 +673,8 @@ export default function AddTakeScreen() {
         classification,
         shotDetails,
         isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
         cameraRecState: camCount > 1 ? cameraRecState : undefined
       };
       
@@ -824,6 +827,8 @@ export default function AddTakeScreen() {
         classification,
         shotDetails,
         isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
         cameraRecState: camCount > 1 ? cameraRecState : undefined
       };
     }
@@ -869,6 +874,8 @@ export default function AddTakeScreen() {
       classification,
       shotDetails,
       isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
     };
     
@@ -1104,24 +1111,22 @@ export default function AddTakeScreen() {
   };
 
   const handleInsertSoundSpeed = (hasSoundSpeed: boolean) => {
+    setInsertSoundSpeed(hasSoundSpeed);
     if (!hasSoundSpeed) {
-      // If no sound speed, disable sound file
       const fieldsToDisable = new Set<string>(['soundFile']);
       setDisabledFields(fieldsToDisable);
-      
-      // Clear sound file value
       setTakeData(prev => ({
         ...prev,
         soundFile: ''
       }));
     }
-    
     setShowInsertModal(false);
   };
 
   const handleInsertCancel = () => {
     setShowInsertModal(false);
     setClassification(null);
+    setInsertSoundSpeed(null);
   };
 
   const toggleCameraRec = (fieldId: string) => {
