@@ -191,20 +191,20 @@ export default function AddTakeScreen() {
       setTakeData(autoFillData);
     } else {
       // Subsequent log files - increment from highest file number
-      const lastLog = projectLogSheets
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      const sortedLogs = projectLogSheets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const lastLog = sortedLogs[0];
+      const lastValid = sortedLogs.find(s => s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
       
-      if (lastLog?.data) {
-        const { 
-          episodeNumber, 
-          sceneNumber, 
-          shotNumber, 
-          takeNumber
-        } = lastLog.data;
-        
+      if (lastLog?.data || lastValid?.data) {
         const autoFillData: TakeData = {};
         
-        // Always keep episode, scene, and shot number
+        // Prefer values from last valid non-Ambience/SFX entry
+        const baseData = (lastValid?.data ?? lastLog?.data) as any;
+        const episodeNumber = baseData?.episodeNumber;
+        const sceneNumber = baseData?.sceneNumber;
+        const shotNumber = baseData?.shotNumber;
+        const takeNumber = baseData?.takeNumber;
+        
         if (episodeNumber) autoFillData.episodeNumber = episodeNumber;
         if (sceneNumber) autoFillData.sceneNumber = sceneNumber;
         if (shotNumber) autoFillData.shotNumber = shotNumber;
@@ -213,13 +213,14 @@ export default function AddTakeScreen() {
         const cardFieldEnabled = currentProject?.settings?.logSheetFields?.find(f => f.id === 'cardNumber')?.enabled;
         const camCount = currentProject?.settings?.cameraConfiguration || 1;
         if (cardFieldEnabled) {
+          const cardSource = lastLog?.data; // keep UX: mirror most recent entry's card numbers
           if (camCount === 1) {
-            const lastSingle = lastLog.data?.cardNumber;
+            const lastSingle = cardSource?.cardNumber;
             if (lastSingle) autoFillData.cardNumber = lastSingle;
           } else {
             for (let i = 1; i <= camCount; i++) {
               const key = `cardNumber${i}`;
-              const lastVal = lastLog.data?.[key] ?? lastLog.data?.cardNumber;
+              const lastVal = cardSource?.[key] ?? cardSource?.cardNumber;
               if (lastVal) {
                 autoFillData[key] = lastVal;
               }
@@ -227,24 +228,13 @@ export default function AddTakeScreen() {
           }
         }
         
-        // Auto-increment take number from last valid non-Ambience/SFX entry in same Scene/Shot
-        {
-          const nonAmbienceSfx = projectLogSheets
-            .filter(s => s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          const sameShotLast = nonAmbienceSfx.find(s => 
-            (autoFillData.sceneNumber ? s.data?.sceneNumber === autoFillData.sceneNumber : true) &&
-            (autoFillData.shotNumber ? s.data?.shotNumber === autoFillData.shotNumber : true) &&
-            !!s.data?.takeNumber
-          );
-          if (sameShotLast?.data?.takeNumber) {
-            autoFillData.takeNumber = String((parseInt(sameShotLast.data.takeNumber) || 0) + 1);
-          } else if (takeNumber) {
-            const nextTakeNumber = (parseInt(takeNumber) + 1).toString();
-            autoFillData.takeNumber = nextTakeNumber;
-          } else {
-            autoFillData.takeNumber = '1';
-          }
+        // Auto-increment take number strictly from last valid non-Ambience/SFX
+        if (lastValid?.data?.takeNumber) {
+          autoFillData.takeNumber = String((parseInt(lastValid.data.takeNumber) || 0) + 1);
+        } else if (takeNumber) {
+          autoFillData.takeNumber = String((parseInt(takeNumber) || 0) + 1);
+        } else {
+          autoFillData.takeNumber = '1';
         }
         
         // Auto-increment sound file based on highest number + 1
@@ -273,12 +263,13 @@ export default function AddTakeScreen() {
           }
         }
         
-        // Keep shot description if same shot
-        if (lastLog.data?.descriptionOfShot && 
-            lastLog.data?.sceneNumber === autoFillData.sceneNumber &&
-            lastLog.data?.shotNumber === autoFillData.shotNumber) {
-          autoFillData.descriptionOfShot = lastLog.data.descriptionOfShot;
-          setLastShotDescription(lastLog.data.descriptionOfShot);
+        // Keep shot description if same shot as last valid
+        const descSource = lastValid?.data ?? lastLog?.data;
+        if (descSource?.descriptionOfShot && 
+            descSource?.sceneNumber === autoFillData.sceneNumber &&
+            descSource?.shotNumber === autoFillData.shotNumber) {
+          autoFillData.descriptionOfShot = descSource.descriptionOfShot;
+          setLastShotDescription(descSource.descriptionOfShot);
         }
         
         setTakeData(autoFillData);

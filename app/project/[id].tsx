@@ -89,10 +89,11 @@ export default function ProjectScreen() {
       .slice(0, 2);
   }, [projectLogSheets]);
 
-  // Split sheets into regular (scene/shot/take) and Ambience/SFX, then organize regular ones by scene -> shot -> take
-  const { organizedTakes, ambienceSfxTakes } = React.useMemo(() => {
+  // Split sheets into regular (scene/shot/take) and Ambience + SFX separately, then organize regular ones by scene -> shot -> take
+  const { organizedTakes, ambienceTakes, sfxTakes } = React.useMemo(() => {
     const scenes: { [key: string]: { [key: string]: any[] } } = {};
-    const ambienceSfx: any[] = [];
+    const ambience: any[] = [];
+    const sfx: any[] = [];
 
     const filteredSheets = projectLogSheets.filter(sheet => {
       const data = sheet.data;
@@ -110,9 +111,12 @@ export default function ProjectScreen() {
 
     filteredSheets.forEach(sheet => {
       const classification = sheet.data?.classification as ClassificationType | undefined;
-      const isAmbSfx = classification === 'Ambience' || classification === 'SFX';
-      if (isAmbSfx) {
-        ambienceSfx.push(sheet);
+      if (classification === 'Ambience') {
+        ambience.push(sheet);
+        return;
+      }
+      if (classification === 'SFX') {
+        sfx.push(sheet);
         return;
       }
 
@@ -139,9 +143,10 @@ export default function ProjectScreen() {
       });
     });
 
-    ambienceSfx.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    ambience.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    sfx.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return { organizedTakes: scenes, ambienceSfxTakes: ambienceSfx };
+    return { organizedTakes: scenes, ambienceTakes: ambience, sfxTakes: sfx };
   }, [projectLogSheets, filters, searchQuery]);
 
   const sortedScenes = Object.keys(organizedTakes).sort((a, b) => {
@@ -390,7 +395,7 @@ export default function ProjectScreen() {
           </View>
         )}
         
-        {Object.keys(organizedTakes).length === 0 && recentlyCreatedLogs.length === 0 && ambienceSfxTakes.length === 0 ? (
+        {Object.keys(organizedTakes).length === 0 && recentlyCreatedLogs.length === 0 && ambienceTakes.length === 0 && sfxTakes.length === 0 ? (
           <EmptyState
             title={projectLogSheets.length === 0 ? "No Takes Yet" : "No Matching Takes"}
             message={projectLogSheets.length === 0 ? "Start logging your film takes by tapping the + button." : searchQuery ? "No takes match your search. Try a different search term." : "Try adjusting your filters to see more takes."}
@@ -453,16 +458,32 @@ export default function ProjectScreen() {
               </View>
             ))}
 
-            {/* Ambiences & SFX Section */}
-            {ambienceSfxTakes.length > 0 && (
-              <View style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]} testID="ambience-sfx-section">
+            {/* Ambiences Section */}
+            {ambienceTakes.length > 0 && (
+              <View style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]} testID="ambiences-section">
                 <View style={[styles.sceneHeader, darkMode && styles.sceneHeaderDark]}>
-                  <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>Ambiences & SFX</Text>
+                  <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>Ambiences</Text>
                 </View>
                 <View style={styles.takesContainer}>
-                  {ambienceSfxTakes.map((take, index) => (
+                  {ambienceTakes.map((take, index) => (
                     <View key={take.id}>
-                      {renderTake({ item: take, index, totalTakes: ambienceSfxTakes.length, isAmbienceSfx: true })}
+                      {renderTake({ item: take, index, totalTakes: ambienceTakes.length, isAmbienceSfx: true })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* SFX Section */}
+            {sfxTakes.length > 0 && (
+              <View style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]} testID="sfx-section">
+                <View style={[styles.sceneHeader, darkMode && styles.sceneHeaderDark]}>
+                  <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>SFX</Text>
+                </View>
+                <View style={styles.takesContainer}>
+                  {sfxTakes.map((take, index) => (
+                    <View key={take.id}>
+                      {renderTake({ item: take, index, totalTakes: sfxTakes.length, isAmbienceSfx: true })}
                     </View>
                   ))}
                 </View>
