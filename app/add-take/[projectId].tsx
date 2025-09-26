@@ -634,6 +634,9 @@ export default function AddTakeScreen() {
         }
       }
       
+      // Final sanitation to enforce business rules
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      
       logSheet.data = {
         ...finalTakeData,
         classification,
@@ -754,6 +757,9 @@ export default function AddTakeScreen() {
         }
       }
       
+      // Final sanitation to enforce business rules
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      
       logSheet.data = {
         ...finalTakeData,
         classification,
@@ -801,7 +807,10 @@ export default function AddTakeScreen() {
     }
     
     // Update the log sheet with take data including new fields
-    logSheet.data = {
+    // Final sanitation to enforce business rules
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      
+      logSheet.data = {
       ...finalTakeData,
       classification,
       shotDetails,
