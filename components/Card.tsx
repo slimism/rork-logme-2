@@ -21,11 +21,19 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const CardComponent = onPress ? TouchableOpacity : View;
 
+  const renderChildren = (content: React.ReactNode) => {
+    if (typeof content === 'string' || typeof content === 'number') {
+      return <Text style={styles.bodyText}>{content}</Text>;
+    }
+    return content;
+  };
+
   return (
     <CardComponent
       style={[styles.card, style]}
       onPress={onPress}
       activeOpacity={0.7}
+      testID="card-root"
     >
       {(title || subtitle || rightContent) && (
         <View style={styles.contentContainer}>
@@ -40,7 +48,7 @@ export const Card: React.FC<CardProps> = ({
           )}
         </View>
       )}
-      {children}
+      {children != null ? renderChildren(children) : null}
     </CardComponent>
   );
 };
@@ -79,5 +87,9 @@ const styles = StyleSheet.create({
   rightContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  bodyText: {
+    fontSize: 14,
+    color: colors.text as string,
   },
 });
