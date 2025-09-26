@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
+  const { projects, logSheets, addLogSheet } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -590,26 +590,7 @@ export default function AddTakeScreen() {
           newLogData.takeNumber = (lastTakeNumber + 1).toString();
         }
         
-        // Shift the duplicate target and all subsequent entries by +1 for take numbers (within same scene/shot)
-        const sceneNumber = takeData.sceneNumber!;
-        const shotNumber = takeData.shotNumber!;
-        const takeNumber = parseInt(takeData.takeNumber || '1');
-        updateTakeNumbers(projectId!, sceneNumber, shotNumber, takeNumber, 1);
-        
-        // Shift all file numbers from the duplicate target onwards (across all scenes/shots)
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        
-        fieldsToShift.forEach(fieldId => {
-          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
-          if (targetFileNum > 0) {
-            updateFileNumbers(projectId!, fieldId, targetFileNum, 1);
-          }
-        });
+        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
         
       } else if (duplicateInfo.type === 'file') {
         // For file duplicates: copy the duplicate target's identifiers
@@ -630,28 +611,7 @@ export default function AddTakeScreen() {
           newLogData.takeNumber = existingEntry.data.takeNumber;
         }
         
-        // Shift the duplicate target and all subsequent entries by +1
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        
-        fieldsToShift.forEach(fieldId => {
-          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
-          if (targetFileNum > 0) {
-            updateFileNumbers(projectId!, fieldId, targetFileNum, 1);
-          }
-        });
-        
-        // Also shift take numbers if same scene/shot
-        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && existingEntry.data?.takeNumber) {
-          const takeNum = parseInt(existingEntry.data.takeNumber);
-          if (!isNaN(takeNum)) {
-            updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, takeNum, 1);
-          }
-        }
+        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
       }
       
       // Create new log entry
@@ -718,22 +678,7 @@ export default function AddTakeScreen() {
         const shotNumber = existingEntry.data?.shotNumber!;
         const newTakeNumber = parseInt(newLogData.takeNumber || '1');
         
-        // For take numbers, shift all entries in the same scene/shot that have take numbers > newTakeNumber
-        updateTakeNumbers(projectId!, sceneNumber, shotNumber, newTakeNumber + 1, 1);
-        
-        // Shift file numbers for all subsequent entries across all scenes/shots
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        
-        fieldsToShift.forEach(fieldId => {
-          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          // Shift all file numbers >= newFileNum (including the duplicate target)
-          updateFileNumbers(projectId!, fieldId, newFileNum, 1);
-        });
+        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
         
       } else if (duplicateInfo.type === 'file') {
         // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
@@ -786,26 +731,7 @@ export default function AddTakeScreen() {
           newLogData.takeNumber = (lastTakeNumber + 1).toString();
         }
         
-        // Shift all subsequent entries (after the new log) by +1 onwards
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        
-        fieldsToShift.forEach(fieldId => {
-          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          // Shift all file numbers >= newFileNum (including the duplicate target)
-          updateFileNumbers(projectId!, fieldId, newFileNum, 1);
-        });
-        
-        // Also shift take numbers if same scene/shot
-        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && newLogData.takeNumber) {
-          const newTakeNum = parseInt(newLogData.takeNumber);
-          // Shift all take numbers >= newTakeNum in the same scene/shot (including the duplicate target)
-          updateTakeNumbers(projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, newTakeNum, 1);
-        }
+        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
       }
       
       // Create new log entry

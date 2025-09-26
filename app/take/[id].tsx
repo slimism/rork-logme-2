@@ -503,7 +503,7 @@ export default function EditTakeScreen() {
 
   const handleSaveWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
     if (!logSheet || !project) return;
-    const { updateTakeNumbers, updateFileNumbers } = useProjectStore.getState();
+    // Backend shifting disabled: store only UI-provided values; do not renumber existing entries.
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
 
@@ -535,8 +535,7 @@ export default function EditTakeScreen() {
           if (existingEntry.data?.takeNumber) {
             newLogData.takeNumber = existingEntry.data.takeNumber;
           }
-          const takeNumber = parseInt(existingEntry.data?.takeNumber || '1');
-          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, takeNumber, 1);
+          // Backend shifting disabled: no renumbering of other entries.
         } else {
           const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
           const sameShotTakes = projectLogSheets.filter(sheet => sheet.data?.sceneNumber === newLogSceneNumber && sheet.data?.shotNumber === newLogShotNumber);
@@ -550,18 +549,7 @@ export default function EditTakeScreen() {
           newLogData.takeNumber = String(maxTakeNumber + 1);
         }
 
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        fieldsToShift.forEach(fieldId => {
-          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
-          if (targetFileNum > 0) {
-            updateFileNumbers(logSheet.projectId!, fieldId, targetFileNum, 1);
-          }
-        });
+        // Backend shifting disabled: no renumbering of other entries.
 
       } else if (duplicateInfo.type === 'file') {
         if (existingEntry.data?.soundFile) {
@@ -580,24 +568,8 @@ export default function EditTakeScreen() {
         if (existingEntry.data?.takeNumber) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
         }
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        fieldsToShift.forEach(fieldId => {
-          const targetFileNum = parseInt(existingEntry.data?.[fieldId] || '0') || 0;
-          if (targetFileNum > 0) {
-            updateFileNumbers(logSheet.projectId!, fieldId, targetFileNum, 1);
-          }
-        });
-        if (existingEntry.data?.sceneNumber && existingEntry.data?.shotNumber && existingEntry.data?.takeNumber) {
-          const takeNum = parseInt(existingEntry.data.takeNumber);
-          if (!isNaN(takeNum)) {
-            updateTakeNumbers(logSheet.projectId!, existingEntry.data.sceneNumber, existingEntry.data.shotNumber, takeNum, 1);
-          }
-        }
+        // Backend shifting disabled: no renumbering of other entries.
+        // Backend shifting disabled: no renumbering of other entries.
       }
 
       let finalTakeData = { ...newLogData };
@@ -653,19 +625,9 @@ export default function EditTakeScreen() {
             const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
             newLogData.takeNumber = String(duplicateTakeNum);
           }
-          const duplicateTakeNum = parseInt(existingEntry.data?.takeNumber || '1');
-          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, duplicateTakeNum, 1);
+          // Backend shifting disabled: no renumbering of other entries.
         }
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        fieldsToShift.forEach(fieldId => {
-          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          updateFileNumbers(logSheet.projectId!, fieldId, newFileNum, 1);
-        });
+        // Backend shifting disabled: no renumbering of other entries.
 
       } else if (duplicateInfo.type === 'file') {
         if (existingEntry.data?.soundFile) {
@@ -694,19 +656,9 @@ export default function EditTakeScreen() {
             const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
             newLogData.takeNumber = String(duplicateTakeNum);
           }
-          const duplicateTakeNum = parseInt(existingEntry.data?.takeNumber || '1');
-          updateTakeNumbers(logSheet.projectId!, duplicateSceneNumber, duplicateShotNumber, duplicateTakeNum, 1);
+          // Backend shifting disabled: no renumbering of other entries.
         }
-        const fieldsToShift: string[] = ['soundFile'];
-        if (camCount === 1) {
-          fieldsToShift.push('cameraFile');
-        } else {
-          for (let i = 1; i <= camCount; i++) fieldsToShift.push(`cameraFile${i}`);
-        }
-        fieldsToShift.forEach(fieldId => {
-          const newFileNum = parseInt(newLogData[fieldId] || '0') || 0;
-          updateFileNumbers(logSheet.projectId!, fieldId, newFileNum, 1);
-        });
+        // Backend shifting disabled: no renumbering of other entries.
       }
 
       let finalTakeData = { ...newLogData };
