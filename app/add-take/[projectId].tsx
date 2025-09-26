@@ -227,10 +227,24 @@ export default function AddTakeScreen() {
           }
         }
         
-        // Auto-increment take number
-        if (takeNumber) {
-          const nextTakeNumber = (parseInt(takeNumber) + 1).toString();
-          autoFillData.takeNumber = nextTakeNumber;
+        // Auto-increment take number from last valid non-Ambience/SFX entry in same Scene/Shot
+        {
+          const nonAmbienceSfx = projectLogSheets
+            .filter(s => s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const sameShotLast = nonAmbienceSfx.find(s => 
+            (autoFillData.sceneNumber ? s.data?.sceneNumber === autoFillData.sceneNumber : true) &&
+            (autoFillData.shotNumber ? s.data?.shotNumber === autoFillData.shotNumber : true) &&
+            !!s.data?.takeNumber
+          );
+          if (sameShotLast?.data?.takeNumber) {
+            autoFillData.takeNumber = String((parseInt(sameShotLast.data.takeNumber) || 0) + 1);
+          } else if (takeNumber) {
+            const nextTakeNumber = (parseInt(takeNumber) + 1).toString();
+            autoFillData.takeNumber = nextTakeNumber;
+          } else {
+            autoFillData.takeNumber = '1';
+          }
         }
         
         // Auto-increment sound file based on highest number + 1
@@ -408,17 +422,18 @@ export default function AddTakeScreen() {
   const validateMandatoryFields = () => {
     const errors = new Set<string>();
     const missingFields: string[] = [];
+    const isAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
     
-    // Check Scene Number (always mandatory)
-    if (!takeData.sceneNumber?.trim()) {
-      errors.add('sceneNumber');
-      missingFields.push('Scene');
-    }
-    
-    // Check Shot Number (always mandatory)
-    if (!takeData.shotNumber?.trim()) {
-      errors.add('shotNumber');
-      missingFields.push('Shot');
+    // Scene and Shot are not mandatory when Ambience or SFX
+    if (!isAmbienceOrSFX) {
+      if (!takeData.sceneNumber?.trim()) {
+        errors.add('sceneNumber');
+        missingFields.push('Scene');
+      }
+      if (!takeData.shotNumber?.trim()) {
+        errors.add('shotNumber');
+        missingFields.push('Shot');
+      }
     }
     
     // Check Sound File (mandatory unless disabled)
@@ -994,7 +1009,7 @@ export default function AddTakeScreen() {
       // Don't set disabled fields yet, wait for waste modal confirmation
       return;
     } else if (newClassification === 'SFX') {
-      // For SFX: disable camera files and shot/take fields
+      // For SFX: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
         fieldsToDisable.add('cameraFile');
       } else {
@@ -1003,7 +1018,8 @@ export default function AddTakeScreen() {
         }
       }
       
-      // Disable shot and take fields
+      // Disable scene, shot and take fields
+      fieldsToDisable.add('sceneNumber');
       fieldsToDisable.add('shotNumber');
       fieldsToDisable.add('takeNumber');
       
@@ -1012,7 +1028,7 @@ export default function AddTakeScreen() {
       // Clear only the newly disabled field values, preserve others
       setTakeData(prev => {
         const newData = { ...prev };
-        // Only clear camera and shot/take fields for SFX
+        // Only clear camera and scene/shot/take fields for SFX
         if (project?.settings?.cameraConfiguration === 1) {
           newData['cameraFile'] = '';
         } else {
@@ -1020,12 +1036,13 @@ export default function AddTakeScreen() {
             newData[`cameraFile${i}`] = '';
           }
         }
+        newData['sceneNumber'] = '';
         newData['shotNumber'] = '';
         newData['takeNumber'] = '';
         return newData;
       });
     } else if (newClassification === 'Ambience') {
-      // For Ambience: disable camera files and shot/take fields
+      // For Ambience: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
         fieldsToDisable.add('cameraFile');
       } else {
@@ -1034,7 +1051,8 @@ export default function AddTakeScreen() {
         }
       }
       
-      // Disable shot and take fields
+      // Disable scene, shot and take fields
+      fieldsToDisable.add('sceneNumber');
       fieldsToDisable.add('shotNumber');
       fieldsToDisable.add('takeNumber');
       
@@ -1043,7 +1061,7 @@ export default function AddTakeScreen() {
       // Clear only the newly disabled field values, preserve others
       setTakeData(prev => {
         const newData = { ...prev };
-        // Only clear camera and shot/take fields for Ambience
+        // Only clear camera and scene/shot/take fields for Ambience
         if (project?.settings?.cameraConfiguration === 1) {
           newData['cameraFile'] = '';
         } else {
@@ -1051,6 +1069,7 @@ export default function AddTakeScreen() {
             newData[`cameraFile${i}`] = '';
           }
         }
+        newData['sceneNumber'] = '';
         newData['shotNumber'] = '';
         newData['takeNumber'] = '';
         return newData;
@@ -1318,16 +1337,21 @@ export default function AddTakeScreen() {
           <View style={styles.topRowContainer}>
             {enabledFields.find(f => f.id === 'sceneNumber') && (
               <View style={styles.topFieldContainer}>
-                <Text style={[styles.topFieldLabel, validationErrors.has('sceneNumber') && styles.errorLabel]}>
-                  Scene<Text style={styles.asterisk}> *</Text>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('sceneNumber') && styles.disabledLabel,
+                  validationErrors.has('sceneNumber') && styles.errorLabel
+                ]}>
+                  Scene{!disabledFields.has('sceneNumber') && classification !== 'Ambience' && classification !== 'SFX' && <Text style={styles.asterisk}> *</Text>}
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['sceneNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
+                    disabledFields.has('sceneNumber') && styles.disabledInput,
                     validationErrors.has('sceneNumber') && styles.errorInput
                   ]}
-                  value={takeData.sceneNumber || ''}
+                  value={disabledFields.has('sceneNumber') ? '' : (takeData.sceneNumber || '')}
                   onChangeText={(text) => {
                     updateTakeData('sceneNumber', text);
                     if (validationErrors.has('sceneNumber')) {
@@ -1341,7 +1365,8 @@ export default function AddTakeScreen() {
                   placeholder=""
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
-                  onSubmitEditing={() => focusNextField('sceneNumber', allFieldIds)}
+                  editable={!disabledFields.has('sceneNumber')}
+                  onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
                   onFocus={(event) => {
                     setTimeout(() => {
                       const target = event.target as any;
@@ -1356,16 +1381,21 @@ export default function AddTakeScreen() {
             )}
             {enabledFields.find(f => f.id === 'shotNumber') && (
               <View style={styles.topFieldContainer}>
-                <Text style={[styles.topFieldLabel, validationErrors.has('shotNumber') && styles.errorLabel]}>
-                  Shot<Text style={styles.asterisk}> *</Text>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('shotNumber') && styles.disabledLabel,
+                  validationErrors.has('shotNumber') && styles.errorLabel
+                ]}>
+                  Shot{!disabledFields.has('shotNumber') && classification !== 'Ambience' && classification !== 'SFX' && <Text style={styles.asterisk}> *</Text>}
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['shotNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
+                    disabledFields.has('shotNumber') && styles.disabledInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
-                  value={takeData.shotNumber || ''}
+                  value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
                   onChangeText={(text) => {
                     updateTakeData('shotNumber', text);
                     if (validationErrors.has('shotNumber')) {
@@ -1379,7 +1409,8 @@ export default function AddTakeScreen() {
                   placeholder=""
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
-                  onSubmitEditing={() => focusNextField('shotNumber', allFieldIds)}
+                  editable={!disabledFields.has('shotNumber')}
+                  onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
                   onFocus={(event) => {
                     setTimeout(() => {
                       const target = event.target as any;
@@ -1394,16 +1425,21 @@ export default function AddTakeScreen() {
             )}
             {enabledFields.find(f => f.id === 'takeNumber') && (
               <View style={styles.topFieldContainer}>
-                <Text style={[styles.topFieldLabel, validationErrors.has('takeNumber') && styles.errorLabel]}>
-                  Take<Text style={styles.asterisk}> *</Text>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('takeNumber') && styles.disabledLabel,
+                  validationErrors.has('takeNumber') && styles.errorLabel
+                ]}>
+                  Take{!disabledFields.has('takeNumber') && classification !== 'Ambience' && classification !== 'SFX' && <Text style={styles.asterisk}> *</Text>}
                 </Text>
                 <TextInput
                   ref={(ref) => { inputRefs.current['takeNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
+                    disabledFields.has('takeNumber') && styles.disabledInput,
                     validationErrors.has('takeNumber') && styles.errorInput
                   ]}
-                  value={takeData.takeNumber || ''}
+                  value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
                   onChangeText={(text) => {
                     updateTakeData('takeNumber', text);
                     if (validationErrors.has('takeNumber')) {
@@ -1418,7 +1454,8 @@ export default function AddTakeScreen() {
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   returnKeyType="next"
-                  onSubmitEditing={() => focusNextField('takeNumber', allFieldIds)}
+                  editable={!disabledFields.has('takeNumber')}
+                  onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
                   onFocus={(event) => {
                     setTimeout(() => {
                       const target = event.target as any;

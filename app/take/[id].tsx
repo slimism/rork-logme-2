@@ -157,6 +157,7 @@ export default function EditTakeScreen() {
           newDisabledFields.add(`cameraFile${i}`);
         }
       }
+      newDisabledFields.add('sceneNumber');
       newDisabledFields.add('shotNumber');
       newDisabledFields.add('takeNumber');
     }
@@ -185,6 +186,23 @@ export default function EditTakeScreen() {
     }
 
     setDisabledFields(newDisabledFields);
+
+    if (classification === 'SFX' || classification === 'Ambience') {
+      setTakeData(prev => {
+        const updated = { ...prev } as Record<string, string>;
+        if (camCount === 1) {
+          updated['cameraFile'] = '';
+        } else {
+          for (let i = 1; i <= camCount; i++) {
+            updated[`cameraFile${i}`] = '';
+          }
+        }
+        updated['sceneNumber'] = '';
+        updated['shotNumber'] = '';
+        updated['takeNumber'] = '';
+        return updated;
+      });
+    }
   }, [classification, shotDetails, wasteOptions, insertSoundSpeed, project]);
 
   const HeaderLeft = () => (
@@ -370,13 +388,16 @@ export default function EditTakeScreen() {
     const errors = new Set<string>();
     const missingFields: string[] = [];
 
-    if (!takeData.sceneNumber?.trim()) {
-      errors.add('sceneNumber');
-      missingFields.push('Scene');
-    }
-    if (!takeData.shotNumber?.trim()) {
-      errors.add('shotNumber');
-      missingFields.push('Shot');
+    const isAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
+    if (!isAmbienceOrSFX) {
+      if (!takeData.sceneNumber?.trim()) {
+        errors.add('sceneNumber');
+        missingFields.push('Scene');
+      }
+      if (!takeData.shotNumber?.trim()) {
+        errors.add('shotNumber');
+        missingFields.push('Shot');
+      }
     }
     if (!disabledFields.has('soundFile') && !takeData.soundFile?.trim()) {
       errors.add('soundFile');
