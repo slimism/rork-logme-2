@@ -89,67 +89,61 @@ export default function ProjectScreen() {
       .slice(0, 2);
   }, [projectLogSheets]);
 
-  // Filter and organize takes hierarchically by scene -> shot -> take
-  const organizedTakes = React.useMemo(() => {
+  // Split sheets into regular (scene/shot/take) and Ambience/SFX, then organize regular ones by scene -> shot -> take
+  const { organizedTakes, ambienceSfxTakes } = React.useMemo(() => {
     const scenes: { [key: string]: { [key: string]: any[] } } = {};
-    
-    // Apply filters
+    const ambienceSfx: any[] = [];
+
     const filteredSheets = projectLogSheets.filter(sheet => {
       const data = sheet.data;
-      
-      // Scene filter
+
       if (filters.scene && data?.sceneNumber !== filters.scene) return false;
-      
-      // Shot filter
       if (filters.shot && data?.shotNumber !== filters.shot) return false;
-      
-      // Take filter
       if (filters.take && data?.takeNumber !== filters.take) return false;
-      
-      // Episode filter
       if (filters.episode && data?.episodeNumber !== filters.episode) return false;
-      
-      // Classification filter
       if (filters.classification && data?.classification !== filters.classification) return false;
-      
-      // Good takes only filter
       if (filters.goodTakesOnly && !data?.isGoodTake) return false;
-      
-      // Search filter - search in shot description
       if (searchQuery && (!data?.descriptionOfShot || !data.descriptionOfShot.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-      
+
       return true;
     });
-    
+
     filteredSheets.forEach(sheet => {
+      const classification = sheet.data?.classification as ClassificationType | undefined;
+      const isAmbSfx = classification === 'Ambience' || classification === 'SFX';
+      if (isAmbSfx) {
+        ambienceSfx.push(sheet);
+        return;
+      }
+
       const sceneNumber = sheet.data?.sceneNumber || 'Unknown';
       const shotNumber = sheet.data?.shotNumber || 'Unknown';
-      
+
       if (!scenes[sceneNumber]) {
         scenes[sceneNumber] = {};
       }
       if (!scenes[sceneNumber][shotNumber]) {
         scenes[sceneNumber][shotNumber] = [];
       }
-      
+
       scenes[sceneNumber][shotNumber].push(sheet);
     });
-    
-    // Sort takes within each shot by take number in descending order
+
     Object.keys(scenes).forEach(sceneKey => {
       Object.keys(scenes[sceneKey]).forEach(shotKey => {
         scenes[sceneKey][shotKey].sort((a, b) => {
           const takeA = parseInt(a.data?.takeNumber || '0');
           const takeB = parseInt(b.data?.takeNumber || '0');
-          return takeB - takeA; // Descending order (highest take number first)
+          return takeB - takeA;
         });
       });
     });
-    
-    return scenes;
+
+    ambienceSfx.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return { organizedTakes: scenes, ambienceSfxTakes: ambienceSfx };
   }, [projectLogSheets, filters, searchQuery]);
-  
-  // Get sorted scene and shot keys for display
+
   const sortedScenes = Object.keys(organizedTakes).sort((a, b) => {
     if (a === 'Unknown') return 1;
     if (b === 'Unknown') return -1;
@@ -160,10 +154,7 @@ export default function ProjectScreen() {
 
 
 
-  const renderTake = ({ item: take, index, totalTakes, isRecentlyCreated = false }: { item: any, index: number, totalTakes: number, isRecentlyCreated?: boolean }) => {
-    const takeNumber = take.data?.takeNumber || '1';
-    const sceneNumber = take.data?.sceneNumber || 'Unknown';
-    const shotNumber = take.data?.shotNumber || 'Unknown';
+  const renderTake = ({ item: take, index, totalTakes, isRecentlyCreated = false, isAmbienceSfx = false }: { item: any, index: number, totalTakes: number, isRecentlyCreated?: boolean, isAmbienceSfx?: boolean }) => {
     const isFirstTake = index === 0;
     const isLastTake = index === totalTakes - 1;
 
@@ -178,6 +169,7 @@ export default function ProjectScreen() {
     }
 
     const cameraFiles: string[] = (() => {
+      if (isAmbienceSfx) return [];
       const files: string[] = [];
       const data = take.data ?? {};
       if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
@@ -192,6 +184,17 @@ export default function ProjectScreen() {
         }
       });
       return files;
+    })();
+
+    const titleText = (() => {
+      if (isAmbienceSfx) {
+        const cls = take.data?.classification ?? '';
+        return cls ? `${cls}` : 'Ambience / SFX';
+      }
+      const takeNumber = take.data?.takeNumber || '1';
+      const sceneNumber = take.data?.sceneNumber || 'Unknown';
+      const shotNumber = take.data?.shotNumber || 'Unknown';
+      return isRecentlyCreated ? `Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}` : `Take ${takeNumber}`;
     })();
 
     return (
@@ -209,9 +212,9 @@ export default function ProjectScreen() {
           <View style={styles.takeContent}>
             <View style={styles.takeHeader}>
               <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>
-                {isRecentlyCreated ? `Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}` : `Take ${takeNumber}`}
+                {titleText}
               </Text>
-              {take.data?.isGoodTake && (
+              {take.data?.isGoodTake && !isAmbienceSfx && (
                 <View style={styles.goodTakeIndicator}>
                   <Check size={12} color="#10B981" strokeWidth={3} />
                 </View>
@@ -387,7 +390,7 @@ export default function ProjectScreen() {
           </View>
         )}
         
-        {Object.keys(organizedTakes).length === 0 && recentlyCreatedLogs.length === 0 ? (
+        {Object.keys(organizedTakes).length === 0 && recentlyCreatedLogs.length === 0 && ambienceSfxTakes.length === 0 ? (
           <EmptyState
             title={projectLogSheets.length === 0 ? "No Takes Yet" : "No Matching Takes"}
             message={projectLogSheets.length === 0 ? "Start logging your film takes by tapping the + button." : searchQuery ? "No takes match your search. Try a different search term." : "Try adjusting your filters to see more takes."}
@@ -449,6 +452,22 @@ export default function ProjectScreen() {
                 ))}
               </View>
             ))}
+
+            {/* Ambiences & SFX Section */}
+            {ambienceSfxTakes.length > 0 && (
+              <View style={[styles.sceneContainer, darkMode && styles.sceneContainerDark]} testID="ambience-sfx-section">
+                <View style={[styles.sceneHeader, darkMode && styles.sceneHeaderDark]}>
+                  <Text style={[styles.sceneTitle, darkMode && styles.sceneTitleDark]}>Ambiences & SFX</Text>
+                </View>
+                <View style={styles.takesContainer}>
+                  {ambienceSfxTakes.map((take, index) => (
+                    <View key={take.id}>
+                      {renderTake({ item: take, index, totalTakes: ambienceSfxTakes.length, isAmbienceSfx: true })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </ScrollView>
         )}
 
