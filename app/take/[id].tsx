@@ -193,9 +193,54 @@ export default function EditTakeScreen() {
   };
 
   const formatFileNumber = (value: string): string => {
-    const num = parseInt(value, 10);
+    const numeric = value.replace(/[^0-9]/g, '');
+    const num = parseInt(numeric, 10);
     if (isNaN(num)) return '';
     return num.toString().padStart(4, '0');
+  };
+
+  const formatFileNumberOnBlur = (value: string): string => {
+    const numeric = value.replace(/[^0-9]/g, '');
+    return numeric ? String(parseInt(numeric, 10)).padStart(4, '0') : '';
+  };
+
+  const toggleRangeMode = (fieldId: string) => {
+    setShowRangeMode(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
+
+    if (!showRangeMode[fieldId]) {
+      const currentValue = (takeData[fieldId] as string) || '0001';
+      setRangeData(prev => ({
+        ...prev,
+        [fieldId]: { from: currentValue, to: currentValue }
+      }));
+    } else {
+      const range = rangeData[fieldId];
+      if (range) {
+        updateTakeData(fieldId, range.from);
+      }
+    }
+  };
+
+  const updateRangeData = (fieldId: string, type: 'from' | 'to', value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setRangeData(prev => ({
+      ...prev,
+      [fieldId]: {
+        ...prev[fieldId],
+        [type]: numericValue
+      }
+    }));
+
+    const currentRange = rangeData[fieldId] || { from: '', to: '' };
+    const updatedRange = { ...currentRange, [type]: numericValue } as { from: string; to: string };
+    if (updatedRange.from && updatedRange.to) {
+      updateTakeData(fieldId, `${updatedRange.from}-${updatedRange.to}`);
+    } else if (updatedRange.from) {
+      updateTakeData(fieldId, updatedRange.from);
+    }
   };
 
   const handleClassificationPress = (type: ClassificationType) => {
@@ -849,25 +894,56 @@ export default function EditTakeScreen() {
       const fieldLabel = cameraCount === 1 ? 'Camera File' : `Camera File ${i}`;
       const isDisabled = disabledFields.has(fieldId);
 
-      if (i === 1 && cameraRangeEnabled) {
-        fields.push(
-          <View key={fieldId} style={styles.fieldContainer}>
-            <View style={styles.fieldHeaderRow}>
-              <Text style={[styles.fieldLabel, isDisabled && styles.disabledLabel]}>{fieldLabel}</Text>
+      fields.push(
+        <View key={fieldId} style={styles.fieldContainer}>
+          <View style={styles.fieldHeaderRow}>
+            <Text style={[
+              styles.fieldLabel,
+              isDisabled && styles.disabledLabel,
+              validationErrors.has(fieldId) && styles.errorLabel
+            ]}>
+              {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
+            </Text>
+            <View style={styles.buttonGroup}>
               <TouchableOpacity
                 style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                onPress={() => setCameraRangeEnabled(false)}
+                onPress={() => !isDisabled && toggleRangeMode(fieldId)}
                 disabled={isDisabled}
               >
                 <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
               </TouchableOpacity>
+              {cameraCount > 1 && (
+                <TouchableOpacity 
+                  style={[
+                    styles.recButton, 
+                    (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
+                    isDisabled && styles.disabledButton
+                  ]}
+                  onPress={() => !isDisabled && toggleCameraRec(fieldId)}
+                  disabled={isDisabled}
+                >
+                  <Text style={[
+                    styles.recButtonText, 
+                    (cameraRecState[fieldId] ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
+                    isDisabled && styles.disabledText
+                  ]}>REC</Text>
+                </TouchableOpacity>
+              )}
             </View>
+          </View>
+          {showRangeMode[fieldId] && !isDisabled ? (
             <View style={styles.rangeContainer}>
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
-                value={cameraRange.from}
-                onChangeText={(text) => setCameraRange(prev => ({ ...prev, from: text }))}
-                onBlur={() => setCameraRange(prev => ({ ...prev, from: formatFileNumber(prev.from) }))}
+                value={rangeData[fieldId]?.from || ''}
+                onChangeText={(text) => updateRangeData(fieldId, 'from', text)}
+                onBlur={() => {
+                  const currentRange = rangeData[fieldId];
+                  if (currentRange?.from) {
+                    const formatted = formatFileNumberOnBlur(currentRange.from);
+                    updateRangeData(fieldId, 'from', formatted);
+                  }
+                }}
                 placeholder="From"
                 placeholderTextColor={colors.subtext}
                 keyboardType="numeric"
@@ -877,9 +953,15 @@ export default function EditTakeScreen() {
               <Text style={styles.rangeSeparator}>-</Text>
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
-                value={cameraRange.to}
-                onChangeText={(text) => setCameraRange(prev => ({ ...prev, to: text }))}
-                onBlur={() => setCameraRange(prev => ({ ...prev, to: formatFileNumber(prev.to) }))}
+                value={rangeData[fieldId]?.to || ''}
+                onChangeText={(text) => updateRangeData(fieldId, 'to', text)}
+                onBlur={() => {
+                  const currentRange = rangeData[fieldId];
+                  if (currentRange?.to) {
+                    const formatted = formatFileNumberOnBlur(currentRange.to);
+                    updateRangeData(fieldId, 'to', formatted);
+                  }
+                }}
                 placeholder="To"
                 placeholderTextColor={colors.subtext}
                 keyboardType="numeric"
@@ -887,48 +969,7 @@ export default function EditTakeScreen() {
                 editable={!isDisabled}
               />
             </View>
-          </View>
-        );
-      } else {
-        fields.push(
-          <View key={fieldId} style={styles.fieldContainer}>
-            <View style={styles.fieldHeaderRow}>
-              <Text style={[
-                styles.fieldLabel,
-                isDisabled && styles.disabledLabel,
-                validationErrors.has(fieldId) && styles.errorLabel
-              ]}>
-                {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
-              </Text>
-              <View style={styles.buttonGroup}>
-                {i === 1 && (
-                  <TouchableOpacity
-                    style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                    onPress={() => setCameraRangeEnabled(true)}
-                    disabled={isDisabled}
-                  >
-                    <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-                  </TouchableOpacity>
-                )}
-                {cameraCount > 1 && (
-                  <TouchableOpacity 
-                    style={[
-                      styles.recButton, 
-                      (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
-                      isDisabled && styles.disabledButton
-                    ]}
-                    onPress={() => !isDisabled && toggleCameraRec(fieldId)}
-                    disabled={isDisabled}
-                  >
-                    <Text style={[
-                      styles.recButtonText, 
-                      (cameraRecState[fieldId] ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
-                      isDisabled && styles.disabledText
-                    ]}>REC</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+          ) : (
             <TextInput
               ref={(ref) => { inputRefs.current[fieldId] = ref; }}
               style={[
@@ -968,9 +1009,9 @@ export default function EditTakeScreen() {
               }}
               editable={!isDisabled}
             />
-          </View>
-        );
-      }
+          )}
+        </View>
+      );
     }
     return fields;
   };
