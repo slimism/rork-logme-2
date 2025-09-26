@@ -94,6 +94,30 @@ export default function AddTakeScreen() {
     });
   };
 
+  // Helper function to sanitize data before saving
+  const sanitizeDataBeforeSave = (data: TakeData, classification: ClassificationType | null) => {
+    const sanitizedData = { ...data };
+    
+    // For Ambience and SFX, remove scene, shot, and take numbers
+    if (classification === 'Ambience' || classification === 'SFX') {
+      delete sanitizedData.sceneNumber;
+      delete sanitizedData.shotNumber;
+      delete sanitizedData.takeNumber;
+      
+      // Also remove camera files for these classifications
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      if (cameraConfiguration === 1) {
+        delete sanitizedData.cameraFile;
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          delete sanitizedData[`cameraFile${i}`];
+        }
+      }
+    }
+    
+    return sanitizedData;
+  };
+
   // Helper function to get the highest file number from all logs for a specific camera
   const getHighestFileNumber = (fieldId: string, projectLogSheets: any[]) => {
     let highestNum = 0;
