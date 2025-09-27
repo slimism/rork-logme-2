@@ -271,6 +271,11 @@ export default function EditTakeScreen() {
   const handleClassificationPress = (type: ClassificationType) => {
     const newClassification = classification === type ? null : type;
     setClassification(newClassification);
+
+    if (newClassification === 'Ambience' || newClassification === 'SFX') {
+      setShotDetails(prev => prev.filter(d => d !== 'MOS'));
+    }
+
     if (newClassification === type) {
       if (type === 'Waste') {
         setShowWasteModal(true);
@@ -610,10 +615,13 @@ export default function EditTakeScreen() {
       }
 
       finalTakeData = pruneDisabled(finalTakeData);
+      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
+        ? shotDetails.filter(d => d !== 'MOS')
+        : shotDetails;
       const updatedData = {
         ...finalTakeData,
         classification,
-        shotDetails,
+        shotDetails: filteredShotDetails,
         isGoodTake,
         wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
@@ -701,10 +709,13 @@ export default function EditTakeScreen() {
       // Apply sanitization to enforce business rules
       finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
       
+      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
+        ? shotDetails.filter(d => d !== 'MOS')
+        : shotDetails;
       const updatedData = {
         ...finalTakeData,
         classification,
-        shotDetails,
+        shotDetails: filteredShotDetails,
         isGoodTake,
         wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
@@ -732,11 +743,15 @@ export default function EditTakeScreen() {
       finalTakeData = pruneDisabled(finalTakeData);
       // Apply sanitization to enforce business rules
       finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+
+      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
+        ? shotDetails.filter(d => d !== 'MOS')
+        : shotDetails;
       
       const updatedData = {
         ...finalTakeData,
         classification: classification || '',
-        shotDetails: shotDetails.length > 0 ? shotDetails : [],
+        shotDetails: filteredShotDetails.length > 0 ? filteredShotDetails : [],
         isGoodTake: isGoodTake,
         wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
