@@ -1140,7 +1140,7 @@ export default function EditTakeScreen() {
         <View style={[styles.sectionContainer, isLandscape ? styles.mainContainerLandscape : null]}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
-              Scene {takeData.sceneNumber || 'Unknown'} - Shot {takeData.shotNumber || 'Unknown'}
+              {classification === 'Ambience' ? 'Ambience' : classification === 'SFX' ? 'SFX' : `Scene ${takeData.sceneNumber || 'Unknown'} - Shot ${takeData.shotNumber || 'Unknown'}`}
             </Text>
             <Text style={styles.takeSubtitle}>
               created: {new Date(logSheet.createdAt).toLocaleDateString()}
@@ -1148,7 +1148,6 @@ export default function EditTakeScreen() {
             <Text style={styles.takeSubtitle}>
               Last Updated: {new Date(logSheet.updatedAt).toLocaleDateString()}
             </Text>
-            <Text style={styles.takeSubtitle}>Attachments:</Text>
           </View>
 
           <View style={styles.topRowContainer}>
