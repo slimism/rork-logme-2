@@ -198,23 +198,6 @@ export default function EditTakeScreen() {
     }
 
     setDisabledFields(newDisabledFields);
-
-    if (classification === 'SFX' || classification === 'Ambience') {
-      setTakeData(prev => {
-        const updated = { ...prev } as Record<string, string>;
-        if (camCount === 1) {
-          updated['cameraFile'] = '';
-        } else {
-          for (let i = 1; i <= camCount; i++) {
-            updated[`cameraFile${i}`] = '';
-          }
-        }
-        updated['sceneNumber'] = '';
-        updated['shotNumber'] = '';
-        updated['takeNumber'] = '';
-        return updated;
-      });
-    }
   }, [classification, shotDetails, wasteOptions, insertSoundSpeed, project]);
 
   const HeaderLeft = () => (
@@ -402,6 +385,7 @@ export default function EditTakeScreen() {
     const errors = new Set<string>();
     const missingFields: string[] = [];
 
+    // Scene and Shot are not mandatory when Ambience or SFX
     const isAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
     if (!isAmbienceOrSFX) {
       if (!takeData.sceneNumber?.trim()) {
@@ -413,11 +397,14 @@ export default function EditTakeScreen() {
         missingFields.push('Shot');
       }
     }
+    
+    // Check Sound File (mandatory unless disabled)
     if (!disabledFields.has('soundFile') && !takeData.soundFile?.trim()) {
       errors.add('soundFile');
       missingFields.push('Sound File');
     }
 
+    // Check Camera Files (mandatory unless disabled)
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       if (!disabledFields.has('cameraFile') && !takeData.cameraFile?.trim()) {
@@ -428,6 +415,7 @@ export default function EditTakeScreen() {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
         const isRecActive = cameraRecState[fieldId] ?? true;
+        // Only validate if field is not disabled AND REC is active
         if (!disabledFields.has(fieldId) && isRecActive && !takeData[fieldId]?.trim()) {
           errors.add(fieldId);
           missingFields.push(`Camera File ${i}`);
@@ -448,6 +436,30 @@ export default function EditTakeScreen() {
       return false;
     }
     return true;
+  };
+
+  // Helper function to sanitize data before saving (same as New Log)
+  const sanitizeDataBeforeSave = (data: Record<string, string>, classification: ClassificationType | null) => {
+    const sanitizedData = { ...data };
+    
+    // For Ambience and SFX, remove scene, shot, and take numbers
+    if (classification === 'Ambience' || classification === 'SFX') {
+      delete sanitizedData.sceneNumber;
+      delete sanitizedData.shotNumber;
+      delete sanitizedData.takeNumber;
+      
+      // Also remove camera files for these classifications
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      if (cameraConfiguration === 1) {
+        delete sanitizedData.cameraFile;
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          delete sanitizedData[`cameraFile${i}`];
+        }
+      }
+    }
+    
+    return sanitizedData;
   };
 
   const handleSaveTake = () => {
@@ -686,6 +698,9 @@ export default function EditTakeScreen() {
         }
       }
       finalTakeData = pruneDisabled(finalTakeData);
+      // Apply sanitization to enforce business rules
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      
       const updatedData = {
         ...finalTakeData,
         classification,
@@ -715,6 +730,9 @@ export default function EditTakeScreen() {
         }
       }
       finalTakeData = pruneDisabled(finalTakeData);
+      // Apply sanitization to enforce business rules
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      
       const updatedData = {
         ...finalTakeData,
         classification: classification || '',
