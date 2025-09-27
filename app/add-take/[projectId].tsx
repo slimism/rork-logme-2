@@ -358,7 +358,7 @@ export default function AddTakeScreen() {
         setTakeData(autoFillData);
       }
     }
-  }, [projectId, projects, logSheets, disabledFields, cameraRecState, showRangeMode, computeNextFileNumbers]);
+  }, [projectId, projects, logSheets, disabledFields, cameraRecState, computeNextFileNumbers]);
   
 
 
@@ -1056,23 +1056,35 @@ export default function AddTakeScreen() {
   };
 
   const toggleRangeMode = (fieldId: string) => {
+    const isCurrentlyInRangeMode = showRangeMode[fieldId];
+    
+    // Update only the specific field's range mode
     setShowRangeMode(prev => ({
       ...prev,
-      [fieldId]: !prev[fieldId]
+      [fieldId]: !isCurrentlyInRangeMode
     }));
     
-    if (!showRangeMode[fieldId]) {
-      // Initialize range data when entering range mode
+    if (!isCurrentlyInRangeMode) {
+      // Entering range mode: initialize range data for this field only
       const currentValue = takeData[fieldId] || '0001';
       setRangeData(prev => ({
         ...prev,
-        [fieldId]: { from: currentValue, to: currentValue }
+        [fieldId]: { 
+          from: currentValue, 
+          to: prev[fieldId]?.to || '' // Preserve existing 'to' value if it exists
+        }
       }));
     } else {
-      // When exiting range mode, set the single value to the 'from' value
+      // Exiting range mode: set the single value to the 'from' value for this field only
       const range = rangeData[fieldId];
       if (range) {
         updateTakeData(fieldId, range.from);
+        // Clear only this field's range data
+        setRangeData(prev => {
+          const newRangeData = { ...prev };
+          delete newRangeData[fieldId];
+          return newRangeData;
+        });
       }
     }
   };
