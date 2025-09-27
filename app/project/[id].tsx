@@ -252,11 +252,35 @@ export default function ProjectScreen() {
               </View>
             )}
 
-            {take.data?.soundFile && (
-              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">
-                Sound: {take.data.soundFile.includes('-') ? take.data.soundFile : take.data.soundFile}
-              </Text>
-            )}
+            {(() => {
+              const data = take.data ?? {};
+              const soundFrom = data['sound_from'];
+              const soundTo = data['sound_to'];
+              const soundFile = data.soundFile;
+              
+              // Handle range format (stable keys)
+              if (soundFrom && soundTo) {
+                const from = soundFrom.toString().padStart(4, '0');
+                const to = soundTo.toString().padStart(4, '0');
+                const displayValue = from === to ? from : `${from}–${to}`;
+                return (
+                  <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">
+                    Sound: {displayValue}
+                  </Text>
+                );
+              }
+              
+              // Handle single sound file
+              if (soundFile) {
+                return (
+                  <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">
+                    Sound: {soundFile}
+                  </Text>
+                );
+              }
+              
+              return null;
+            })()}
 
             {take.data?.descriptionOfShot && (
               <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]}>Description: {take.data.descriptionOfShot}</Text>
