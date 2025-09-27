@@ -111,52 +111,84 @@ export default function AddTakeScreen() {
     return sanitizedData;
   };
 
-  // Helper function to get the highest file number from all logs for a specific camera
-  const getHighestFileNumber = (fieldId: string, projectLogSheets: any[]) => {
+  // Helper function to get the highest file number from all logs for a specific field
+  const getHighestFileNumber = React.useCallback((fieldId: string, projectLogSheets: any[]) => {
     let highestNum = 0;
     
     projectLogSheets.forEach(sheet => {
-      if (sheet.data?.[fieldId]) {
-        const fileValue = sheet.data[fieldId];
-        if (fileValue.includes('-')) {
-          // Handle range format (e.g., "0001-0005")
-          const rangeParts = fileValue.split('-');
-          const endRange = parseInt(rangeParts[1]) || 0;
-          highestNum = Math.max(highestNum, endRange);
-        } else {
-          // Handle single number format
-          const num = parseInt(fileValue) || 0;
-          highestNum = Math.max(highestNum, num);
+      if (sheet.data) {
+        // Check single value field
+        if (sheet.data[fieldId]) {
+          const fileValue = sheet.data[fieldId];
+          if (typeof fileValue === 'string') {
+            if (fileValue.includes('-')) {
+              // Handle range format (e.g., "0001-0005")
+              const rangeParts = fileValue.split('-');
+              const endRange = parseInt(rangeParts[1]) || 0;
+              highestNum = Math.max(highestNum, endRange);
+            } else {
+              // Handle single number format
+              const num = parseInt(fileValue) || 0;
+              highestNum = Math.max(highestNum, num);
+            }
+          }
+        }
+        
+        // Check range format stored in separate fields (sound_from/sound_to, camera1_from/camera1_to, etc.)
+        if (fieldId === 'soundFile') {
+          const soundFrom = sheet.data['sound_from'];
+          const soundTo = sheet.data['sound_to'];
+          if (soundFrom) {
+            const fromNum = parseInt(soundFrom) || 0;
+            highestNum = Math.max(highestNum, fromNum);
+          }
+          if (soundTo) {
+            const toNum = parseInt(soundTo) || 0;
+            highestNum = Math.max(highestNum, toNum);
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          // Extract camera number from fieldId (e.g., cameraFile1 -> 1, cameraFile -> 1)
+          const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', '')) || 1;
+          const cameraFrom = sheet.data[`camera${cameraNum}_from`];
+          const cameraTo = sheet.data[`camera${cameraNum}_to`];
+          if (cameraFrom) {
+            const fromNum = parseInt(cameraFrom) || 0;
+            highestNum = Math.max(highestNum, fromNum);
+          }
+          if (cameraTo) {
+            const toNum = parseInt(cameraTo) || 0;
+            highestNum = Math.max(highestNum, toNum);
+          }
         }
       }
     });
     
     return highestNum;
-  };
+  }, []);
 
-  // Helper function to get the next file number based on REC state
-  const getNextFileNumber = (fieldId: string, projectLogSheets: any[], isRecActive: boolean) => {
-    if (!isRecActive) {
-      // If REC is not active, don't increment - use the same number as last recorded entry
-      const lastRecordedEntry = projectLogSheets
-        .filter(sheet => sheet.data?.[fieldId])
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-      
-      if (lastRecordedEntry?.data?.[fieldId]) {
-        const lastValue = lastRecordedEntry.data[fieldId];
-        if (lastValue.includes('-')) {
-          const rangeParts = lastValue.split('-');
-          return parseInt(rangeParts[1]) || 1;
-        } else {
-          return parseInt(lastValue) || 1;
-        }
-      }
-      return 1; // If no previous entry, start with 1
+  // Helper function to compute next file numbers for all fields
+  const computeNextFileNumbers = React.useCallback((projectLogSheets: any[], currentProject: any) => {
+    const nextNumbers: { [key: string]: number } = {};
+    
+    // Compute next sound file number
+    const highestSound = getHighestFileNumber('soundFile', projectLogSheets);
+    nextNumbers['soundFile'] = highestSound + 1;
+    
+    // Compute next camera file numbers
+    const cameraConfiguration = currentProject?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      const highestCamera = getHighestFileNumber('cameraFile', projectLogSheets);
+      nextNumbers['cameraFile'] = highestCamera + 1;
     } else {
-      // If REC is active, increment from the highest number
-      return getHighestFileNumber(fieldId, projectLogSheets) + 1;
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const highestCamera = getHighestFileNumber(fieldId, projectLogSheets);
+        nextNumbers[fieldId] = highestCamera + 1;
+      }
     }
-  };
+    
+    return nextNumbers;
+  }, [getHighestFileNumber]);
 
   // Initialize REC state separately to avoid infinite loops
   useEffect(() => {
@@ -254,19 +286,40 @@ export default function AddTakeScreen() {
           autoFillData.takeNumber = '1';
         }
         
+        // Compute next file numbers for all fields
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, currentProject);
+        
         // Auto-increment sound file based on highest number + 1
         if (!disabledFields.has('soundFile')) {
-          const highestSoundNum = getHighestFileNumber('soundFile', projectLogSheets);
-          const nextSoundFileNum = highestSoundNum + 1;
-          autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
+          const nextSoundFileNum = nextNumbers['soundFile'];
+          if (showRangeMode['soundFile']) {
+            // If range mode is ON, prefill 'from' and leave 'to' empty
+            setRangeData(prev => ({
+              ...prev,
+              soundFile: { from: String(nextSoundFileNum).padStart(4, '0'), to: '' }
+            }));
+            autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
+          } else {
+            // If range mode is OFF, prefill single value
+            autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
+          }
         }
         
         // Handle camera files based on configuration and REC state
         if (currentProject?.settings?.cameraConfiguration === 1) {
           if (!disabledFields.has('cameraFile')) {
-            const highestCameraNum = getHighestFileNumber('cameraFile', projectLogSheets);
-            const nextCameraFileNum = highestCameraNum + 1;
-            autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
+            const nextCameraFileNum = nextNumbers['cameraFile'];
+            if (showRangeMode['cameraFile']) {
+              // If range mode is ON, prefill 'from' and leave 'to' empty
+              setRangeData(prev => ({
+                ...prev,
+                cameraFile: { from: String(nextCameraFileNum).padStart(4, '0'), to: '' }
+              }));
+              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
+            } else {
+              // If range mode is OFF, prefill single value
+              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
+            }
           }
         } else {
           // Multiple cameras - use REC state to determine file numbers
@@ -274,8 +327,21 @@ export default function AddTakeScreen() {
             const fieldId = `cameraFile${i}`;
             if (!disabledFields.has(fieldId)) {
               const isRecActive = cameraRecState[fieldId] ?? true;
-              const nextCameraFileNum = getNextFileNumber(fieldId, projectLogSheets, isRecActive);
-              autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+              if (isRecActive) {
+                const nextCameraFileNum = nextNumbers[fieldId];
+                if (showRangeMode[fieldId]) {
+                  // If range mode is ON, prefill 'from' and leave 'to' empty
+                  setRangeData(prev => ({
+                    ...prev,
+                    [fieldId]: { from: String(nextCameraFileNum).padStart(4, '0'), to: '' }
+                  }));
+                  autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+                } else {
+                  // If range mode is OFF, prefill single value
+                  autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+                }
+              }
+              // If REC is not active, leave field blank (don't set autoFillData[fieldId])
             }
           }
         }
@@ -292,7 +358,7 @@ export default function AddTakeScreen() {
         setTakeData(autoFillData);
       }
     }
-  }, [projectId, projects, logSheets, disabledFields]);
+  }, [projectId, projects, logSheets, disabledFields, cameraRecState, showRangeMode, computeNextFileNumbers]);
   
 
 
