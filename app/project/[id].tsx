@@ -176,22 +176,56 @@ export default function ProjectScreen() {
       details.push(take.data.shotDetails);
     }
 
-    const cameraFiles: string[] = (() => {
-      const files: string[] = [];
+    const cameraFiles: { cameraNumber: number; displayValue: string }[] = (() => {
+      const files: { cameraNumber: number; displayValue: string }[] = [];
       const data = take.data ?? {};
       
-      // Build camera files list regardless of classification
-      if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
-        files.push(data.cameraFile);
-      }
-      Object.keys(data).forEach((key) => {
-        if (key.startsWith('cameraFile') && key !== 'cameraFile') {
-          const val = (data as any)[key];
-          if (typeof val === 'string' && val.trim().length > 0) {
-            files.push(val);
+      // Handle camera files with range support
+      const cameraNumbers = new Set<number>();
+      
+      // Find all camera numbers from various field patterns
+      Object.keys(data).forEach(key => {
+        if (key.startsWith('cameraFile')) {
+          if (key === 'cameraFile') {
+            cameraNumbers.add(1);
+          } else {
+            const match = key.match(/cameraFile(\d+)/);
+            if (match) {
+              cameraNumbers.add(parseInt(match[1]));
+            }
+          }
+        }
+        if (key.match(/camera\d+_from/)) {
+          const match = key.match(/camera(\d+)_from/);
+          if (match) {
+            cameraNumbers.add(parseInt(match[1]));
           }
         }
       });
+      
+      // Process each camera number
+      Array.from(cameraNumbers).sort((a, b) => a - b).forEach(camNum => {
+        const fromKey = `camera${camNum}_from`;
+        const toKey = `camera${camNum}_to`;
+        const fileKey = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
+        
+        const fromValue = data[fromKey];
+        const toValue = data[toKey];
+        const fileValue = data[fileKey];
+        
+        // Handle range format (stable keys)
+        if (fromValue && toValue) {
+          const from = fromValue.toString().padStart(4, '0');
+          const to = toValue.toString().padStart(4, '0');
+          const displayValue = from === to ? from : `${from}–${to}`;
+          files.push({ cameraNumber: camNum, displayValue });
+        }
+        // Handle single camera file
+        else if (typeof fileValue === 'string' && fileValue.trim().length > 0) {
+          files.push({ cameraNumber: camNum, displayValue: fileValue });
+        }
+      });
+      
       return files;
     })();
 
@@ -236,19 +270,15 @@ export default function ProjectScreen() {
 
             {cameraFiles.length > 0 && (
               <View style={styles.cameraList}>
-                {cameraFiles.map((file, idx) => {
-                  // Handle range format (from-to)
-                  const displayValue = file.includes('-') ? file : file;
-                  return (
-                    <Text
-                      key={`cam-${idx}`}
-                      style={[styles.takeTime, darkMode && styles.takeTimeDark]}
-                      testID={`camera-file-${idx + 1}`}
-                    >
-                      {`Camera ${idx + 1}: ${displayValue}`}
-                    </Text>
-                  );
-                })}
+                {cameraFiles.map((file, idx) => (
+                  <Text
+                    key={`cam-${file.cameraNumber}`}
+                    style={[styles.takeTime, darkMode && styles.takeTimeDark]}
+                    testID={`camera-file-${file.cameraNumber}`}
+                  >
+                    {`Camera ${file.cameraNumber}: ${file.displayValue}`}
+                  </Text>
+                ))}
               </View>
             )}
 
