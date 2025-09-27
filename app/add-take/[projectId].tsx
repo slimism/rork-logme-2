@@ -104,15 +104,8 @@ export default function AddTakeScreen() {
       delete sanitizedData.shotNumber;
       delete sanitizedData.takeNumber;
       
-      // Also remove camera files for these classifications
-      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-      if (cameraConfiguration === 1) {
-        delete sanitizedData.cameraFile;
-      } else {
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          delete sanitizedData[`cameraFile${i}`];
-        }
-      }
+      // Keep camera files and sound files - they should still be saved and displayed
+      // Only remove scene/shot/take numbers for these classifications
     }
     
     return sanitizedData;
@@ -1091,17 +1084,10 @@ export default function AddTakeScreen() {
       
       setDisabledFields(fieldsToDisable);
       
-      // Clear only the newly disabled field values, preserve others
+      // Clear only scene/shot/take fields for SFX, keep camera files
       setTakeData(prev => {
         const newData = { ...prev };
-        // Only clear camera and scene/shot/take fields for SFX
-        if (project?.settings?.cameraConfiguration === 1) {
-          newData['cameraFile'] = '';
-        } else {
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            newData[`cameraFile${i}`] = '';
-          }
-        }
+        // Only clear scene/shot/take fields for SFX, keep camera files for display
         newData['sceneNumber'] = '';
         newData['shotNumber'] = '';
         newData['takeNumber'] = '';
@@ -1124,17 +1110,10 @@ export default function AddTakeScreen() {
       
       setDisabledFields(fieldsToDisable);
       
-      // Clear only the newly disabled field values, preserve others
+      // Clear only scene/shot/take fields for Ambience, keep camera files
       setTakeData(prev => {
         const newData = { ...prev };
-        // Only clear camera and scene/shot/take fields for Ambience
-        if (project?.settings?.cameraConfiguration === 1) {
-          newData['cameraFile'] = '';
-        } else {
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            newData[`cameraFile${i}`] = '';
-          }
-        }
+        // Only clear scene/shot/take fields for Ambience, keep camera files for display
         newData['sceneNumber'] = '';
         newData['shotNumber'] = '';
         newData['takeNumber'] = '';

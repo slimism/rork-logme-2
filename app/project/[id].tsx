@@ -177,9 +177,10 @@ export default function ProjectScreen() {
     }
 
     const cameraFiles: string[] = (() => {
-      if (isAmbSfx) return [];
       const files: string[] = [];
       const data = take.data ?? {};
+      
+      // Build camera files list regardless of classification
       if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
         files.push(data.cameraFile);
       }
@@ -235,20 +236,26 @@ export default function ProjectScreen() {
 
             {cameraFiles.length > 0 && (
               <View style={styles.cameraList}>
-                {cameraFiles.map((file, idx) => (
-                  <Text
-                    key={`cam-${idx}`}
-                    style={[styles.takeTime, darkMode && styles.takeTimeDark]}
-                    testID={`camera-file-${idx + 1}`}
-                  >
-                    {`Camera ${idx + 1}: ${file}`}
-                  </Text>
-                ))}
+                {cameraFiles.map((file, idx) => {
+                  // Handle range format (from-to)
+                  const displayValue = file.includes('-') ? file : file;
+                  return (
+                    <Text
+                      key={`cam-${idx}`}
+                      style={[styles.takeTime, darkMode && styles.takeTimeDark]}
+                      testID={`camera-file-${idx + 1}`}
+                    >
+                      {`Camera ${idx + 1}: ${displayValue}`}
+                    </Text>
+                  );
+                })}
               </View>
             )}
 
             {take.data?.soundFile && (
-              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">Sound: {take.data.soundFile}</Text>
+              <Text style={[styles.takeTime, darkMode && styles.takeTimeDark]} testID="sound-file-line">
+                Sound: {take.data.soundFile.includes('-') ? take.data.soundFile : take.data.soundFile}
+              </Text>
             )}
 
             {take.data?.descriptionOfShot && (
