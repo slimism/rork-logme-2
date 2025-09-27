@@ -25,7 +25,7 @@ export default function EditTakeScreen() {
   const [project, setProject] = useState<any>(null);
   const [takeData, setTakeData] = useState<Record<string, string>>({});
   const [classification, setClassification] = useState<ClassificationType | null>(null);
-  const [shotDetails, setShotDetails] = useState<ShotDetailsType | null>(null);
+  const [shotDetails, setShotDetails] = useState<ShotDetailsType[]>([]);
   const [isGoodTake, setIsGoodTake] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [showInsertModal, setShowInsertModal] = useState(false);
@@ -87,7 +87,19 @@ export default function EditTakeScreen() {
     if (currentLogSheet?.data) {
       setTakeData(currentLogSheet.data);
       setClassification(currentLogSheet.data.classification as ClassificationType || null);
-      setShotDetails(currentLogSheet.data.shotDetails as ShotDetailsType || null);
+      // Handle shotDetails - it could be stored as string, array, or null
+      const savedShotDetails = currentLogSheet.data.shotDetails;
+      if (savedShotDetails) {
+        if (typeof savedShotDetails === 'string') {
+          setShotDetails([savedShotDetails as ShotDetailsType]);
+        } else if (Array.isArray(savedShotDetails)) {
+          setShotDetails(savedShotDetails);
+        } else {
+          setShotDetails([]);
+        }
+      } else {
+        setShotDetails([]);
+      }
       setIsGoodTake(currentLogSheet.data.isGoodTake === true || currentLogSheet.data.isGoodTake === 'true');
 
       if (currentLogSheet.data.wasteOptions) {
@@ -162,7 +174,7 @@ export default function EditTakeScreen() {
       newDisabledFields.add('takeNumber');
     }
 
-    if (shotDetails === 'MOS') {
+    if (shotDetails.includes('MOS')) {
       newDisabledFields.add('soundFile');
     }
 
@@ -292,11 +304,13 @@ export default function EditTakeScreen() {
   };
 
   const handleShotDetailPress = (detail: ShotDetailsType) => {
-    if (shotDetails === detail) {
-      setShotDetails(null);
-    } else {
-      setShotDetails(detail);
-    }
+    setShotDetails(prev => {
+      if (prev.includes(detail)) {
+        return prev.filter(d => d !== detail);
+      } else {
+        return [...prev, detail];
+      }
+    });
   };
 
   const handleWasteModalConfirm = () => {
@@ -704,7 +718,7 @@ export default function EditTakeScreen() {
       const updatedData = {
         ...finalTakeData,
         classification: classification || '',
-        shotDetails: shotDetails || '',
+        shotDetails: shotDetails.length > 0 ? shotDetails : [],
         isGoodTake: isGoodTake,
         wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
@@ -1288,12 +1302,13 @@ export default function EditTakeScreen() {
           <View style={styles.shotDetailsRow}>
             {(['MOS', 'NO SLATE'] as ShotDetailsType[]).map((type) => {
               const isDisabled = type === 'MOS' && (classification === 'Ambience' || classification === 'SFX');
+              const isActive = shotDetails.includes(type);
               return (
                 <TouchableOpacity
                   key={type}
                   style={[
                     styles.shotDetailsButton,
-                    shotDetails === type && styles.shotDetailsButtonActive,
+                    isActive && styles.shotDetailsButtonActive,
                     isDisabled && styles.shotDetailsButtonDisabled
                   ]}
                   onPress={() => !isDisabled && handleShotDetailPress(type)}
@@ -1301,7 +1316,7 @@ export default function EditTakeScreen() {
                 >
                   <Text style={[
                     styles.shotDetailsButtonText,
-                    shotDetails === type && styles.shotDetailsButtonTextActive,
+                    isActive && styles.shotDetailsButtonTextActive,
                     isDisabled && styles.shotDetailsButtonTextDisabled
                   ]}>
                     {type === 'NO SLATE' ? 'No Slate' : type}
