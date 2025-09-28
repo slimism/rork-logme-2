@@ -1011,6 +1011,9 @@ export default function AddTakeScreen() {
         }
       }
       
+      // Store original take number before any updates
+      const originalTargetTakeNumber = existingEntry.data?.takeNumber;
+      
       // Take number logic: only copy if same shot, otherwise use last take + 1 in current shot
       const currentSceneNumber = takeData.sceneNumber;
       const currentShotNumber = takeData.shotNumber;
@@ -1018,9 +1021,9 @@ export default function AddTakeScreen() {
       const targetShotNumber = existingEntry.data?.shotNumber;
       
       if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
-        // Same shot: copy the take number (will be shifted by updateTakeNumbers)
-        if (existingEntry.data?.takeNumber) {
-          newLogData.takeNumber = existingEntry.data.takeNumber;
+        // Same shot: use the original target take number (before incrementing)
+        if (originalTargetTakeNumber) {
+          newLogData.takeNumber = originalTargetTakeNumber;
         }
       } else {
         // Different shot: find the last take number in current shot and add 1
@@ -1061,7 +1064,41 @@ export default function AddTakeScreen() {
       }
     }
     
-    // Create new log entry
+    // First increment all subsequent entries BEFORE adding the new log
+    if (duplicateInfo.type === 'take') {
+      // For take duplicates: increment take numbers in the same scene and shot
+      const targetSceneNumber = existingEntry.data?.sceneNumber;
+      const targetShotNumber = existingEntry.data?.shotNumber;
+      const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0');
+      
+      if (targetSceneNumber && targetShotNumber && !isNaN(targetTakeNumber)) {
+        updateTakeNumbers(projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+      }
+    }
+    
+    // For both take and file duplicates: increment file numbers
+    const targetFileNumber = duplicateInfo.number;
+    
+    // Increment sound file numbers
+    if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
+      updateFileNumbers(projectId, 'soundFile', targetFileNumber, 1);
+    }
+    
+    // Increment camera file numbers
+    if (camCount === 1) {
+      if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
+        updateFileNumbers(projectId, 'cameraFile', targetFileNumber, 1);
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+          updateFileNumbers(projectId, fieldId, targetFileNumber, 1);
+        }
+      }
+    }
+    
+    // Create new log entry AFTER incrementing existing entries
     const logSheet = addLogSheet(
       `Take ${stats.totalTakes + 1}`,
       'take',
@@ -1152,39 +1189,7 @@ export default function AddTakeScreen() {
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
-    // Now increment all subsequent entries
-    if (duplicateInfo.type === 'take') {
-      // For take duplicates: increment take numbers in the same scene and shot
-      const targetSceneNumber = existingEntry.data?.sceneNumber;
-      const targetShotNumber = existingEntry.data?.shotNumber;
-      const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0');
-      
-      if (targetSceneNumber && targetShotNumber && !isNaN(targetTakeNumber)) {
-        updateTakeNumbers(projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
-      }
-    }
-    
-    // For both take and file duplicates: increment file numbers
-    const targetFileNumber = duplicateInfo.number;
-    
-    // Increment sound file numbers
-    if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
-      updateFileNumbers(projectId, 'soundFile', targetFileNumber, 1);
-    }
-    
-    // Increment camera file numbers
-    if (camCount === 1) {
-      if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
-        updateFileNumbers(projectId, 'cameraFile', targetFileNumber, 1);
-      }
-    } else {
-      for (let i = 1; i <= camCount; i++) {
-        const fieldId = `cameraFile${i}`;
-        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-          updateFileNumbers(projectId, fieldId, targetFileNumber, 1);
-        }
-      }
-    }
+    // Incrementing was moved before addLogSheet to prevent duplicate take numbers
     
     router.back();
   };
