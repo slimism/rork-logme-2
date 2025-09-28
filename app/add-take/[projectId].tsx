@@ -452,17 +452,152 @@ export default function AddTakeScreen() {
     return null;
   };
 
-  // Helper function to find first duplicate file number across all scenes and shots
+  // Helper function to check if a number falls within a range
+  const isNumberInRange = (number: number, fromValue: string, toValue: string): boolean => {
+    const from = parseInt(fromValue) || 0;
+    const to = parseInt(toValue) || 0;
+    return number >= Math.min(from, to) && number <= Math.max(from, to);
+  };
+
+  // Helper function to get range values from stored data
+  const getRangeFromData = (data: any, fieldId: string): { from: string; to: string } | null => {
+    if (fieldId === 'soundFile') {
+      const from = data['sound_from'];
+      const to = data['sound_to'];
+      if (from && to) return { from, to };
+    } else if (fieldId.startsWith('cameraFile')) {
+      const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', '')) || 1;
+      const from = data[`camera${cameraNum}_from`];
+      const to = data[`camera${cameraNum}_to`];
+      if (from && to) return { from, to };
+    }
+    return null;
+  };
+
+  // Helper function to find first duplicate file number across all scenes and shots with range support
   const findFirstDuplicateFile = () => {
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-    type DuplicateInfo = { type: string; label: string; fieldId: string; value: string; number: number; existingEntry: any } | null;
+    type DuplicateInfo = { 
+      type: string; 
+      label: string; 
+      fieldId: string; 
+      value: string; 
+      number: number; 
+      existingEntry: any;
+      isRangeConflict?: boolean;
+      conflictType?: 'lower' | 'upper' | 'within';
+      rangeInfo?: { from: string; to: string };
+    } | null;
 
     // Sound first - check across all scenes and shots
     if (takeData.soundFile && !disabledFields.has('soundFile')) {
-      const val = takeData.soundFile as string;
-      const existingEntry = projectLogSheets.find(s => s.data?.soundFile === val);
-      if (existingEntry) {
-        return { type: 'file', label: 'Sound File', fieldId: 'soundFile', value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
+      const currentRange = rangeData['soundFile'];
+      const isCurrentRange = showRangeMode['soundFile'] && currentRange?.from && currentRange?.to;
+      
+      if (isCurrentRange) {
+        // Current input is a range - check for conflicts
+        const currentFrom = parseInt(currentRange.from) || 0;
+        const currentTo = parseInt(currentRange.to) || 0;
+        const currentMin = Math.min(currentFrom, currentTo);
+        const currentMax = Math.max(currentFrom, currentTo);
+        
+        for (const sheet of projectLogSheets) {
+          const data = sheet.data;
+          if (!data) continue;
+          
+          // Check against existing ranges
+          const existingRange = getRangeFromData(data, 'soundFile');
+          if (existingRange) {
+            const existingFrom = parseInt(existingRange.from) || 0;
+            const existingTo = parseInt(existingRange.to) || 0;
+            const existingMin = Math.min(existingFrom, existingTo);
+            const existingMax = Math.max(existingFrom, existingTo);
+            
+            // Check for overlap
+            if (!(currentMax < existingMin || currentMin > existingMax)) {
+              // There's an overlap - determine conflict type
+              let conflictType: 'lower' | 'upper' | 'within';
+              if (currentFrom === existingMin) {
+                conflictType = 'lower';
+              } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                conflictType = 'within';
+              } else {
+                conflictType = 'upper';
+              }
+              
+              return {
+                type: 'file',
+                label: 'Sound File',
+                fieldId: 'soundFile',
+                value: `${currentRange.from}–${currentRange.to}`,
+                number: currentFrom,
+                existingEntry: sheet,
+                isRangeConflict: true,
+                conflictType,
+                rangeInfo: existingRange
+              } as DuplicateInfo;
+            }
+          }
+          
+          // Check against existing single values
+          if (data.soundFile && typeof data.soundFile === 'string' && !data.soundFile.includes('-')) {
+            const existingNum = parseInt(data.soundFile) || 0;
+            if (existingNum >= currentMin && existingNum <= currentMax) {
+              const conflictType = existingNum === currentMin ? 'lower' : 'within';
+              return {
+                type: 'file',
+                label: 'Sound File',
+                fieldId: 'soundFile',
+                value: `${currentRange.from}–${currentRange.to}`,
+                number: currentFrom,
+                existingEntry: sheet,
+                isRangeConflict: true,
+                conflictType
+              } as DuplicateInfo;
+            }
+          }
+        }
+      } else {
+        // Current input is a single value - check for conflicts
+        const val = takeData.soundFile as string;
+        const currentNum = parseInt(val) || 0;
+        
+        for (const sheet of projectLogSheets) {
+          const data = sheet.data;
+          if (!data) continue;
+          
+          // Check against existing ranges
+          const existingRange = getRangeFromData(data, 'soundFile');
+          if (existingRange) {
+            if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
+              const existingFrom = parseInt(existingRange.from) || 0;
+              const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+              return {
+                type: 'file',
+                label: 'Sound File',
+                fieldId: 'soundFile',
+                value: val,
+                number: currentNum,
+                existingEntry: sheet,
+                isRangeConflict: true,
+                conflictType,
+                rangeInfo: existingRange
+              } as DuplicateInfo;
+            }
+          }
+          
+          // Check against existing single values
+          if (data.soundFile === val) {
+            return {
+              type: 'file',
+              label: 'Sound File',
+              fieldId: 'soundFile',
+              value: val,
+              number: currentNum,
+              existingEntry: sheet
+            } as DuplicateInfo;
+          }
+        }
       }
     }
 
@@ -470,10 +605,112 @@ export default function AddTakeScreen() {
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
-        const val = takeData.cameraFile as string;
-        const existingEntry = projectLogSheets.find(s => s.data?.cameraFile === val);
-        if (existingEntry) {
-          return { type: 'file', label: 'Camera File', fieldId: 'cameraFile', value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
+        const currentRange = rangeData['cameraFile'];
+        const isCurrentRange = showRangeMode['cameraFile'] && currentRange?.from && currentRange?.to;
+        
+        if (isCurrentRange) {
+          // Current input is a range - check for conflicts
+          const currentFrom = parseInt(currentRange.from) || 0;
+          const currentTo = parseInt(currentRange.to) || 0;
+          const currentMin = Math.min(currentFrom, currentTo);
+          const currentMax = Math.max(currentFrom, currentTo);
+          
+          for (const sheet of projectLogSheets) {
+            const data = sheet.data;
+            if (!data) continue;
+            
+            // Check against existing ranges
+            const existingRange = getRangeFromData(data, 'cameraFile');
+            if (existingRange) {
+              const existingFrom = parseInt(existingRange.from) || 0;
+              const existingTo = parseInt(existingRange.to) || 0;
+              const existingMin = Math.min(existingFrom, existingTo);
+              const existingMax = Math.max(existingFrom, existingTo);
+              
+              // Check for overlap
+              if (!(currentMax < existingMin || currentMin > existingMax)) {
+                let conflictType: 'lower' | 'upper' | 'within';
+                if (currentFrom === existingMin) {
+                  conflictType = 'lower';
+                } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                  conflictType = 'within';
+                } else {
+                  conflictType = 'upper';
+                }
+                
+                return {
+                  type: 'file',
+                  label: 'Camera File',
+                  fieldId: 'cameraFile',
+                  value: `${currentRange.from}–${currentRange.to}`,
+                  number: currentFrom,
+                  existingEntry: sheet,
+                  isRangeConflict: true,
+                  conflictType,
+                  rangeInfo: existingRange
+                } as DuplicateInfo;
+              }
+            }
+            
+            // Check against existing single values
+            if (data.cameraFile && typeof data.cameraFile === 'string' && !data.cameraFile.includes('-')) {
+              const existingNum = parseInt(data.cameraFile) || 0;
+              if (existingNum >= currentMin && existingNum <= currentMax) {
+                const conflictType = existingNum === currentMin ? 'lower' : 'within';
+                return {
+                  type: 'file',
+                  label: 'Camera File',
+                  fieldId: 'cameraFile',
+                  value: `${currentRange.from}–${currentRange.to}`,
+                  number: currentFrom,
+                  existingEntry: sheet,
+                  isRangeConflict: true,
+                  conflictType
+                } as DuplicateInfo;
+              }
+            }
+          }
+        } else {
+          // Current input is a single value - check for conflicts
+          const val = takeData.cameraFile as string;
+          const currentNum = parseInt(val) || 0;
+          
+          for (const sheet of projectLogSheets) {
+            const data = sheet.data;
+            if (!data) continue;
+            
+            // Check against existing ranges
+            const existingRange = getRangeFromData(data, 'cameraFile');
+            if (existingRange) {
+              if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
+                const existingFrom = parseInt(existingRange.from) || 0;
+                const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+                return {
+                  type: 'file',
+                  label: 'Camera File',
+                  fieldId: 'cameraFile',
+                  value: val,
+                  number: currentNum,
+                  existingEntry: sheet,
+                  isRangeConflict: true,
+                  conflictType,
+                  rangeInfo: existingRange
+                } as DuplicateInfo;
+              }
+            }
+            
+            // Check against existing single values
+            if (data.cameraFile === val) {
+              return {
+                type: 'file',
+                label: 'Camera File',
+                fieldId: 'cameraFile',
+                value: val,
+                number: currentNum,
+                existingEntry: sheet
+              } as DuplicateInfo;
+            }
+          }
         }
       }
     } else {
@@ -481,9 +718,111 @@ export default function AddTakeScreen() {
         const fieldId = `cameraFile${i}`;
         const val = takeData[fieldId] as string | undefined;
         if (val && !disabledFields.has(fieldId)) {
-          const existingEntry = projectLogSheets.find(s => s.data?.[fieldId] === val);
-          if (existingEntry) {
-            return { type: 'file', label: `Camera File ${i}`, fieldId, value: val, number: parseInt(val) || 0, existingEntry } as DuplicateInfo;
+          const currentRange = rangeData[fieldId];
+          const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
+          
+          if (isCurrentRange) {
+            // Current input is a range - check for conflicts
+            const currentFrom = parseInt(currentRange.from) || 0;
+            const currentTo = parseInt(currentRange.to) || 0;
+            const currentMin = Math.min(currentFrom, currentTo);
+            const currentMax = Math.max(currentFrom, currentTo);
+            
+            for (const sheet of projectLogSheets) {
+              const data = sheet.data;
+              if (!data) continue;
+              
+              // Check against existing ranges
+              const existingRange = getRangeFromData(data, fieldId);
+              if (existingRange) {
+                const existingFrom = parseInt(existingRange.from) || 0;
+                const existingTo = parseInt(existingRange.to) || 0;
+                const existingMin = Math.min(existingFrom, existingTo);
+                const existingMax = Math.max(existingFrom, existingTo);
+                
+                // Check for overlap
+                if (!(currentMax < existingMin || currentMin > existingMax)) {
+                  let conflictType: 'lower' | 'upper' | 'within';
+                  if (currentFrom === existingMin) {
+                    conflictType = 'lower';
+                  } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                    conflictType = 'within';
+                  } else {
+                    conflictType = 'upper';
+                  }
+                  
+                  return {
+                    type: 'file',
+                    label: `Camera File ${i}`,
+                    fieldId,
+                    value: `${currentRange.from}–${currentRange.to}`,
+                    number: currentFrom,
+                    existingEntry: sheet,
+                    isRangeConflict: true,
+                    conflictType,
+                    rangeInfo: existingRange
+                  } as DuplicateInfo;
+                }
+              }
+              
+              // Check against existing single values
+              if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
+                const existingNum = parseInt(data[fieldId]) || 0;
+                if (existingNum >= currentMin && existingNum <= currentMax) {
+                  const conflictType = existingNum === currentMin ? 'lower' : 'within';
+                  return {
+                    type: 'file',
+                    label: `Camera File ${i}`,
+                    fieldId,
+                    value: `${currentRange.from}–${currentRange.to}`,
+                    number: currentFrom,
+                    existingEntry: sheet,
+                    isRangeConflict: true,
+                    conflictType
+                  } as DuplicateInfo;
+                }
+              }
+            }
+          } else {
+            // Current input is a single value - check for conflicts
+            const currentNum = parseInt(val) || 0;
+            
+            for (const sheet of projectLogSheets) {
+              const data = sheet.data;
+              if (!data) continue;
+              
+              // Check against existing ranges
+              const existingRange = getRangeFromData(data, fieldId);
+              if (existingRange) {
+                if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
+                  const existingFrom = parseInt(existingRange.from) || 0;
+                  const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+                  return {
+                    type: 'file',
+                    label: `Camera File ${i}`,
+                    fieldId,
+                    value: val,
+                    number: currentNum,
+                    existingEntry: sheet,
+                    isRangeConflict: true,
+                    conflictType,
+                    rangeInfo: existingRange
+                  } as DuplicateInfo;
+                }
+              }
+              
+              // Check against existing single values
+              if (data[fieldId] === val) {
+                return {
+                  type: 'file',
+                  label: `Camera File ${i}`,
+                  fieldId,
+                  value: val,
+                  number: currentNum,
+                  existingEntry: sheet
+                } as DuplicateInfo;
+              }
+            }
           }
         }
       }
@@ -588,17 +927,55 @@ export default function AddTakeScreen() {
     // Check for duplicate file numbers across all scenes and shots
     const duplicateFile = findFirstDuplicateFile();
     if (duplicateFile) {
-      Alert.alert(
-        'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, or cancel?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
-          },
-        ]
-      );
+      if (duplicateFile.isRangeConflict) {
+        // Handle range conflicts
+        if (duplicateFile.conflictType === 'lower') {
+          // Allow insert before for lower range conflicts
+          Alert.alert(
+            'Duplicate Detected',
+            `A duplicate was found. Would you like to insert before, or cancel?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Insert Before',
+                onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
+              },
+            ]
+          );
+        } else {
+          // For upper range or within range conflicts, show informational message
+          const existingEntry = duplicateFile.existingEntry;
+          const sceneNumber = existingEntry.data?.sceneNumber || 'Unknown';
+          const shotNumber = existingEntry.data?.shotNumber || 'Unknown';
+          const takeNumber = existingEntry.data?.takeNumber || 'Unknown';
+          
+          let rangeDisplay = '';
+          if (duplicateFile.rangeInfo) {
+            rangeDisplay = `${duplicateFile.rangeInfo.from}–${duplicateFile.rangeInfo.to}`;
+          } else {
+            rangeDisplay = existingEntry.data?.[duplicateFile.fieldId] || 'Unknown';
+          }
+          
+          Alert.alert(
+            'Duplicate Detected',
+            `The ${duplicateFile.label.toLowerCase()} number is part of an existing range (${rangeDisplay}) found in Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}. Please specify different file numbers.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+      } else {
+        // Handle regular single value conflicts
+        Alert.alert(
+          'Duplicate Detected',
+          `A duplicate was found. Would you like to insert before, or cancel?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Insert Before',
+              onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
+            },
+          ]
+        );
+      }
       return;
     }
     
