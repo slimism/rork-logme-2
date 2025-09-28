@@ -18,7 +18,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -955,7 +955,10 @@ export default function EditTakeScreen() {
           if (existingEntry.data?.takeNumber) {
             newLogData.takeNumber = existingEntry.data.takeNumber;
           }
-          // Backend shifting disabled: no renumbering of other entries.
+          const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
+          if (duplicateSceneNumber && duplicateShotNumber && !Number.isNaN(targetTakeNumber)) {
+            updateTakeNumbers(logSheet.projectId, duplicateSceneNumber, duplicateShotNumber, targetTakeNumber, 1);
+          }
         } else {
           const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
           const sameShotTakes = projectLogSheets.filter(sheet => sheet.data?.sceneNumber === newLogSceneNumber && sheet.data?.shotNumber === newLogShotNumber);

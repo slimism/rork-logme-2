@@ -195,23 +195,36 @@ export const useProjectStore = create<ProjectState>()(
       updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number) => {
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => {
-            if (logSheet.projectId === projectId && 
-                logSheet.data?.sceneNumber === sceneNumber &&
-                logSheet.data?.shotNumber === shotNumber) {
-              const currentTakeNum = parseInt(logSheet.data.takeNumber);
-              if (!isNaN(currentTakeNum) && currentTakeNum >= fromTakeNumber) {
+            try {
+              if (logSheet.projectId !== projectId) return logSheet;
+
+              const data = logSheet.data ?? {} as Record<string, unknown>;
+              const lsScene = typeof data.sceneNumber === 'string' ? data.sceneNumber.trim() : '';
+              const lsShot = typeof data.shotNumber === 'string' ? data.shotNumber.trim() : '';
+              const targetScene = sceneNumber?.trim?.() ?? sceneNumber;
+              const targetShot = shotNumber?.trim?.() ?? shotNumber;
+
+              if (lsScene !== targetScene || lsShot !== targetShot) return logSheet;
+
+              const takeRaw = (data as any).takeNumber as unknown;
+              const currentTakeNum = typeof takeRaw === 'string' ? parseInt(takeRaw, 10) : Number.NaN;
+
+              if (!Number.isNaN(currentTakeNum) && currentTakeNum >= fromTakeNumber) {
                 return {
                   ...logSheet,
                   data: {
                     ...logSheet.data,
-                    takeNumber: (currentTakeNum + increment).toString()
+                    takeNumber: (currentTakeNum + increment).toString(),
                   },
-                  updatedAt: new Date().toISOString()
+                  updatedAt: new Date().toISOString(),
                 };
               }
+              return logSheet;
+            } catch (e) {
+              console.log('[updateTakeNumbers] error while updating take numbers', e);
+              return logSheet;
             }
-            return logSheet;
-          })
+          }),
         }));
       },
 
