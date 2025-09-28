@@ -498,7 +498,7 @@ export default function EditTakeScreen() {
     if (duplicateTake) {
       Alert.alert(
         'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        `A duplicate was found. Would you like to insert before, or cancel?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -507,12 +507,7 @@ export default function EditTakeScreen() {
               handleSaveWithDuplicateHandling('before', duplicateTake);
             },
           },
-          {
-            text: 'Insert After',
-            onPress: () => {
-              handleSaveWithDuplicateHandling('after', duplicateTake);
-            },
-          },
+
         ]
       );
       return;
@@ -522,7 +517,7 @@ export default function EditTakeScreen() {
     if (duplicateFile) {
       Alert.alert(
         'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        `A duplicate was found. Would you like to insert before, or cancel?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -531,12 +526,7 @@ export default function EditTakeScreen() {
               handleSaveWithDuplicateHandling('before', duplicateFile);
             },
           },
-          {
-            text: 'Insert After',
-            onPress: () => {
-              handleSaveWithDuplicateHandling('after', duplicateFile);
-            },
-          },
+
         ]
       );
       return;
@@ -553,7 +543,7 @@ export default function EditTakeScreen() {
     return cleaned;
   };
 
-  const handleSaveWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
+  const handleSaveWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
     if (!logSheet || !project) return;
     // Backend shifting disabled: store only UI-provided values; do not renumber existing entries.
     const camCount = project?.settings?.cameraConfiguration || 1;
@@ -650,99 +640,6 @@ export default function EditTakeScreen() {
       };
       updateLogSheet(logSheet.id, updatedData);
 
-    } else {
-      let newLogData = { ...takeData };
-
-      if (duplicateInfo.type === 'take') {
-        if (existingEntry.data?.soundFile) {
-          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
-          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
-        }
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
-          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
-              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
-            }
-          }
-        }
-        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
-        const duplicateShotNumber = existingEntry.data?.shotNumber;
-        const newLogSceneNumber = newLogData.sceneNumber;
-        const newLogShotNumber = newLogData.shotNumber;
-        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
-        if (isSameSceneAndShot) {
-          if (existingEntry.data?.takeNumber) {
-            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-            newLogData.takeNumber = String(duplicateTakeNum);
-          }
-          // Backend shifting disabled: no renumbering of other entries.
-        }
-        // Backend shifting disabled: no renumbering of other entries.
-
-      } else if (duplicateInfo.type === 'file') {
-        if (existingEntry.data?.soundFile) {
-          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
-          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
-        }
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
-          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
-              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
-            }
-          }
-        }
-        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
-        const duplicateShotNumber = existingEntry.data?.shotNumber;
-        const newLogSceneNumber = newLogData.sceneNumber;
-        const newLogShotNumber = newLogData.shotNumber;
-        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
-        if (isSameSceneAndShot) {
-          if (existingEntry.data?.takeNumber) {
-            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-            newLogData.takeNumber = String(duplicateTakeNum);
-          }
-          // Backend shifting disabled: no renumbering of other entries.
-        }
-        // Backend shifting disabled: no renumbering of other entries.
-      }
-
-      let finalTakeData = { ...newLogData };
-      if (camCount > 1) {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fieldId] ?? true;
-          if (!isRecActive) {
-            delete finalTakeData[fieldId];
-          }
-        }
-      }
-      finalTakeData = pruneDisabled(finalTakeData);
-      // Apply sanitization to enforce business rules
-      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-      
-      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
-        ? shotDetails.filter(d => d !== 'MOS')
-        : shotDetails;
-      const updatedData = {
-        ...finalTakeData,
-        classification,
-        shotDetails: filteredShotDetails,
-        isGoodTake,
-        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-        cameraRecState: camCount > 1 ? cameraRecState : undefined
-      };
-      updateLogSheet(logSheet.id, updatedData);
     }
     router.back();
   };

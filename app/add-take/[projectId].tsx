@@ -573,16 +573,12 @@ export default function AddTakeScreen() {
     if (duplicateTake) {
       Alert.alert(
         'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        `A duplicate was found. Would you like to insert before, or cancel?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Insert Before',
             onPress: () => addLogWithDuplicateHandling('before', duplicateTake),
-          },
-          {
-            text: 'Insert After',
-            onPress: () => addLogWithDuplicateHandling('after', duplicateTake),
           },
         ]
       );
@@ -594,16 +590,12 @@ export default function AddTakeScreen() {
     if (duplicateFile) {
       Alert.alert(
         'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, insert after, or cancel?`,
+        `A duplicate was found. Would you like to insert before, or cancel?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Insert Before',
             onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
-          },
-          {
-            text: 'Insert After',
-            onPress: () => addLogWithDuplicateHandling('after', duplicateFile),
           },
         ]
       );
