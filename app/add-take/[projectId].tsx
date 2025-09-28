@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet } = useProjectStore();
+  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -1041,8 +1041,6 @@ export default function AddTakeScreen() {
         newLogData.takeNumber = (lastTakeNumber + 1).toString();
       }
       
-      // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
-      
     } else if (duplicateInfo.type === 'file') {
       // For file duplicates: copy the duplicate target's identifiers
       if (existingEntry.data?.soundFile) {
@@ -1061,8 +1059,6 @@ export default function AddTakeScreen() {
       if (existingEntry.data?.takeNumber) {
         newLogData.takeNumber = existingEntry.data.takeNumber;
       }
-      
-      // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
     }
     
     // Create new log entry
@@ -1155,6 +1151,40 @@ export default function AddTakeScreen() {
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
+    
+    // Now increment all subsequent entries
+    if (duplicateInfo.type === 'take') {
+      // For take duplicates: increment take numbers in the same scene and shot
+      const targetSceneNumber = existingEntry.data?.sceneNumber;
+      const targetShotNumber = existingEntry.data?.shotNumber;
+      const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0');
+      
+      if (targetSceneNumber && targetShotNumber && !isNaN(targetTakeNumber)) {
+        updateTakeNumbers(projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+      }
+    }
+    
+    // For both take and file duplicates: increment file numbers
+    const targetFileNumber = duplicateInfo.number;
+    
+    // Increment sound file numbers
+    if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
+      updateFileNumbers(projectId, 'soundFile', targetFileNumber, 1);
+    }
+    
+    // Increment camera file numbers
+    if (camCount === 1) {
+      if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
+        updateFileNumbers(projectId, 'cameraFile', targetFileNumber, 1);
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+          updateFileNumbers(projectId, fieldId, targetFileNumber, 1);
+        }
+      }
+    }
     
     router.back();
   };

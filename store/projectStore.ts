@@ -219,7 +219,15 @@ export const useProjectStore = create<ProjectState>()(
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => {
             if (logSheet.projectId === projectId) {
-              const raw = logSheet.data?.[fieldId];
+              // Handle both single values and range values stored in separate fields
+              const data = logSheet.data;
+              if (!data) return logSheet;
+              
+              let updated = false;
+              const newData = { ...data };
+              
+              // Handle single value field
+              const raw = data[fieldId];
               if (typeof raw === 'string' && raw.length > 0) {
                 if (raw.includes('-')) {
                   const [startStr, endStr] = raw.split('-');
@@ -229,29 +237,64 @@ export const useProjectStore = create<ProjectState>()(
                     const newStart = startNum >= fromNumber ? startNum + increment : startNum;
                     const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
                     const formatted = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
-                    return {
-                      ...logSheet,
-                      data: {
-                        ...logSheet.data,
-                        [fieldId]: formatted,
-                      },
-                      updatedAt: new Date().toISOString(),
-                    };
+                    newData[fieldId] = formatted;
+                    updated = true;
                   }
                 } else {
                   const currentNum = parseInt(raw);
                   if (!isNaN(currentNum) && currentNum >= fromNumber) {
                     const formatted = String(currentNum + increment).padStart(4, '0');
-                    return {
-                      ...logSheet,
-                      data: {
-                        ...logSheet.data,
-                        [fieldId]: formatted,
-                      },
-                      updatedAt: new Date().toISOString(),
-                    };
+                    newData[fieldId] = formatted;
+                    updated = true;
                   }
                 }
+              }
+              
+              // Handle range format stored in separate fields (sound_from/sound_to, camera1_from/camera1_to, etc.)
+              if (fieldId === 'soundFile') {
+                const soundFrom = data['sound_from'];
+                const soundTo = data['sound_to'];
+                if (soundFrom) {
+                  const fromNum = parseInt(soundFrom);
+                  if (!isNaN(fromNum) && fromNum >= fromNumber) {
+                    newData['sound_from'] = String(fromNum + increment).padStart(4, '0');
+                    updated = true;
+                  }
+                }
+                if (soundTo) {
+                  const toNum = parseInt(soundTo);
+                  if (!isNaN(toNum) && toNum >= fromNumber) {
+                    newData['sound_to'] = String(toNum + increment).padStart(4, '0');
+                    updated = true;
+                  }
+                }
+              } else if (fieldId.startsWith('cameraFile')) {
+                // Extract camera number from fieldId (e.g., cameraFile1 -> 1, cameraFile -> 1)
+                const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', '')) || 1;
+                const cameraFrom = data[`camera${cameraNum}_from`];
+                const cameraTo = data[`camera${cameraNum}_to`];
+                if (cameraFrom) {
+                  const fromNum = parseInt(cameraFrom);
+                  if (!isNaN(fromNum) && fromNum >= fromNumber) {
+                    newData[`camera${cameraNum}_from`] = String(fromNum + increment).padStart(4, '0');
+                    updated = true;
+                  }
+                }
+                if (cameraTo) {
+                  const toNum = parseInt(cameraTo);
+                  if (!isNaN(toNum) && toNum >= fromNumber) {
+                    newData[`camera${cameraNum}_to`] = String(toNum + increment).padStart(4, '0');
+                    updated = true;
+                  }
+                }
+              }
+              
+              if (updated) {
+                return {
+                  ...logSheet,
+                  data: newData,
+                  updatedAt: new Date().toISOString(),
+                };
               }
             }
             return logSheet;
