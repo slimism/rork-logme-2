@@ -606,7 +606,7 @@ export default function AddTakeScreen() {
     addNewTake();
   };
   
-  const addLogWithDuplicateHandling = (position: 'before' | 'after', duplicateInfo: any) => {
+  const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
     // Use trial log if no tokens available
     if (tokens === 0) {
       tokenStore.useTrial();
@@ -615,294 +615,169 @@ export default function AddTakeScreen() {
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
     
-    if (position === 'before') {
-      // Insert Before special logic
-      let newLogData = { ...takeData };
+    // Insert Before logic
+    let newLogData = { ...takeData };
+    
+    if (duplicateInfo.type === 'take') {
+      // For take duplicates: copy the duplicate target's camera file and sound file to the new log
+      if (existingEntry.data?.soundFile) {
+        newLogData.soundFile = existingEntry.data.soundFile;
+      }
+      if (camCount === 1 && existingEntry.data?.cameraFile) {
+        newLogData.cameraFile = existingEntry.data.cameraFile;
+      } else if (camCount > 1) {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (existingEntry.data?.[fieldId]) {
+            newLogData[fieldId] = existingEntry.data[fieldId];
+          }
+        }
+      }
       
-      if (duplicateInfo.type === 'take') {
-        // For take duplicates: copy the duplicate target's camera file and sound file to the new log
-        if (existingEntry.data?.soundFile) {
-          newLogData.soundFile = existingEntry.data.soundFile;
-        }
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          newLogData.cameraFile = existingEntry.data.cameraFile;
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              newLogData[fieldId] = existingEntry.data[fieldId];
-            }
-          }
-        }
-        
-        // Take number logic: only copy if same shot, otherwise use last take + 1 in current shot
-        const currentSceneNumber = takeData.sceneNumber;
-        const currentShotNumber = takeData.shotNumber;
-        const targetSceneNumber = existingEntry.data?.sceneNumber;
-        const targetShotNumber = existingEntry.data?.shotNumber;
-        
-        if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
-          // Same shot: copy the take number (will be shifted by updateTakeNumbers)
-          if (existingEntry.data?.takeNumber) {
-            newLogData.takeNumber = existingEntry.data.takeNumber;
-          }
-        } else {
-          // Different shot: find the last take number in current shot and add 1
-          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-          const sameShotTakes = projectLogSheets.filter(sheet => 
-            sheet.data?.sceneNumber === currentSceneNumber &&
-            sheet.data?.shotNumber === currentShotNumber
-          );
-          
-          let lastTakeNumber = 0;
-          sameShotTakes.forEach(sheet => {
-            const takeNum = parseInt(sheet.data?.takeNumber || '0');
-            if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
-              lastTakeNumber = takeNum;
-            }
-          });
-          
-          newLogData.takeNumber = (lastTakeNumber + 1).toString();
-        }
-        
-        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
-        
-      } else if (duplicateInfo.type === 'file') {
-        // For file duplicates: copy the duplicate target's identifiers
-        if (existingEntry.data?.soundFile) {
-          newLogData.soundFile = existingEntry.data.soundFile;
-        }
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          newLogData.cameraFile = existingEntry.data.cameraFile;
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              newLogData[fieldId] = existingEntry.data[fieldId];
-            }
-          }
-        }
+      // Take number logic: only copy if same shot, otherwise use last take + 1 in current shot
+      const currentSceneNumber = takeData.sceneNumber;
+      const currentShotNumber = takeData.shotNumber;
+      const targetSceneNumber = existingEntry.data?.sceneNumber;
+      const targetShotNumber = existingEntry.data?.shotNumber;
+      
+      if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+        // Same shot: copy the take number (will be shifted by updateTakeNumbers)
         if (existingEntry.data?.takeNumber) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
         }
+      } else {
+        // Different shot: find the last take number in current shot and add 1
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const sameShotTakes = projectLogSheets.filter(sheet => 
+          sheet.data?.sceneNumber === currentSceneNumber &&
+          sheet.data?.shotNumber === currentShotNumber
+        );
         
-        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
+        let lastTakeNumber = 0;
+        sameShotTakes.forEach(sheet => {
+          const takeNum = parseInt(sheet.data?.takeNumber || '0');
+          if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
+            lastTakeNumber = takeNum;
+          }
+        });
+        
+        newLogData.takeNumber = (lastTakeNumber + 1).toString();
       }
       
-      // Create new log entry
-      const logSheet = addLogSheet(
-        `Take ${stats.totalTakes + 1}`,
-        'take',
-        '',
-        projectId
-      );
+      // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
       
-      // Handle REC state for multiple cameras
-      let finalTakeData = { ...newLogData };
-      if (camCount > 1) {
+    } else if (duplicateInfo.type === 'file') {
+      // For file duplicates: copy the duplicate target's identifiers
+      if (existingEntry.data?.soundFile) {
+        newLogData.soundFile = existingEntry.data.soundFile;
+      }
+      if (camCount === 1 && existingEntry.data?.cameraFile) {
+        newLogData.cameraFile = existingEntry.data.cameraFile;
+      } else if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fieldId] ?? true;
-          if (!isRecActive) {
-            delete finalTakeData[fieldId];
+          if (existingEntry.data?.[fieldId]) {
+            newLogData[fieldId] = existingEntry.data[fieldId];
           }
         }
       }
-      
-      // Final sanitation to enforce business rules
-      const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
-      const applyRangePersistence = (data: Record<string, any>) => {
-        const out: Record<string, any> = { ...data };
-        const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
-          const r = rangeData[fieldId];
-          const inRange = showRangeMode[fieldId] === true;
-          if (!enabled) {
-            if (fieldId === 'soundFile') {
-              delete out.soundFile;
-              delete out['sound_from'];
-              delete out['sound_to'];
-            } else if (idx != null) {
-              const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
-              delete out[base];
-              delete out[`camera${idx}_from`];
-              delete out[`camera${idx}_to`];
-            }
-            return;
-          }
-          if (inRange && r && r.from && r.to) {
-            if (fieldId === 'soundFile') {
-              out['sound_from'] = pad4(r.from);
-              out['sound_to'] = pad4(r.to);
-              delete out.soundFile;
-            } else if (idx != null) {
-              out[`camera${idx}_from`] = pad4(r.from);
-              out[`camera${idx}_to`] = pad4(r.to);
-              const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
-              delete out[base];
-            }
-          } else {
-            if (fieldId === 'soundFile') {
-              delete out['sound_from'];
-              delete out['sound_to'];
-            } else if (idx != null) {
-              delete out[`camera${idx}_from`];
-              delete out[`camera${idx}_to`];
-            }
-          }
-        };
-
-        const soundEnabled = !disabledFields.has('soundFile');
-        handleField('soundFile', soundEnabled);
-
-        if (camCount === 1) {
-          const camEnabled = !disabledFields.has('cameraFile');
-          handleField('cameraFile', camEnabled, 1);
-        } else {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
-            handleField(fieldId, camEnabled, i);
-          }
-        }
-        return out;
-      };
-
-      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-      finalTakeData = applyRangePersistence(finalTakeData);
-      
-      logSheet.data = {
-        ...finalTakeData,
-        classification,
-        shotDetails,
-        isGoodTake,
-        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-        cameraRecState: camCount > 1 ? cameraRecState : undefined
-      };
-      
-    } else {
-      // Insert After logic
-      let newLogData = { ...takeData };
-      
-      if (duplicateInfo.type === 'take') {
-        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
-        if (existingEntry.data?.soundFile) {
-          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
-          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
-        }
-        
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
-          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
-              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
-            }
-          }
-        }
-        
-        if (existingEntry.data?.takeNumber) {
-          const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-          newLogData.takeNumber = String(duplicateTakeNum + 1);
-        }
-        
-        // Shift all subsequent entries (after the new log) by +1 onwards
-        const sceneNumber = existingEntry.data?.sceneNumber!;
-        const shotNumber = existingEntry.data?.shotNumber!;
-        const newTakeNumber = parseInt(newLogData.takeNumber || '1');
-        
-        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
-        
-      } else if (duplicateInfo.type === 'file') {
-        // Copy the duplicate's camera file, sound file, and take number, then increment each by +1
-        if (existingEntry.data?.soundFile) {
-          const duplicateSoundNum = parseInt(existingEntry.data.soundFile) || 0;
-          newLogData.soundFile = String(duplicateSoundNum + 1).padStart(4, '0');
-        }
-        
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          const duplicateCameraNum = parseInt(existingEntry.data.cameraFile) || 0;
-          newLogData.cameraFile = String(duplicateCameraNum + 1).padStart(4, '0');
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              const duplicateCameraNum = parseInt(existingEntry.data[fieldId]) || 0;
-              newLogData[fieldId] = String(duplicateCameraNum + 1).padStart(4, '0');
-            }
-          }
-        }
-        
-        // Take number logic: only copy and increment if same shot, otherwise use last take + 1 in current shot
-        const currentSceneNumber = takeData.sceneNumber;
-        const currentShotNumber = takeData.shotNumber;
-        const targetSceneNumber = existingEntry.data?.sceneNumber;
-        const targetShotNumber = existingEntry.data?.shotNumber;
-        
-        if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
-          // Same shot: copy and increment the take number
-          if (existingEntry.data?.takeNumber) {
-            const duplicateTakeNum = parseInt(existingEntry.data.takeNumber) || 0;
-            newLogData.takeNumber = String(duplicateTakeNum + 1);
-          }
-        } else {
-          // Different shot: find the last take number in current shot and add 1
-          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-          const sameShotTakes = projectLogSheets.filter(sheet => 
-            sheet.data?.sceneNumber === currentSceneNumber &&
-            sheet.data?.shotNumber === currentShotNumber
-          );
-          
-          let lastTakeNumber = 0;
-          sameShotTakes.forEach(sheet => {
-            const takeNum = parseInt(sheet.data?.takeNumber || '0');
-            if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
-              lastTakeNumber = takeNum;
-            }
-          });
-          
-          newLogData.takeNumber = (lastTakeNumber + 1).toString();
-        }
-        
-        // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
+      if (existingEntry.data?.takeNumber) {
+        newLogData.takeNumber = existingEntry.data.takeNumber;
       }
       
-      // Create new log entry
-      const logSheet = addLogSheet(
-        `Take ${stats.totalTakes + 1}`,
-        'take',
-        '',
-        projectId
-      );
-      
-      // Handle REC state for multiple cameras
-      let finalTakeData = { ...newLogData };
-      if (camCount > 1) {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fieldId] ?? true;
-          if (!isRecActive) {
-            delete finalTakeData[fieldId];
-          }
-        }
-      }
-      
-      // Final sanitation to enforce business rules
-      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-      
-      logSheet.data = {
-        ...finalTakeData,
-        classification,
-        shotDetails,
-        isGoodTake,
-        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-        cameraRecState: camCount > 1 ? cameraRecState : undefined
-      };
+      // Backend shifting disabled: we now only store UI-provided values without renumbering existing entries.
     }
+    
+    // Create new log entry
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+    
+    // Handle REC state for multiple cameras
+    let finalTakeData = { ...newLogData };
+    if (camCount > 1) {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        if (!isRecActive) {
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
+    // Final sanitation to enforce business rules
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        if (!enabled) {
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          return;
+        }
+        if (inRange && r && r.from && r.to) {
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+            delete out.soundFile;
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+          }
+        } else {
+          if (fieldId === 'soundFile') {
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+        }
+      };
+
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+
+      if (camCount === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+
+    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+    finalTakeData = applyRangePersistence(finalTakeData);
+    
+    logSheet.data = {
+      ...finalTakeData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: camCount > 1 ? cameraRecState : undefined
+    };
     
     router.back();
   };
