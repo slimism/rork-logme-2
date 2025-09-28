@@ -1268,8 +1268,8 @@ export default function EditTakeScreen() {
           }}
           onFocus={(event) => {
             if (!isDisabled) {
+              const target = event.target as any;
               setTimeout(() => {
-                const target = event.target as any;
                 target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                   const scrollY = Math.max(0, pageY - 100);
                   scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1395,8 +1395,8 @@ export default function EditTakeScreen() {
               }}
               onFocus={(event) => {
                 if (!isDisabled) {
+                  const target = event.target as any;
                   setTimeout(() => {
-                    const target = event.target as any;
                     target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                       const scrollY = Math.max(0, pageY - 100);
                       scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1523,8 +1523,8 @@ export default function EditTakeScreen() {
                   editable={!disabledFields.has('sceneNumber')}
                   onFocus={(event) => {
                     if (!disabledFields.has('sceneNumber')) {
+                      const target = event.target as any;
                       setTimeout(() => {
-                        const target = event.target as any;
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
                           scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1557,8 +1557,8 @@ export default function EditTakeScreen() {
                   editable={!disabledFields.has('shotNumber')}
                   onFocus={(event) => {
                     if (!disabledFields.has('shotNumber')) {
+                      const target = event.target as any;
                       setTimeout(() => {
-                        const target = event.target as any;
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
                           scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1590,8 +1590,8 @@ export default function EditTakeScreen() {
                   editable={!disabledFields.has('takeNumber')}
                   onFocus={(event) => {
                     if (!disabledFields.has('takeNumber')) {
+                      const target = event.target as any;
                       setTimeout(() => {
-                        const target = event.target as any;
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
                           scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });

@@ -1635,8 +1635,8 @@ export default function AddTakeScreen() {
           onFocus={(event) => {
             if (!isDisabled) {
               // Scroll to make the field visible when focused
+              const target = event.target as any;
               setTimeout(() => {
-                const target = event.target as any;
                 target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                   const scrollY = Math.max(0, pageY - 100);
                   scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1770,8 +1770,8 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('sceneNumber')}
                   onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
                   onFocus={(event) => {
+                    const target = event.target as any;
                     setTimeout(() => {
-                      const target = event.target as any;
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
                         scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1814,8 +1814,8 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('shotNumber')}
                   onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
                   onFocus={(event) => {
+                    const target = event.target as any;
                     setTimeout(() => {
-                      const target = event.target as any;
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
                         scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1859,8 +1859,8 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('takeNumber')}
                   onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
                   onFocus={(event) => {
+                    const target = event.target as any;
                     setTimeout(() => {
-                      const target = event.target as any;
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
                         scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -1967,8 +1967,8 @@ export default function AddTakeScreen() {
                   }}
                   onFocus={(event) => {
                     if (!disabledFields.has('cameraFile')) {
+                      const target = event.target as any;
                       setTimeout(() => {
-                        const target = event.target as any;
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
                           scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -2093,8 +2093,8 @@ export default function AddTakeScreen() {
                   }}
                   onFocus={(event) => {
                     if (!disabledFields.has('soundFile')) {
+                      const target = event.target as any;
                       setTimeout(() => {
-                        const target = event.target as any;
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
                           scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
@@ -2225,8 +2225,8 @@ export default function AddTakeScreen() {
                         }}
                         onFocus={(event) => {
                           if (!isDisabled) {
+                            const target = event.target as any;
                             setTimeout(() => {
-                              const target = event.target as any;
                               target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                                 const scrollY = Math.max(0, pageY - 100);
                                 scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
