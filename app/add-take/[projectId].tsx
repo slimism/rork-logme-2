@@ -991,6 +991,94 @@ export default function AddTakeScreen() {
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
 
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+
+    const conflictsWithOtherTakes = (): boolean => {
+      const conflicts: string[] = [];
+      const excludeId = existingEntry?.id as string | undefined;
+
+      const checkRangeOverlap = (minA: number, maxA: number, minB: number, maxB: number) => !(maxA < minB || minA > maxB);
+
+      const checkField = (fieldId: string, label: string, currentVal?: string, currentRange?: { from: string; to: string } | null) => {
+        if (disabledFields.has(fieldId)) return;
+        const isRange = !!(showRangeMode[fieldId] && currentRange?.from && currentRange?.to);
+        const currentNum = currentVal ? (parseInt(currentVal, 10) || 0) : 0;
+        const curFrom = currentRange?.from ? (parseInt(currentRange.from, 10) || 0) : currentNum;
+        const curTo = currentRange?.to ? (parseInt(currentRange.to, 10) || 0) : currentNum;
+        const curMin = Math.min(curFrom, curTo);
+        const curMax = Math.max(curFrom, curTo);
+
+        for (const sheet of projectLogSheets) {
+          if (!sheet.data || (excludeId && sheet.id === excludeId)) continue;
+          const getExistingRange = (): { from?: string; to?: string } => {
+            if (fieldId === 'soundFile') {
+              return { from: sheet.data['sound_from'], to: sheet.data['sound_to'] };
+            }
+            if (fieldId.startsWith('cameraFile')) {
+              const camNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+              return { from: sheet.data[`camera${camNum}_from`], to: sheet.data[`camera${camNum}_to`] };
+            }
+            return {};
+          };
+
+          const existingRange = getExistingRange();
+          const exFrom = existingRange.from ? (parseInt(existingRange.from, 10) || 0) : undefined;
+          const exTo = existingRange.to ? (parseInt(existingRange.to, 10) || 0) : undefined;
+
+          if (exFrom != null && exTo != null) {
+            const exMin = Math.min(exFrom, exTo);
+            const exMax = Math.max(exFrom, exTo);
+            if (checkRangeOverlap(curMin, curMax, exMin, exMax)) {
+              conflicts.push(label);
+              break;
+            }
+          }
+
+          const existingVal = sheet.data[fieldId] as string | undefined;
+          if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
+            const exNum = parseInt(existingVal, 10) || 0;
+            if (exNum >= curMin && exNum <= curMax) {
+              conflicts.push(label);
+              break;
+            }
+          }
+        }
+      };
+
+      if (takeData.soundFile && !disabledFields.has('soundFile')) {
+        checkField('soundFile', 'Sound File', takeData.soundFile as string, rangeData['soundFile'] || null);
+      }
+
+      if (camCount === 1) {
+        if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
+          checkField('cameraFile', 'Camera File', takeData.cameraFile as string, rangeData['cameraFile'] || null);
+        }
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fid = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fid] ?? true;
+          if (isRecActive && takeData[fid]) {
+            checkField(fid, `Camera File ${i}`, takeData[fid] as string, rangeData[fid] || null);
+          }
+        }
+      }
+
+      if (conflicts.length > 0) {
+        Alert.alert(
+          'Duplicate Detected',
+          'The camera file and/or sound file are already a part of another take. Please adjust the values.',
+          [{ text: 'Cancel', style: 'cancel' }]
+        );
+        return true;
+      }
+      return false;
+    };
+
+    if (duplicateInfo.type === 'take') {
+      const hasConflicts = conflictsWithOtherTakes();
+      if (hasConflicts) return;
+    }
+
     let newLogData = { ...takeData };
 
     if (duplicateInfo.type === 'take') {

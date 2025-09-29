@@ -923,9 +923,86 @@ export default function EditTakeScreen() {
 
   const handleSaveWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
     if (!logSheet || !project) return;
-    // Backend shifting disabled: store only UI-provided values; do not renumber existing entries.
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
+
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
+
+    const excludeIds = new Set<string>();
+    if (existingEntry?.id) excludeIds.add(existingEntry.id as string);
+    if (logSheet?.id) excludeIds.add(logSheet.id as string);
+
+    const checkRangeOverlap = (minA: number, maxA: number, minB: number, maxB: number) => !(maxA < minB || minA > maxB);
+
+    const checkField = (fieldId: string, currentVal?: string, currentRange?: { from: string; to: string } | null): boolean => {
+      if (disabledFields.has(fieldId)) return false;
+      const currentNum = currentVal ? (parseInt(currentVal, 10) || 0) : 0;
+      const curFrom = currentRange?.from ? (parseInt(currentRange.from, 10) || 0) : currentNum;
+      const curTo = currentRange?.to ? (parseInt(currentRange.to, 10) || 0) : currentNum;
+      const curMin = Math.min(curFrom, curTo);
+      const curMax = Math.max(curFrom, curTo);
+
+      for (const sheet of projectLogSheets) {
+        if (!sheet.data || excludeIds.has(sheet.id)) continue;
+        const getExistingRange = (): { from?: string; to?: string } => {
+          if (fieldId === 'soundFile') {
+            return { from: sheet.data['sound_from'], to: sheet.data['sound_to'] };
+          }
+          if (fieldId.startsWith('cameraFile')) {
+            const camNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+            return { from: sheet.data[`camera${camNum}_from`], to: sheet.data[`camera${camNum}_to`] };
+          }
+          return {};
+        };
+        const existingRange = getExistingRange();
+        const exFrom = existingRange.from ? (parseInt(existingRange.from, 10) || 0) : undefined;
+        const exTo = existingRange.to ? (parseInt(existingRange.to, 10) || 0) : undefined;
+        if (exFrom != null && exTo != null) {
+          const exMin = Math.min(exFrom, exTo);
+          const exMax = Math.max(exFrom, exTo);
+          if (checkRangeOverlap(curMin, curMax, exMin, exMax)) {
+            return true;
+          }
+        }
+        const existingVal = sheet.data[fieldId] as string | undefined;
+        if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
+          const exNum = parseInt(existingVal, 10) || 0;
+          if (exNum >= curMin && exNum <= curMax) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    if (duplicateInfo.type === 'take' && position === 'before') {
+      const soundConflict = takeData.soundFile && !disabledFields.has('soundFile')
+        ? checkField('soundFile', takeData.soundFile as string, rangeData['soundFile'] || null)
+        : false;
+      let camConflict = false;
+      if (camCount === 1) {
+        camConflict = !!(takeData.cameraFile && !disabledFields.has('cameraFile') && checkField('cameraFile', takeData.cameraFile as string, rangeData['cameraFile'] || null));
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fid = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fid] ?? true;
+          if (isRecActive && takeData[fid]) {
+            if (checkField(fid, takeData[fid] as string, rangeData[fid] || null)) {
+              camConflict = true;
+              break;
+            }
+          }
+        }
+      }
+      if (soundConflict || camConflict) {
+        Alert.alert(
+          'Duplicate Detected',
+          'The camera file and/or sound file are already a part of another take. Please adjust the values.',
+          [{ text: 'Cancel', style: 'cancel' }]
+        );
+        return;
+      }
+    }
 
     if (position === 'before') {
       let newLogData = { ...takeData };
