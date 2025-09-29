@@ -1065,10 +1065,33 @@ export default function EditTakeScreen() {
             }
           }
         }
-        if (existingEntry.data?.takeNumber) {
-          newLogData.takeNumber = existingEntry.data.takeNumber;
+
+        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
+        const duplicateShotNumber = existingEntry.data?.shotNumber;
+        const newLogSceneNumber = newLogData.sceneNumber;
+        const newLogShotNumber = newLogData.shotNumber;
+        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
+
+        if (isSameSceneAndShot) {
+          if (existingEntry.data?.takeNumber) {
+            newLogData.takeNumber = existingEntry.data.takeNumber;
+          }
+          const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
+          if (duplicateSceneNumber && duplicateShotNumber && !Number.isNaN(targetTakeNumber)) {
+            updateTakeNumbers(logSheet.projectId, duplicateSceneNumber, duplicateShotNumber, targetTakeNumber, 1);
+          }
+        } else {
+          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
+          const sameShotTakes = projectLogSheets.filter(sheet => sheet.data?.sceneNumber === newLogSceneNumber && sheet.data?.shotNumber === newLogShotNumber);
+          let maxTakeNumber = 0;
+          sameShotTakes.forEach(sheet => {
+            const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);
+            if (takeNum > maxTakeNumber) {
+              maxTakeNumber = takeNum;
+            }
+          });
+          newLogData.takeNumber = String(maxTakeNumber + 1);
         }
-        // Backend shifting disabled: no renumbering of other entries.
         // Backend shifting disabled: no renumbering of other entries.
       }
 
