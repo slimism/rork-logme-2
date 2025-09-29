@@ -1849,11 +1849,12 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     }
     
     // Calculate new disabled fields based on the new classification
-    const fieldsToDisable = new Set<string>();
+    const prevDisabled = new Set(disabledFields);
+    const nextDisabled = new Set<string>();
     
     // Keep existing MOS disabled fields if MOS is still active
     if (shotDetails.includes('MOS')) {
-      fieldsToDisable.add('soundFile');
+      nextDisabled.add('soundFile');
     }
     
     if (newClassification === 'Waste') {
@@ -1863,58 +1864,140 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     } else if (newClassification === 'SFX') {
       // For SFX: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
-        fieldsToDisable.add('cameraFile');
+        nextDisabled.add('cameraFile');
       } else {
         for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-          fieldsToDisable.add(`cameraFile${i}`);
+          nextDisabled.add(`cameraFile${i}`);
         }
       }
       
       // Disable scene, shot and take fields
-      fieldsToDisable.add('sceneNumber');
-      fieldsToDisable.add('shotNumber');
-      fieldsToDisable.add('takeNumber');
+      nextDisabled.add('sceneNumber');
+      nextDisabled.add('shotNumber');
+      nextDisabled.add('takeNumber');
       
-      setDisabledFields(fieldsToDisable);
+      setDisabledFields(nextDisabled);
       
-      // Clear only scene/shot/take fields for SFX, preserve all other fields
-      setTakeData(prev => ({
-        ...prev,
-        sceneNumber: '',
-        shotNumber: '',
-        takeNumber: ''
-      }));
+      // Only clear fields that are newly disabled
+      setTakeData(prev => {
+        const updated = { ...prev };
+        // Clear only fields that transitioned from enabled to disabled
+        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
+        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
+        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) updated[fieldId] = '';
+          }
+        }
+        return updated;
+      });
+      
+      // Clear range data only for newly disabled fields
+      setRangeData(prev => {
+        const updated = { ...prev };
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) delete updated['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) delete updated[fieldId];
+          }
+        }
+        return updated;
+      });
     } else if (newClassification === 'Ambience') {
       // For Ambience: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
-        fieldsToDisable.add('cameraFile');
+        nextDisabled.add('cameraFile');
       } else {
         for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-          fieldsToDisable.add(`cameraFile${i}`);
+          nextDisabled.add(`cameraFile${i}`);
         }
       }
       
       // Disable scene, shot and take fields
-      fieldsToDisable.add('sceneNumber');
-      fieldsToDisable.add('shotNumber');
-      fieldsToDisable.add('takeNumber');
+      nextDisabled.add('sceneNumber');
+      nextDisabled.add('shotNumber');
+      nextDisabled.add('takeNumber');
       
-      setDisabledFields(fieldsToDisable);
+      setDisabledFields(nextDisabled);
       
-      // Clear only scene/shot/take fields for Ambience, preserve all other fields
-      setTakeData(prev => ({
-        ...prev,
-        sceneNumber: '',
-        shotNumber: '',
-        takeNumber: ''
-      }));
+      // Only clear fields that are newly disabled
+      setTakeData(prev => {
+        const updated = { ...prev };
+        // Clear only fields that transitioned from enabled to disabled
+        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
+        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
+        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) updated[fieldId] = '';
+          }
+        }
+        return updated;
+      });
+      
+      // Clear range data only for newly disabled fields
+      setRangeData(prev => {
+        const updated = { ...prev };
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) delete updated['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) delete updated[fieldId];
+          }
+        }
+        return updated;
+      });
     } else if (newClassification === 'Insert') {
       setShowInsertModal(true);
       // Don't set disabled fields yet, wait for insert modal confirmation
       return;
     } else {
       // No classification selected - only keep MOS disabled fields if MOS is active
-      setDisabledFields(fieldsToDisable);
+      setDisabledFields(nextDisabled);
+      
+      // Clear fields that are newly disabled
+      setTakeData(prev => {
+        const updated = { ...prev };
+        // Clear only fields that transitioned from enabled to disabled
+        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
+        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
+        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) updated.soundFile = '';
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) updated[fieldId] = '';
+          }
+        }
+        return updated;
+      });
+      
+      // Clear range data only for newly disabled fields
+      setRangeData(prev => {
+        const updated = { ...prev };
+        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) delete updated['soundFile'];
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) delete updated['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) delete updated[fieldId];
+          }
+        }
+        return updated;
+      });
     }
   };
 
@@ -1924,69 +2007,82 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       return;
     }
     
-    // Start with existing disabled fields and add new ones
-    setDisabledFields(prev => {
-      const newDisabled = new Set(prev);
-      
-      // Handle camera file waste - if NOT selected for waste, disable camera fields
-      if (!wasteOptions.camera) {
-        if (project?.settings?.cameraConfiguration === 1) {
-          newDisabled.add('cameraFile');
-        } else {
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            newDisabled.add(`cameraFile${i}`);
-          }
+    // Calculate which fields should be disabled
+    const prevDisabled = new Set(disabledFields);
+    const nextDisabled = new Set(prevDisabled);
+    
+    // Handle camera file waste - if NOT selected for waste, disable camera fields
+    if (!wasteOptions.camera) {
+      if (project?.settings?.cameraConfiguration === 1) {
+        nextDisabled.add('cameraFile');
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          nextDisabled.add(`cameraFile${i}`);
         }
       }
-      
-      // Handle sound file waste - if NOT selected for waste, disable sound field
-      if (!wasteOptions.sound) {
-        newDisabled.add('soundFile');
-      }
-      
-      return newDisabled;
-    });
+    }
     
-    // Clear only the newly disabled field values
+    // Handle sound file waste - if NOT selected for waste, disable sound field
+    if (!wasteOptions.sound) {
+      nextDisabled.add('soundFile');
+    }
+    
+    setDisabledFields(nextDisabled);
+    
+    // Clear only fields that transitioned from enabled to disabled
     setTakeData(prev => {
-      const newData = { ...prev };
+      const updated = { ...prev };
       
       if (!wasteOptions.camera) {
         if (project?.settings?.cameraConfiguration === 1) {
-          newData.cameraFile = '';
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
+            updated.cameraFile = '';
+          }
         } else {
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            newData[`cameraFile${i}`] = '';
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
+              updated[fieldId] = '';
+            }
           }
         }
       }
       
       if (!wasteOptions.sound) {
-        newData.soundFile = '';
+        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
+          updated.soundFile = '';
+        }
       }
       
-      return newData;
+      return updated;
     });
     
-    // Clear range data for disabled fields only
+    // Clear range data only for newly disabled fields
     setRangeData(prev => {
-      const newRangeData = { ...prev };
+      const updated = { ...prev };
       
       if (!wasteOptions.sound) {
-        delete newRangeData['soundFile'];
+        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
+          delete updated['soundFile'];
+        }
       }
       
       if (!wasteOptions.camera) {
         if (project?.settings?.cameraConfiguration === 1) {
-          delete newRangeData['cameraFile'];
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
+            delete updated['cameraFile'];
+          }
         } else {
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            delete newRangeData[`cameraFile${i}`];
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
+              delete updated[fieldId];
+            }
           }
         }
       }
       
-      return newRangeData;
+      return updated;
     });
     
     setShowWasteModal(false);
@@ -2001,33 +2097,32 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
 
   const handleInsertSoundSpeed = (hasSoundSpeed: boolean) => {
     setInsertSoundSpeed(hasSoundSpeed);
+    const prevDisabled = new Set(disabledFields);
+    const nextDisabled = new Set(prevDisabled);
+    
     if (!hasSoundSpeed) {
       // Only disable soundFile, preserve other enabled fields
-      setDisabledFields(prev => {
-        const newDisabled = new Set(prev);
-        newDisabled.add('soundFile');
-        return newDisabled;
-      });
+      nextDisabled.add('soundFile');
+      setDisabledFields(nextDisabled);
       
-      // Clear only the soundFile value, preserve all other field values
-      setTakeData(prev => ({
-        ...prev,
-        soundFile: ''
-      }));
-      
-      // Clear only soundFile range data, preserve other range data
-      setRangeData(prev => {
-        const newRangeData = { ...prev };
-        delete newRangeData['soundFile'];
-        return newRangeData;
-      });
+      // Clear only the soundFile value if it's transitioning to disabled
+      if (!prevDisabled.has('soundFile')) {
+        setTakeData(prev => ({
+          ...prev,
+          soundFile: ''
+        }));
+        
+        // Clear only soundFile range data
+        setRangeData(prev => {
+          const updated = { ...prev };
+          delete updated['soundFile'];
+          return updated;
+        });
+      }
     } else {
       // If user selects "Yes", remove soundFile from disabled fields
-      setDisabledFields(prev => {
-        const newDisabled = new Set(prev);
-        newDisabled.delete('soundFile');
-        return newDisabled;
-      });
+      nextDisabled.delete('soundFile');
+      setDisabledFields(nextDisabled);
     }
     setShowInsertModal(false);
   };
