@@ -205,6 +205,9 @@ export default function AddTakeScreen() {
     }
   }, [projectId, projects]);
 
+  // Track if auto-fill has run to prevent re-running on UI changes
+  const hasAutoFilledRef = useRef(false);
+
   useEffect(() => {
     const currentProject = projects.find(p => p.id === projectId);
     setProject(currentProject);
@@ -218,148 +221,106 @@ export default function AddTakeScreen() {
       scenes: scenes.size,
     });
     
-    // Auto-fill logic
-    if (projectLogSheets.length === 0) {
-      const autoFillData: TakeData = {};
-      autoFillData.sceneNumber = '1';
-      autoFillData.shotNumber = '1';
-      autoFillData.takeNumber = '1';
-      if (currentProject?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
-        autoFillData.soundFile = '0001';
-      }
-      if (currentProject?.settings?.cameraConfiguration === 1) {
-        autoFillData.cameraFile = '0001';
-      } else {
-        for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
-          autoFillData[`cameraFile${i}`] = '0001';
-        }
-      }
-      setTakeData(autoFillData);
-    } else {
-      // Subsequent log files - increment from highest file number
-      const sortedLogs = projectLogSheets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      const lastLog = sortedLogs[0];
-      const lastValid = sortedLogs.find(s => s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+    // Auto-fill logic - run only once per component mount
+    if (!hasAutoFilledRef.current) {
+      hasAutoFilledRef.current = true;
       
-      if (lastLog?.data || lastValid?.data) {
+      if (projectLogSheets.length === 0) {
         const autoFillData: TakeData = {};
-        
-        // Prefer values from last valid non-Ambience/SFX entry
-        const baseData = (lastValid?.data ?? lastLog?.data) as any;
-        const episodeNumber = baseData?.episodeNumber;
-        const sceneNumber = baseData?.sceneNumber;
-        const shotNumber = baseData?.shotNumber;
-        
-        if (episodeNumber) autoFillData.episodeNumber = episodeNumber;
-        autoFillData.sceneNumber = sceneNumber ?? '1';
-        autoFillData.shotNumber = shotNumber ?? '1';
-
-        // Prefill card numbers from last log when enabled
-        const cardFieldEnabled = currentProject?.settings?.logSheetFields?.find(f => f.id === 'cardNumber')?.enabled;
-        const camCount = currentProject?.settings?.cameraConfiguration || 1;
-        if (cardFieldEnabled) {
-          const cardSource = lastLog?.data; // keep UX: mirror most recent entry's card numbers
-          if (camCount === 1) {
-            const lastSingle = cardSource?.cardNumber;
-            if (lastSingle) autoFillData.cardNumber = lastSingle;
-          } else {
-            for (let i = 1; i <= camCount; i++) {
-              const key = `cardNumber${i}`;
-              const lastVal = cardSource?.[key] ?? cardSource?.cardNumber;
-              if (lastVal) {
-                autoFillData[key] = lastVal;
-              }
-            }
-          }
+        autoFillData.sceneNumber = '1';
+        autoFillData.shotNumber = '1';
+        autoFillData.takeNumber = '1';
+        if (currentProject?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
+          autoFillData.soundFile = '0001';
         }
-        
-        // Determine highest existing take in this Scene/Shot and set +1
-        const sameShotTakes = projectLogSheets.filter(s => 
-          s.data?.classification !== 'Ambience' && 
-          s.data?.classification !== 'SFX' && 
-          s.data?.sceneNumber === autoFillData.sceneNumber && 
-          s.data?.shotNumber === autoFillData.shotNumber
-        );
-        let highestTake = 0;
-        sameShotTakes.forEach(s => {
-          const n = parseInt(s.data?.takeNumber || '0', 10);
-          if (!Number.isNaN(n)) highestTake = Math.max(highestTake, n);
-        });
-        autoFillData.takeNumber = String(highestTake + 1);
-        
-        // Compute next file numbers for all fields
-        const nextNumbers = computeNextFileNumbers(projectLogSheets, currentProject);
-        
-        // Auto-increment sound file based on highest number + 1
-        if (!disabledFields.has('soundFile')) {
-          const nextSoundFileNum = nextNumbers['soundFile'];
-          if (showRangeMode['soundFile']) {
-            // If range mode is ON, prefill 'from' and leave 'to' empty
-            setRangeData(prev => ({
-              ...prev,
-              soundFile: { from: String(nextSoundFileNum).padStart(4, '0'), to: '' }
-            }));
-            autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
-          } else {
-            // If range mode is OFF, prefill single value
-            autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
-          }
-        }
-        
-        // Handle camera files based on configuration and REC state
         if (currentProject?.settings?.cameraConfiguration === 1) {
-          if (!disabledFields.has('cameraFile')) {
-            const nextCameraFileNum = nextNumbers['cameraFile'];
-            if (showRangeMode['cameraFile']) {
-              // If range mode is ON, prefill 'from' and leave 'to' empty
-              setRangeData(prev => ({
-                ...prev,
-                cameraFile: { from: String(nextCameraFileNum).padStart(4, '0'), to: '' }
-              }));
-              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
-            } else {
-              // If range mode is OFF, prefill single value
-              autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
-            }
-          }
+          autoFillData.cameraFile = '0001';
         } else {
-          // Multiple cameras - use REC state to determine file numbers
           for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
-            const fieldId = `cameraFile${i}`;
-            if (!disabledFields.has(fieldId)) {
-              const isRecActive = cameraRecState[fieldId] ?? true;
-              if (isRecActive) {
-                const nextCameraFileNum = nextNumbers[fieldId];
-                if (showRangeMode[fieldId]) {
-                  // If range mode is ON, prefill 'from' and leave 'to' empty
-                  setRangeData(prev => ({
-                    ...prev,
-                    [fieldId]: { from: String(nextCameraFileNum).padStart(4, '0'), to: '' }
-                  }));
-                  autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
-                } else {
-                  // If range mode is OFF, prefill single value
-                  autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+            autoFillData[`cameraFile${i}`] = '0001';
+          }
+        }
+        setTakeData(autoFillData);
+      } else {
+        // Subsequent log files - increment from highest file number
+        const sortedLogs = projectLogSheets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const lastLog = sortedLogs[0];
+        const lastValid = sortedLogs.find(s => s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+        
+        if (lastLog?.data || lastValid?.data) {
+          const autoFillData: TakeData = {};
+          
+          // Prefer values from last valid non-Ambience/SFX entry
+          const baseData = (lastValid?.data ?? lastLog?.data) as any;
+          const episodeNumber = baseData?.episodeNumber;
+          const sceneNumber = baseData?.sceneNumber;
+          const shotNumber = baseData?.shotNumber;
+          
+          if (episodeNumber) autoFillData.episodeNumber = episodeNumber;
+          autoFillData.sceneNumber = sceneNumber ?? '1';
+          autoFillData.shotNumber = shotNumber ?? '1';
+
+          // Prefill card numbers from last log when enabled
+          const cardFieldEnabled = currentProject?.settings?.logSheetFields?.find(f => f.id === 'cardNumber')?.enabled;
+          const camCount = currentProject?.settings?.cameraConfiguration || 1;
+          if (cardFieldEnabled) {
+            const cardSource = lastLog?.data;
+            if (camCount === 1) {
+              const lastSingle = cardSource?.cardNumber;
+              if (lastSingle) autoFillData.cardNumber = lastSingle;
+            } else {
+              for (let i = 1; i <= camCount; i++) {
+                const key = `cardNumber${i}`;
+                const lastVal = cardSource?.[key] ?? cardSource?.cardNumber;
+                if (lastVal) {
+                  autoFillData[key] = lastVal;
                 }
               }
-              // If REC is not active, leave field blank (don't set autoFillData[fieldId])
             }
           }
+          
+          // Determine highest existing take in this Scene/Shot and set +1
+          const sameShotTakes = projectLogSheets.filter(s => 
+            s.data?.classification !== 'Ambience' && 
+            s.data?.classification !== 'SFX' && 
+            s.data?.sceneNumber === autoFillData.sceneNumber && 
+            s.data?.shotNumber === autoFillData.shotNumber
+          );
+          let highestTake = 0;
+          sameShotTakes.forEach(s => {
+            const n = parseInt(s.data?.takeNumber || '0', 10);
+            if (!Number.isNaN(n)) highestTake = Math.max(highestTake, n);
+          });
+          autoFillData.takeNumber = String(highestTake + 1);
+          
+          // Compute next file numbers for all fields
+          const nextNumbers = computeNextFileNumbers(projectLogSheets, currentProject);
+          
+          // Auto-increment sound file based on highest number + 1 (only if field is empty)
+          const nextSoundFileNum = nextNumbers['soundFile'];
+          autoFillData.soundFile = String(nextSoundFileNum).padStart(4, '0');
+          
+          // Handle camera files based on configuration
+          if (currentProject?.settings?.cameraConfiguration === 1) {
+            const nextCameraFileNum = nextNumbers['cameraFile'];
+            autoFillData.cameraFile = String(nextCameraFileNum).padStart(4, '0');
+          } else {
+            // Multiple cameras - fill all camera files
+            for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
+              const fieldId = `cameraFile${i}`;
+              const nextCameraFileNum = nextNumbers[fieldId];
+              autoFillData[fieldId] = String(nextCameraFileNum).padStart(4, '0');
+            }
+          }
+          
+          // DON'T prefill description or notes for new logs - keep them blank
+          // Users should enter these fresh for each new log
+          
+          setTakeData(autoFillData);
         }
-        
-        // Keep shot description if same shot as last valid
-        const descSource = lastValid?.data ?? lastLog?.data;
-        if (descSource?.descriptionOfShot && 
-            descSource?.sceneNumber === autoFillData.sceneNumber &&
-            descSource?.shotNumber === autoFillData.shotNumber) {
-          autoFillData.descriptionOfShot = descSource.descriptionOfShot;
-          setLastShotDescription(descSource.descriptionOfShot);
-        }
-        
-        setTakeData(autoFillData);
       }
     }
-  }, [projectId, projects, logSheets, disabledFields, cameraRecState, computeNextFileNumbers]);
+  }, [projectId, projects, logSheets, computeNextFileNumbers]);
   
 
 
@@ -1781,7 +1742,7 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     
     if (!isCurrentlyInRangeMode) {
       // Entering range mode: initialize range data for this field only
-      const currentValue = takeData[fieldId] || '0001';
+      const currentValue = takeData[fieldId] || '';
       setRangeData(prev => ({
         ...prev,
         [fieldId]: { 
