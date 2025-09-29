@@ -422,8 +422,36 @@ export default function AddTakeScreen() {
     });
   };
 
-  // Removed take number duplication checks per latest requirements
-  const findDuplicateTake = () => null as any;
+  const findDuplicateTake = () => {
+    try {
+      const isAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
+      if (isAmbienceOrSFX) return null as any;
+      const scene = takeData.sceneNumber?.trim();
+      const shot = takeData.shotNumber?.trim();
+      const takeStr = takeData.takeNumber?.trim();
+      if (!scene || !shot || !takeStr) return null as any;
+      const takeNum = parseInt(takeStr, 10);
+      if (Number.isNaN(takeNum)) return null as any;
+      const projectLogSheets = logSheets.filter(s => s.projectId === projectId);
+      const sameShot = projectLogSheets.filter(s => s.data?.sceneNumber === scene && s.data?.shotNumber === shot);
+      let highest = 0;
+      let duplicateAt: any | null = null;
+      sameShot.forEach(s => {
+        const n = parseInt(s.data?.takeNumber || '0', 10);
+        if (!Number.isNaN(n)) {
+          if (n > highest) highest = n;
+          if (n === takeNum) duplicateAt = s;
+        }
+      });
+      if (duplicateAt) {
+        return { existingEntry: duplicateAt, highest } as { existingEntry: any; highest: number };
+      }
+      return null as any;
+    } catch (e) {
+      console.log('[findDuplicateTake] error', e);
+      return null as any;
+    }
+  };
 
   // Helper function to check if a number falls within a range
   const isNumberInRange = (number: number, fromValue: string, toValue: string): boolean => {
@@ -913,6 +941,28 @@ export default function AddTakeScreen() {
     
     // Validate mandatory fields first
     if (!validateMandatoryFields()) {
+      return;
+    }
+
+    const takeDup = findDuplicateTake();
+    if (takeDup) {
+      Alert.alert(
+        'Take Number Exists',
+        `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${String((takeDup.highest || 0) + 1)} instead?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Use Next',
+            onPress: () => {
+              const next = String((takeDup.highest || 0) + 1);
+              setTakeData(prev => ({ ...prev, takeNumber: next }));
+              setTimeout(() => {
+                handleAddTake();
+              }, 0);
+            },
+          },
+        ]
+      );
       return;
     }
 
