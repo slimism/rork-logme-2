@@ -1877,15 +1877,13 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       
       setDisabledFields(fieldsToDisable);
       
-      // Clear only scene/shot/take fields for SFX, keep camera files
-      setTakeData(prev => {
-        const newData = { ...prev };
-        // Only clear scene/shot/take fields for SFX, keep camera files for display
-        newData['sceneNumber'] = '';
-        newData['shotNumber'] = '';
-        newData['takeNumber'] = '';
-        return newData;
-      });
+      // Clear only scene/shot/take fields for SFX, preserve all other fields
+      setTakeData(prev => ({
+        ...prev,
+        sceneNumber: '',
+        shotNumber: '',
+        takeNumber: ''
+      }));
     } else if (newClassification === 'Ambience') {
       // For Ambience: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
@@ -1903,15 +1901,13 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       
       setDisabledFields(fieldsToDisable);
       
-      // Clear only scene/shot/take fields for Ambience, keep camera files
-      setTakeData(prev => {
-        const newData = { ...prev };
-        // Only clear scene/shot/take fields for Ambience, keep camera files for display
-        newData['sceneNumber'] = '';
-        newData['shotNumber'] = '';
-        newData['takeNumber'] = '';
-        return newData;
-      });
+      // Clear only scene/shot/take fields for Ambience, preserve all other fields
+      setTakeData(prev => ({
+        ...prev,
+        sceneNumber: '',
+        shotNumber: '',
+        takeNumber: ''
+      }));
     } else if (newClassification === 'Insert') {
       setShowInsertModal(true);
       // Don't set disabled fields yet, wait for insert modal confirmation
