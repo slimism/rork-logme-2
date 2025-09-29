@@ -207,11 +207,18 @@ export default function ProjectScreen() {
       Array.from(cameraNumbers).sort((a, b) => a - b).forEach(camNum => {
         const fromKey = `camera${camNum}_from`;
         const toKey = `camera${camNum}_to`;
-        const fileKey = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
+        // Check both cameraFile and cameraFile1 for camera 1
+        const fileKey = `cameraFile${camNum}`;
+        const altFileKey = camNum === 1 ? 'cameraFile' : null;
         
         const fromValue = data[fromKey];
         const toValue = data[toKey];
-        const fileValue = data[fileKey];
+        let fileValue = data[fileKey];
+        
+        // For camera 1, also check the alternative key 'cameraFile'
+        if (!fileValue && altFileKey) {
+          fileValue = data[altFileKey];
+        }
         
         // Handle range format (stable keys)
         if (fromValue && toValue) {
