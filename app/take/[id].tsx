@@ -1066,23 +1066,22 @@ export default function EditTakeScreen() {
           }
         }
 
-        const duplicateSceneNumber = existingEntry.data?.sceneNumber;
-        const duplicateShotNumber = existingEntry.data?.shotNumber;
-        const newLogSceneNumber = newLogData.sceneNumber;
-        const newLogShotNumber = newLogData.shotNumber;
-        const isSameSceneAndShot = duplicateSceneNumber === newLogSceneNumber && duplicateShotNumber === newLogShotNumber;
+        const currentSceneNumber = takeData.sceneNumber;
+        const currentShotNumber = takeData.shotNumber;
+        const targetSceneNumber = existingEntry.data?.sceneNumber;
+        const targetShotNumber = existingEntry.data?.shotNumber;
 
-        if (isSameSceneAndShot) {
+        if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
           if (existingEntry.data?.takeNumber) {
             newLogData.takeNumber = existingEntry.data.takeNumber;
           }
           const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
-          if (duplicateSceneNumber && duplicateShotNumber && !Number.isNaN(targetTakeNumber)) {
-            updateTakeNumbers(logSheet.projectId, duplicateSceneNumber, duplicateShotNumber, targetTakeNumber, 1);
+          if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
+            updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
           }
         } else {
           const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
-          const sameShotTakes = projectLogSheets.filter(sheet => sheet.data?.sceneNumber === newLogSceneNumber && sheet.data?.shotNumber === newLogShotNumber);
+          const sameShotTakes = projectLogSheets.filter(sheet => sheet.data?.sceneNumber === currentSceneNumber && sheet.data?.shotNumber === currentShotNumber);
           let maxTakeNumber = 0;
           sameShotTakes.forEach(sheet => {
             const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);

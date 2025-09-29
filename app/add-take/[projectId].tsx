@@ -1096,14 +1096,13 @@ export default function AddTakeScreen() {
         }
       }
 
-      const originalTargetTakeNumber = existingEntry.data?.takeNumber;
-
       const currentSceneNumber = takeData.sceneNumber;
       const currentShotNumber = takeData.shotNumber;
       const targetSceneNumber = existingEntry.data?.sceneNumber;
       const targetShotNumber = existingEntry.data?.shotNumber;
 
       if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+        const originalTargetTakeNumber = existingEntry.data?.takeNumber;
         if (originalTargetTakeNumber) {
           newLogData.takeNumber = originalTargetTakeNumber;
         }
@@ -1138,8 +1137,32 @@ export default function AddTakeScreen() {
           }
         }
       }
-      if (existingEntry.data?.takeNumber) {
-        newLogData.takeNumber = existingEntry.data.takeNumber;
+
+      const currentSceneNumber = takeData.sceneNumber;
+      const currentShotNumber = takeData.shotNumber;
+      const targetSceneNumber = existingEntry.data?.sceneNumber;
+      const targetShotNumber = existingEntry.data?.shotNumber;
+
+      if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+        if (existingEntry.data?.takeNumber) {
+          newLogData.takeNumber = existingEntry.data.takeNumber;
+        }
+      } else {
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const sameShotTakes = projectLogSheets.filter(sheet =>
+          sheet.data?.sceneNumber === currentSceneNumber &&
+          sheet.data?.shotNumber === currentShotNumber
+        );
+
+        let lastTakeNumber = 0;
+        sameShotTakes.forEach(sheet => {
+          const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);
+          if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
+            lastTakeNumber = takeNum;
+          }
+        });
+
+        newLogData.takeNumber = (lastTakeNumber + 1).toString();
       }
     }
 
