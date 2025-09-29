@@ -1924,33 +1924,69 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       return;
     }
     
-    const fieldsToDisable = new Set<string>();
-    
-    // Handle camera file waste - if NOT selected for waste, disable camera fields
-    if (!wasteOptions.camera) {
-      if (project?.settings?.cameraConfiguration === 1) {
-        fieldsToDisable.add('cameraFile');
-      } else {
-        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-          fieldsToDisable.add(`cameraFile${i}`);
+    // Start with existing disabled fields and add new ones
+    setDisabledFields(prev => {
+      const newDisabled = new Set(prev);
+      
+      // Handle camera file waste - if NOT selected for waste, disable camera fields
+      if (!wasteOptions.camera) {
+        if (project?.settings?.cameraConfiguration === 1) {
+          newDisabled.add('cameraFile');
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            newDisabled.add(`cameraFile${i}`);
+          }
         }
       }
-    }
+      
+      // Handle sound file waste - if NOT selected for waste, disable sound field
+      if (!wasteOptions.sound) {
+        newDisabled.add('soundFile');
+      }
+      
+      return newDisabled;
+    });
     
-    // Handle sound file waste - if NOT selected for waste, disable sound field
-    if (!wasteOptions.sound) {
-      fieldsToDisable.add('soundFile');
-    }
-    
-    setDisabledFields(fieldsToDisable);
-    
-    // Clear disabled field values
+    // Clear only the newly disabled field values
     setTakeData(prev => {
       const newData = { ...prev };
-      fieldsToDisable.forEach(fieldId => {
-        newData[fieldId] = '';
-      });
+      
+      if (!wasteOptions.camera) {
+        if (project?.settings?.cameraConfiguration === 1) {
+          newData.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            newData[`cameraFile${i}`] = '';
+          }
+        }
+      }
+      
+      if (!wasteOptions.sound) {
+        newData.soundFile = '';
+      }
+      
       return newData;
+    });
+    
+    // Clear range data for disabled fields only
+    setRangeData(prev => {
+      const newRangeData = { ...prev };
+      
+      if (!wasteOptions.sound) {
+        delete newRangeData['soundFile'];
+      }
+      
+      if (!wasteOptions.camera) {
+        if (project?.settings?.cameraConfiguration === 1) {
+          delete newRangeData['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            delete newRangeData[`cameraFile${i}`];
+          }
+        }
+      }
+      
+      return newRangeData;
     });
     
     setShowWasteModal(false);
@@ -1966,12 +2002,32 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
   const handleInsertSoundSpeed = (hasSoundSpeed: boolean) => {
     setInsertSoundSpeed(hasSoundSpeed);
     if (!hasSoundSpeed) {
-      const fieldsToDisable = new Set<string>(['soundFile']);
-      setDisabledFields(fieldsToDisable);
+      // Only disable soundFile, preserve other enabled fields
+      setDisabledFields(prev => {
+        const newDisabled = new Set(prev);
+        newDisabled.add('soundFile');
+        return newDisabled;
+      });
+      
+      // Clear only the soundFile value, preserve all other field values
       setTakeData(prev => ({
         ...prev,
         soundFile: ''
       }));
+      
+      // Clear only soundFile range data, preserve other range data
+      setRangeData(prev => {
+        const newRangeData = { ...prev };
+        delete newRangeData['soundFile'];
+        return newRangeData;
+      });
+    } else {
+      // If user selects "Yes", remove soundFile from disabled fields
+      setDisabledFields(prev => {
+        const newDisabled = new Set(prev);
+        newDisabled.delete('soundFile');
+        return newDisabled;
+      });
     }
     setShowInsertModal(false);
   };
