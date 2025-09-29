@@ -1138,6 +1138,9 @@ export default function AddTakeScreen() {
           }
         }
       }
+      if (existingEntry.data?.takeNumber) {
+        newLogData.takeNumber = existingEntry.data.takeNumber;
+      }
     }
 
     // Increment take numbers for Insert Before when the target is in the same Scene & Shot
@@ -1384,21 +1387,11 @@ export default function AddTakeScreen() {
   const focusNextField = (currentFieldId: string, allFieldIds: string[]) => {
     const nextFieldId = getNextFieldId(currentFieldId, allFieldIds);
     if (nextFieldId && inputRefs.current[nextFieldId]) {
+      // Small delay to ensure smooth transition
       setTimeout(() => {
         inputRefs.current[nextFieldId]?.focus();
       }, 100);
     }
-  };
-
-  const scrollToField = (fieldId: string) => {
-    const ref = inputRefs.current[fieldId] as any;
-    if (!ref) return;
-    setTimeout(() => {
-      ref?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-        const scrollY = Math.max(0, (pageY ?? 0) - 100);
-        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-      });
-    }, 100);
   };
 
   const getPlaceholderText = (fieldId: string, fieldLabel: string) => {
@@ -1707,9 +1700,16 @@ export default function AddTakeScreen() {
               focusNextField(field.id, allFieldIds);
             }
           }}
-          onFocus={() => {
+          onFocus={(event) => {
             if (!isDisabled) {
-              scrollToField(field.id);
+              // Scroll to make the field visible when focused
+              const target = event.target as any;
+              setTimeout(() => {
+                target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                  const scrollY = Math.max(0, pageY - 100);
+                  scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                });
+              }, 100);
             }
           }}
           blurOnSubmit={isMultiline}
@@ -1837,8 +1837,14 @@ export default function AddTakeScreen() {
                   returnKeyType="next"
                   editable={!disabledFields.has('sceneNumber')}
                   onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
-                  onFocus={() => {
-                    scrollToField('sceneNumber');
+                  onFocus={(event) => {
+                    const target = event.target as any;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
                   }}
                 />
               </View>
@@ -1875,8 +1881,14 @@ export default function AddTakeScreen() {
                   returnKeyType="next"
                   editable={!disabledFields.has('shotNumber')}
                   onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
-                  onFocus={() => {
-                    scrollToField('sceneNumber');
+                  onFocus={(event) => {
+                    const target = event.target as any;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
                   }}
                 />
               </View>
@@ -1914,8 +1926,14 @@ export default function AddTakeScreen() {
                   returnKeyType="next"
                   editable={!disabledFields.has('takeNumber')}
                   onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
-                  onFocus={() => {
-                    scrollToField('sceneNumber');
+                  onFocus={(event) => {
+                    const target = event.target as any;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
                   }}
                 />
               </View>
