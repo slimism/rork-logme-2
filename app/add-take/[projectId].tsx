@@ -468,7 +468,6 @@ export default function AddTakeScreen() {
       const isCurrentRange = showRangeMode['soundFile'] && currentRange?.from && currentRange?.to;
       
       if (isCurrentRange) {
-        // Current input is a range - check for conflicts
         const currentFrom = parseInt(currentRange.from) || 0;
         const currentTo = parseInt(currentRange.to) || 0;
         const currentMin = Math.min(currentFrom, currentTo);
@@ -478,17 +477,13 @@ export default function AddTakeScreen() {
           const data = sheet.data;
           if (!data) continue;
           
-          // Check against existing ranges
           const existingRange = getRangeFromData(data, 'soundFile');
           if (existingRange) {
             const existingFrom = parseInt(existingRange.from) || 0;
             const existingTo = parseInt(existingRange.to) || 0;
             const existingMin = Math.min(existingFrom, existingTo);
             const existingMax = Math.max(existingFrom, existingTo);
-            
-            // Check for overlap
             if (!(currentMax < existingMin || currentMin > existingMax)) {
-              // There's an overlap - determine conflict type
               let conflictType: 'lower' | 'upper' | 'within';
               if (currentFrom === existingMin) {
                 conflictType = 'lower';
@@ -497,7 +492,6 @@ export default function AddTakeScreen() {
               } else {
                 conflictType = 'upper';
               }
-              
               return {
                 type: 'file',
                 label: 'Sound File',
@@ -512,7 +506,6 @@ export default function AddTakeScreen() {
             }
           }
           
-          // Check against existing single values
           if (data.soundFile && typeof data.soundFile === 'string' && !data.soundFile.includes('-')) {
             const existingNum = parseInt(data.soundFile) || 0;
             if (existingNum >= currentMin && existingNum <= currentMax) {
@@ -531,7 +524,6 @@ export default function AddTakeScreen() {
           }
         }
       } else {
-        // Current input is a single value - check for conflicts
         const val = takeData.soundFile as string;
         const currentNum = parseInt(val) || 0;
         
@@ -539,7 +531,6 @@ export default function AddTakeScreen() {
           const data = sheet.data;
           if (!data) continue;
           
-          // Check against existing ranges
           const existingRange = getRangeFromData(data, 'soundFile');
           if (existingRange) {
             if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
@@ -559,7 +550,6 @@ export default function AddTakeScreen() {
             }
           }
           
-          // Check against existing single values
           if (data.soundFile === val) {
             return {
               type: 'file',
@@ -582,7 +572,6 @@ export default function AddTakeScreen() {
         const isCurrentRange = showRangeMode['cameraFile'] && currentRange?.from && currentRange?.to;
         
         if (isCurrentRange) {
-          // Current input is a range - check for conflicts
           const currentFrom = parseInt(currentRange.from) || 0;
           const currentTo = parseInt(currentRange.to) || 0;
           const currentMin = Math.min(currentFrom, currentTo);
@@ -592,15 +581,12 @@ export default function AddTakeScreen() {
             const data = sheet.data;
             if (!data) continue;
             
-            // Check against existing ranges
             const existingRange = getRangeFromData(data, 'cameraFile');
             if (existingRange) {
               const existingFrom = parseInt(existingRange.from) || 0;
               const existingTo = parseInt(existingRange.to) || 0;
               const existingMin = Math.min(existingFrom, existingTo);
               const existingMax = Math.max(existingFrom, existingTo);
-              
-              // Check for overlap
               if (!(currentMax < existingMin || currentMin > existingMax)) {
                 let conflictType: 'lower' | 'upper' | 'within';
                 if (currentFrom === existingMin) {
@@ -610,7 +596,6 @@ export default function AddTakeScreen() {
                 } else {
                   conflictType = 'upper';
                 }
-                
                 return {
                   type: 'file',
                   label: 'Camera File',
@@ -625,7 +610,6 @@ export default function AddTakeScreen() {
               }
             }
             
-            // Check against existing single values
             if (data.cameraFile && typeof data.cameraFile === 'string' && !data.cameraFile.includes('-')) {
               const existingNum = parseInt(data.cameraFile) || 0;
               if (existingNum >= currentMin && existingNum <= currentMax) {
@@ -644,7 +628,6 @@ export default function AddTakeScreen() {
             }
           }
         } else {
-          // Current input is a single value - check for conflicts
           const val = takeData.cameraFile as string;
           const currentNum = parseInt(val) || 0;
           
@@ -652,7 +635,6 @@ export default function AddTakeScreen() {
             const data = sheet.data;
             if (!data) continue;
             
-            // Check against existing ranges
             const existingRange = getRangeFromData(data, 'cameraFile');
             if (existingRange) {
               if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
@@ -672,7 +654,6 @@ export default function AddTakeScreen() {
               }
             }
             
-            // Check against existing single values
             if (data.cameraFile === val) {
               return {
                 type: 'file',
@@ -695,7 +676,6 @@ export default function AddTakeScreen() {
           const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
           
           if (isCurrentRange) {
-            // Current input is a range - check for conflicts
             const currentFrom = parseInt(currentRange.from) || 0;
             const currentTo = parseInt(currentRange.to) || 0;
             const currentMin = Math.min(currentFrom, currentTo);
@@ -705,15 +685,12 @@ export default function AddTakeScreen() {
               const data = sheet.data;
               if (!data) continue;
               
-              // Check against existing ranges
               const existingRange = getRangeFromData(data, fieldId);
               if (existingRange) {
                 const existingFrom = parseInt(existingRange.from) || 0;
                 const existingTo = parseInt(existingRange.to) || 0;
                 const existingMin = Math.min(existingFrom, existingTo);
                 const existingMax = Math.max(existingFrom, existingTo);
-                
-                // Check for overlap
                 if (!(currentMax < existingMin || currentMin > existingMax)) {
                   let conflictType: 'lower' | 'upper' | 'within';
                   if (currentFrom === existingMin) {
@@ -723,7 +700,6 @@ export default function AddTakeScreen() {
                   } else {
                     conflictType = 'upper';
                   }
-                  
                   return {
                     type: 'file',
                     label: `Camera File ${i}`,
@@ -738,7 +714,6 @@ export default function AddTakeScreen() {
                 }
               }
               
-              // Check against existing single values
               if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
                 const existingNum = parseInt(data[fieldId]) || 0;
                 if (existingNum >= currentMin && existingNum <= currentMax) {
@@ -757,14 +732,12 @@ export default function AddTakeScreen() {
               }
             }
           } else {
-            // Current input is a single value - check for conflicts
             const currentNum = parseInt(val) || 0;
             
             for (const sheet of projectLogSheets) {
               const data = sheet.data;
               if (!data) continue;
               
-              // Check against existing ranges
               const existingRange = getRangeFromData(data, fieldId);
               if (existingRange) {
                 if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
@@ -784,7 +757,6 @@ export default function AddTakeScreen() {
                 }
               }
               
-              // Check against existing single values
               if (data[fieldId] === val) {
                 return {
                   type: 'file',
@@ -802,6 +774,70 @@ export default function AddTakeScreen() {
     }
 
     return null;
+  };
+
+  // Strict range-membership blocker: if current file (single or range) belongs to any existing ranged take, block insertion
+  const findRangeMembershipConflict = () => {
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+
+    const checkAgainstExistingRanges = (
+      fieldId: string,
+      label: string,
+      currentVal?: string,
+      currentRange?: { from?: string; to?: string } | null
+    ) => {
+      if (disabledFields.has(fieldId)) return null;
+      const parseNum = (v?: string) => (v ? (parseInt(v, 10) || 0) : 0);
+      const inRangeMode = !!(currentRange && currentRange.from && currentRange.to);
+      const curFrom = inRangeMode ? parseNum(currentRange?.from) : parseNum(currentVal);
+      const curTo = inRangeMode ? parseNum(currentRange?.to) : parseNum(currentVal);
+      const curMin = Math.min(curFrom, curTo);
+      const curMax = Math.max(curFrom, curTo);
+
+      for (const sheet of projectLogSheets) {
+        const data = sheet.data;
+        if (!data) continue;
+        const existingRange = getRangeFromData(data, fieldId);
+        if (existingRange?.from && existingRange?.to) {
+          const exFrom = parseNum(existingRange.from);
+          const exTo = parseNum(existingRange.to);
+          const exMin = Math.min(exFrom, exTo);
+          const exMax = Math.max(exFrom, exTo);
+          const overlaps = !(curMax < exMin || curMin > exMax);
+          if (overlaps) {
+            return { fieldId, label, existingEntry: sheet } as { fieldId: string; label: string; existingEntry: any };
+          }
+        }
+      }
+      return null;
+    };
+
+    // Sound
+    if (takeData.soundFile) {
+      const conflict = checkAgainstExistingRanges('soundFile', 'Sound File', takeData.soundFile as string, rangeData['soundFile'] || null);
+      if (conflict) return conflict;
+    }
+
+    // Cameras
+    const camCount = project?.settings?.cameraConfiguration || 1;
+    if (camCount === 1) {
+      if (takeData.cameraFile) {
+        const conflict = checkAgainstExistingRanges('cameraFile', 'Camera File', takeData.cameraFile as string, rangeData['cameraFile'] || null);
+        if (conflict) return conflict;
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fid = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fid] ?? true;
+        const val = takeData[fid] as string | undefined;
+        if (isRecActive && val) {
+          const conflict = checkAgainstExistingRanges(fid, `Camera File ${i}`, val, rangeData[fid] || null);
+          if (conflict) return conflict;
+        }
+      }
+    }
+
+    return null as any;
   };
 
   // Helper function to validate mandatory fields
@@ -877,6 +913,19 @@ export default function AddTakeScreen() {
     
     // Validate mandatory fields first
     if (!validateMandatoryFields()) {
+      return;
+    }
+
+    // Block if any current file value belongs to an existing ranged take
+    const rangeMembership = findRangeMembershipConflict();
+    if (rangeMembership) {
+      const e = rangeMembership.existingEntry;
+      const loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      Alert.alert(
+        'Part of Ranged Take',
+        `${rangeMembership.label} is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
     
