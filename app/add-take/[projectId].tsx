@@ -421,36 +421,8 @@ export default function AddTakeScreen() {
     });
   };
 
-  // Helper function to check for take number duplicates within same scene and shot
-  const findDuplicateTake = () => {
-    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-    const sceneNumber = takeData.sceneNumber;
-    const shotNumber = takeData.shotNumber;
-    const takeNumber = takeData.takeNumber;
-    
-    if (sceneNumber && shotNumber && takeNumber) {
-      const existingTake = projectLogSheets.find(sheet => 
-        sheet.data?.sceneNumber === sceneNumber &&
-        sheet.data?.shotNumber === shotNumber &&
-        sheet.data?.takeNumber === takeNumber
-      );
-      
-      if (existingTake) {
-        return {
-          type: 'take',
-          label: 'Take',
-          fieldId: 'takeNumber',
-          value: takeNumber,
-          number: parseInt(takeNumber) || 0,
-          sceneNumber,
-          shotNumber,
-          existingEntry: existingTake
-        };
-      }
-    }
-    
-    return null;
-  };
+  // Removed take number duplication checks per latest requirements
+  const findDuplicateTake = () => null as any;
 
   // Helper function to check if a number falls within a range
   const isNumberInRange = (number: number, fromValue: string, toValue: string): boolean => {
@@ -907,75 +879,129 @@ export default function AddTakeScreen() {
       return;
     }
     
-    // Check for take number duplicates within same scene and shot first
-    const duplicateTake = findDuplicateTake();
-    if (duplicateTake) {
-      Alert.alert(
-        'Duplicate Detected',
-        `A duplicate was found. Would you like to insert before, or cancel?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', duplicateTake),
-          },
-        ]
-      );
-      return;
-    }
-    
-    // Check for duplicate file numbers across all scenes and shots
-    const duplicateFile = findFirstDuplicateFile();
-    if (duplicateFile) {
-      if (duplicateFile.isRangeConflict) {
-        // Handle range conflicts
-        if (duplicateFile.conflictType === 'lower') {
-          // Allow insert before for lower range conflicts
-          Alert.alert(
-            'Duplicate Detected',
-            `A duplicate was found. Would you like to insert before, or cancel?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Insert Before',
-                onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
-              },
-            ]
-          );
-        } else {
-          // For upper range or within range conflicts, show informational message
-          const existingEntry = duplicateFile.existingEntry;
-          const sceneNumber = existingEntry.data?.sceneNumber || 'Unknown';
-          const shotNumber = existingEntry.data?.shotNumber || 'Unknown';
-          const takeNumber = existingEntry.data?.takeNumber || 'Unknown';
-          
-          let rangeDisplay = '';
-          if (duplicateFile.rangeInfo) {
-            rangeDisplay = `${duplicateFile.rangeInfo.from}–${duplicateFile.rangeInfo.to}`;
-          } else {
-            rangeDisplay = existingEntry.data?.[duplicateFile.fieldId] || 'Unknown';
+    // New logic: only camera AND sound duplicates on the same take allow insert-before
+    const getEligibleDuplicateForField = (fieldId: string) => {
+      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+      const currentVal = takeData[fieldId] as string | undefined;
+      if (!currentVal || disabledFields.has(fieldId)) return null;
+      const currentRange = rangeData[fieldId];
+      const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
+
+      const parseNum = (s?: string) => (s ? (parseInt(s, 10) || 0) : 0);
+      const valNum = parseNum(currentVal);
+
+      for (const sheet of projectLogSheets) {
+        const data = sheet.data;
+        if (!data) continue;
+
+        const existingRange = getRangeFromData(data, fieldId);
+        if (isCurrentRange) {
+          const curFrom = parseNum(currentRange!.from);
+          const curTo = parseNum(currentRange!.to);
+          const curMin = Math.min(curFrom, curTo);
+          const curMax = Math.max(curFrom, curTo);
+
+          if (existingRange) {
+            const exFrom = parseNum(existingRange.from);
+            const exTo = parseNum(existingRange.to);
+            const exMin = Math.min(exFrom, exTo);
+            const exMax = Math.max(exFrom, exTo);
+            if (!(curMax < exMin || curMin > exMax)) {
+              if (curFrom === exMin) {
+                return { fieldId, number: curFrom, existingEntry: sheet };
+              }
+            }
           }
-          
-          Alert.alert(
-            'Duplicate Detected',
-            `The ${duplicateFile.label.toLowerCase()} number is part of an existing range (${rangeDisplay}) found in Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}. Please specify different file numbers.`,
-            [{ text: 'OK', style: 'default' }]
-          );
+
+          const existingVal = data[fieldId] as string | undefined;
+          if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
+            const exNum = parseNum(existingVal);
+            if (exNum >= curMin && exNum <= curMax) {
+              if (exNum === curMin) {
+                return { fieldId, number: curMin, existingEntry: sheet };
+              }
+            }
+          }
+        } else {
+          if (existingRange) {
+            const exFrom = parseNum(existingRange.from);
+            const exTo = parseNum(existingRange.to);
+            if (isNumberInRange(valNum, String(exFrom), String(exTo))) {
+              if (valNum === Math.min(exFrom, exTo)) {
+                return { fieldId, number: valNum, existingEntry: sheet };
+              }
+            }
+          }
+          if (data[fieldId] === currentVal) {
+            return { fieldId, number: valNum, existingEntry: sheet };
+          }
         }
-      } else {
-        // Handle regular single value conflicts
+      }
+      return null;
+    };
+
+    const soundDup = getEligibleDuplicateForField('soundFile');
+
+    let cameraDup: { fieldId: string; number: number; existingEntry: any } | null = null;
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      cameraDup = getEligibleDuplicateForField('cameraFile');
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fid = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fid] ?? true;
+        if (isRecActive && takeData[fid]) {
+          const d = getEligibleDuplicateForField(fid);
+          if (d) { cameraDup = d; break; }
+        }
+      }
+    }
+
+    if (soundDup && cameraDup) {
+      if (soundDup.existingEntry?.id === cameraDup.existingEntry?.id) {
+        const existingEntry = soundDup.existingEntry;
+        const sceneNumber = existingEntry.data?.sceneNumber || 'Unknown';
+        const shotNumber = existingEntry.data?.shotNumber || 'Unknown';
+        const takeNumber = existingEntry.data?.takeNumber || 'Unknown';
         Alert.alert(
           'Duplicate Detected',
-          `A duplicate was found. Would you like to insert before, or cancel?`,
+          `Found in Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}. Do you want to insert before?`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Insert Before',
-              onPress: () => addLogWithDuplicateHandling('before', duplicateFile),
+              onPress: () => addLogWithDuplicatePair(existingEntry, soundDup.number, cameraDup!.fieldId, cameraDup!.number),
             },
           ]
         );
+        return;
+      } else {
+        const se = soundDup.existingEntry;
+        const ce = cameraDup.existingEntry;
+        const sLoc = `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`;
+        const cLoc = `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`;
+        Alert.alert(
+          'Conflict',
+          `Camera and sound file are duplicates but belong to different takes.
+Sound: ${sLoc}
+Camera: ${cLoc}
+Cannot replace because the other one is not a duplicate and will ruin the logging.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
       }
+    }
+
+    if (soundDup || cameraDup) {
+      const dup = soundDup || cameraDup!;
+      const label = dup.fieldId.startsWith('sound') ? 'Sound' : 'Camera';
+      const e = dup.existingEntry;
+      const loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      Alert.alert(
+        'Duplicate Found',
+        `${label} file is a duplicate at ${loc}. Cannot replace because the other one is not a duplicate and will ruin the logging.`,
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
     
@@ -1286,6 +1312,160 @@ export default function AddTakeScreen() {
   };
   
 
+
+  const addLogWithDuplicatePair = (
+    existingEntry: any,
+    soundFromNumber: number,
+    cameraFieldId: string,
+    cameraFromNumber: number
+  ) => {
+    if (tokens === 0) {
+      tokenStore.useTrial();
+    }
+
+    const camCount = project?.settings?.cameraConfiguration || 1;
+
+    let newLogData = { ...takeData };
+    if (existingEntry.data?.soundFile) {
+      newLogData.soundFile = existingEntry.data.soundFile;
+    }
+    if (camCount === 1 && existingEntry.data?.cameraFile) {
+      newLogData.cameraFile = existingEntry.data.cameraFile;
+    } else if (camCount > 1) {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (existingEntry.data?.[fieldId]) {
+          newLogData[fieldId] = existingEntry.data[fieldId];
+        }
+      }
+    }
+
+    const currentSceneNumber = takeData.sceneNumber;
+    const currentShotNumber = takeData.shotNumber;
+    const targetSceneNumber = existingEntry.data?.sceneNumber;
+    const targetShotNumber = existingEntry.data?.shotNumber;
+
+    if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+      if (existingEntry.data?.takeNumber) {
+        newLogData.takeNumber = existingEntry.data.takeNumber;
+      }
+    } else {
+      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+      const sameShotTakes = projectLogSheets.filter(sheet =>
+        sheet.data?.sceneNumber === currentSceneNumber &&
+        sheet.data?.shotNumber === currentShotNumber
+      );
+      let lastTakeNumber = 0;
+      sameShotTakes.forEach(sheet => {
+        const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);
+        if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
+          lastTakeNumber = takeNum;
+        }
+      });
+      newLogData.takeNumber = (lastTakeNumber + 1).toString();
+    }
+
+    const tScene = existingEntry.data?.sceneNumber as string | undefined;
+    const tShot = existingEntry.data?.shotNumber as string | undefined;
+    const tTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
+    const sameSceneShot = takeData.sceneNumber === tScene && takeData.shotNumber === tShot;
+    if (sameSceneShot && !Number.isNaN(tTake)) {
+      updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
+    }
+
+    updateFileNumbers(projectId, 'soundFile', soundFromNumber, 1);
+    updateFileNumbers(projectId, cameraFieldId, cameraFromNumber, 1);
+
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+
+    let finalTakeData = { ...newLogData };
+    if (camCount > 1) {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        if (!isRecActive) {
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        if (!enabled) {
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          return;
+        }
+        if (inRange && r && r.from && r.to) {
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+            delete out.soundFile;
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+          }
+        } else {
+          if (fieldId === 'soundFile') {
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+        }
+      };
+
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+
+      if (camCount === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+
+    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+    finalTakeData = applyRangePersistence(finalTakeData);
+
+    logSheet.data = {
+      ...finalTakeData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: camCount > 1 ? cameraRecState : undefined
+    };
+
+    router.back();
+  };
 
   const addNewTake = () => {
     // Use trial log if no tokens available
@@ -1726,7 +1906,7 @@ export default function AddTakeScreen() {
           onFocus={(event) => {
             if (!isDisabled) {
               // Scroll to make the field visible when focused
-              const target = event.target as any;
+              const target: any = undefined;
               setTimeout(() => {
                 target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                   const scrollY = Math.max(0, pageY - 100);
@@ -1861,7 +2041,7 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('sceneNumber')}
                   onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
                   onFocus={(event) => {
-                    const target = event.target as any;
+                    const target: any = undefined;
                     setTimeout(() => {
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
@@ -1905,7 +2085,7 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('shotNumber')}
                   onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
                   onFocus={(event) => {
-                    const target = event.target as any;
+                    const target: any = undefined;
                     setTimeout(() => {
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
@@ -1950,7 +2130,7 @@ export default function AddTakeScreen() {
                   editable={!disabledFields.has('takeNumber')}
                   onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
                   onFocus={(event) => {
-                    const target = event.target as any;
+                    const target: any = undefined;
                     setTimeout(() => {
                       target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         const scrollY = Math.max(0, pageY - 100);
@@ -2058,7 +2238,7 @@ export default function AddTakeScreen() {
                   }}
                   onFocus={(event) => {
                     if (!disabledFields.has('cameraFile')) {
-                      const target = event.target as any;
+                      const target: any = undefined;
                       setTimeout(() => {
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
@@ -2184,7 +2364,7 @@ export default function AddTakeScreen() {
                   }}
                   onFocus={(event) => {
                     if (!disabledFields.has('soundFile')) {
-                      const target = event.target as any;
+                      const target: any = undefined;
                       setTimeout(() => {
                         target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                           const scrollY = Math.max(0, pageY - 100);
@@ -2316,7 +2496,7 @@ export default function AddTakeScreen() {
                         }}
                         onFocus={(event) => {
                           if (!isDisabled) {
-                            const target = event.target as any;
+                            const target: any = undefined;
                             setTimeout(() => {
                               target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                                 const scrollY = Math.max(0, pageY - 100);
