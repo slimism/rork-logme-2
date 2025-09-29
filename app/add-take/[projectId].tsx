@@ -220,15 +220,13 @@ export default function AddTakeScreen() {
     
     // Auto-fill logic
     if (projectLogSheets.length === 0) {
-      // Very first log file - fill with "0001" for all file fields
       const autoFillData: TakeData = {};
-      
-      // Set sound file to "0001"
+      autoFillData.sceneNumber = '1';
+      autoFillData.shotNumber = '1';
+      autoFillData.takeNumber = '1';
       if (currentProject?.settings?.logSheetFields?.find(f => f.id === 'soundFile')?.enabled) {
         autoFillData.soundFile = '0001';
       }
-      
-      // Set camera files to "0001"
       if (currentProject?.settings?.cameraConfiguration === 1) {
         autoFillData.cameraFile = '0001';
       } else {
@@ -236,7 +234,6 @@ export default function AddTakeScreen() {
           autoFillData[`cameraFile${i}`] = '0001';
         }
       }
-      
       setTakeData(autoFillData);
     } else {
       // Subsequent log files - increment from highest file number
@@ -252,11 +249,10 @@ export default function AddTakeScreen() {
         const episodeNumber = baseData?.episodeNumber;
         const sceneNumber = baseData?.sceneNumber;
         const shotNumber = baseData?.shotNumber;
-        const takeNumber = baseData?.takeNumber;
         
         if (episodeNumber) autoFillData.episodeNumber = episodeNumber;
-        if (sceneNumber) autoFillData.sceneNumber = sceneNumber;
-        if (shotNumber) autoFillData.shotNumber = shotNumber;
+        autoFillData.sceneNumber = sceneNumber ?? '1';
+        autoFillData.shotNumber = shotNumber ?? '1';
 
         // Prefill card numbers from last log when enabled
         const cardFieldEnabled = currentProject?.settings?.logSheetFields?.find(f => f.id === 'cardNumber')?.enabled;
@@ -277,14 +273,19 @@ export default function AddTakeScreen() {
           }
         }
         
-        // Auto-increment take number strictly from last valid non-Ambience/SFX
-        if (lastValid?.data?.takeNumber) {
-          autoFillData.takeNumber = String((parseInt(lastValid.data.takeNumber) || 0) + 1);
-        } else if (takeNumber) {
-          autoFillData.takeNumber = String((parseInt(takeNumber) || 0) + 1);
-        } else {
-          autoFillData.takeNumber = '1';
-        }
+        // Determine highest existing take in this Scene/Shot and set +1
+        const sameShotTakes = projectLogSheets.filter(s => 
+          s.data?.classification !== 'Ambience' && 
+          s.data?.classification !== 'SFX' && 
+          s.data?.sceneNumber === autoFillData.sceneNumber && 
+          s.data?.shotNumber === autoFillData.shotNumber
+        );
+        let highestTake = 0;
+        sameShotTakes.forEach(s => {
+          const n = parseInt(s.data?.takeNumber || '0', 10);
+          if (!Number.isNaN(n)) highestTake = Math.max(highestTake, n);
+        });
+        autoFillData.takeNumber = String(highestTake + 1);
         
         // Compute next file numbers for all fields
         const nextNumbers = computeNextFileNumbers(projectLogSheets, currentProject);
