@@ -221,7 +221,7 @@ export default function ProjectScreen() {
           files.push({ cameraNumber: camNum, displayValue });
         }
         // Handle single camera file
-        else if (typeof fileValue === 'string' && fileValue.trim().length > 0) {
+        else if (fileValue && typeof fileValue === 'string' && fileValue.trim().length > 0) {
           files.push({ cameraNumber: camNum, displayValue: fileValue });
         }
       });
