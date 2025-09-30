@@ -1804,24 +1804,19 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     const newClassification = classification === type ? null : type;
     setClassification(newClassification);
     
-    // Reset shot details if incompatible - clear MOS when switching to Ambience or SFX
-    if (newClassification === 'Ambience' || newClassification === 'SFX') {
-      setShotDetails(prev => prev.filter(s => s !== 'MOS'));
-      // Also remove soundFile from disabled fields since MOS is being cleared
-      setDisabledFields(prev => {
-        const updated = new Set(prev);
-        updated.delete('soundFile');
-        return updated;
-      });
-    }
-    
     // Calculate new disabled fields based on the new classification
     const prevDisabled = new Set(disabledFields);
     const nextDisabled = new Set<string>();
     
-    // Keep existing MOS disabled fields if MOS is still active
-    if (shotDetails.includes('MOS')) {
+    // Keep existing MOS disabled fields if MOS is still active (but not for Ambience/SFX)
+    if (shotDetails.includes('MOS') && newClassification !== 'Ambience' && newClassification !== 'SFX') {
       nextDisabled.add('soundFile');
+    }
+    
+    // Clear MOS when switching to Ambience or SFX
+    if (newClassification === 'Ambience' || newClassification === 'SFX') {
+      setShotDetails(prev => prev.filter(s => s !== 'MOS'));
+      // Sound will be enabled for Ambience/SFX, so don't add to nextDisabled
     }
     
     if (newClassification === 'Waste') {
@@ -1847,6 +1842,37 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       nextDisabled.delete('soundFile');
       
       setDisabledFields(nextDisabled);
+      
+      // Auto-prefill Sound when transitioning from disabled to enabled
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
       
       // Only clear fields that are newly disabled
       setTakeData(prev => {
@@ -1898,6 +1924,37 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       nextDisabled.delete('soundFile');
       
       setDisabledFields(nextDisabled);
+      
+      // Auto-prefill Sound when transitioning from disabled to enabled
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
       
       // Only clear fields that are newly disabled
       setTakeData(prev => {
@@ -2138,11 +2195,43 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       } else {
         // Disabling MOS - re-enable soundFile if appropriate
         newSelection = shotDetails.filter(s => s !== type);
+        const prevDisabled = new Set(disabledFields);
         const currentDisabled = new Set(disabledFields);
         // Only re-enable soundFile if not disabled by other classifications
         if (classification !== 'Waste' || wasteOptions.sound) {
           if (classification !== 'Insert' || insertSoundSpeed !== false) {
             currentDisabled.delete('soundFile');
+            
+            // Auto-prefill Sound when transitioning from disabled to enabled
+            const soundWasDisabled = prevDisabled.has('soundFile');
+            const soundNowEnabled = !currentDisabled.has('soundFile');
+            
+            if (soundWasDisabled && soundNowEnabled) {
+              // Compute next sound file number
+              const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+              const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+              const nextSoundNum = nextNumbers['soundFile'];
+              const formattedSound = String(nextSoundNum).padStart(4, '0');
+              
+              setTakeData(prev => {
+                const updated = { ...prev };
+                // Auto-prefill sound based on range mode
+                if (showRangeMode['soundFile']) {
+                  // Range mode: set 'from' only, don't overwrite existing 'to'
+                  setRangeData(prevRange => ({
+                    ...prevRange,
+                    soundFile: {
+                      from: formattedSound,
+                      to: prevRange['soundFile']?.to || ''
+                    }
+                  }));
+                } else {
+                  // Single mode: set sound file
+                  updated.soundFile = formattedSound;
+                }
+                return updated;
+              });
+            }
           }
         }
         setDisabledFields(currentDisabled);
