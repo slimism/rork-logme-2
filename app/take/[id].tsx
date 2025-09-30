@@ -293,6 +293,7 @@ export default function EditTakeScreen() {
     const newClassification = classification === type ? null : type;
     setClassification(newClassification);
 
+    // Reset MOS when switching to Ambience or SFX
     if (newClassification === 'Ambience' || newClassification === 'SFX') {
       setShotDetails(prev => prev.filter(d => d !== 'MOS'));
     }
@@ -313,6 +314,11 @@ export default function EditTakeScreen() {
   };
 
   const handleShotDetailPress = (detail: ShotDetailsType) => {
+    // Block MOS selection when classification is Ambience or SFX
+    if (detail === 'MOS' && (classification === 'Ambience' || classification === 'SFX')) {
+      return;
+    }
+    
     setShotDetails(prev => {
       if (prev.includes(detail)) {
         return prev.filter(d => d !== detail);

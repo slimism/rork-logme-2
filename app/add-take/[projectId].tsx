@@ -1804,9 +1804,15 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     const newClassification = classification === type ? null : type;
     setClassification(newClassification);
     
-    // Reset shot details if incompatible
-    if ((newClassification === 'Ambience' || newClassification === 'SFX') && shotDetails.includes('MOS')) {
+    // Reset shot details if incompatible - clear MOS when switching to Ambience or SFX
+    if (newClassification === 'Ambience' || newClassification === 'SFX') {
       setShotDetails(prev => prev.filter(s => s !== 'MOS'));
+      // Also remove soundFile from disabled fields since MOS is being cleared
+      setDisabledFields(prev => {
+        const updated = new Set(prev);
+        updated.delete('soundFile');
+        return updated;
+      });
     }
     
     // Calculate new disabled fields based on the new classification
@@ -1836,6 +1842,9 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       nextDisabled.add('sceneNumber');
       nextDisabled.add('shotNumber');
       nextDisabled.add('takeNumber');
+      
+      // Ensure soundFile is NOT disabled for SFX (only camera files are disabled)
+      nextDisabled.delete('soundFile');
       
       setDisabledFields(nextDisabled);
       
@@ -1884,6 +1893,9 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       nextDisabled.add('sceneNumber');
       nextDisabled.add('shotNumber');
       nextDisabled.add('takeNumber');
+      
+      // Ensure soundFile is NOT disabled for Ambience (only camera files are disabled)
+      nextDisabled.delete('soundFile');
       
       setDisabledFields(nextDisabled);
       
@@ -2106,20 +2118,32 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     const isSelected = shotDetails.includes(type);
 
     if (type === 'MOS') {
+      // Block MOS selection when classification is Ambience or SFX
       if (classification === 'Ambience' || classification === 'SFX') {
         return;
       }
       if (!isSelected) {
+        // Enabling MOS - disable soundFile and clear its value
         newSelection = [...shotDetails, type];
         const currentDisabled = new Set(disabledFields);
         currentDisabled.add('soundFile');
         setDisabledFields(currentDisabled);
         setTakeData(prev => ({ ...prev, soundFile: '' }));
+        // Clear sound range data when MOS is enabled
+        setRangeData(prev => {
+          const updated = { ...prev };
+          delete updated['soundFile'];
+          return updated;
+        });
       } else {
+        // Disabling MOS - re-enable soundFile if appropriate
         newSelection = shotDetails.filter(s => s !== type);
         const currentDisabled = new Set(disabledFields);
+        // Only re-enable soundFile if not disabled by other classifications
         if (classification !== 'Waste' || wasteOptions.sound) {
-          currentDisabled.delete('soundFile');
+          if (classification !== 'Insert' || insertSoundSpeed !== false) {
+            currentDisabled.delete('soundFile');
+          }
         }
         setDisabledFields(currentDisabled);
       }
