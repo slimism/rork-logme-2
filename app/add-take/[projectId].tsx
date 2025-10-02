@@ -885,10 +885,10 @@ export default function AddTakeScreen() {
 
   const handleAddTake = (skipDuplicateCheck = false, overrideTakeNumber?: string) => {
     // Check if user can add more logs
-    if (!canAddLog()) {
+    if (!canAddLog(projectId)) {
       Alert.alert(
         'Out of Free Logs',
-        'You have used all your free trial logs. Purchase a token to get unlimited logs for a project.',
+        'You have used all your free trial logs. Purchase a token to get unlimited logs for this project.',
         [
           { text: 'OK', style: 'default' },
           {
@@ -1121,7 +1121,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
   };
   
   const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
-    if (tokens === 0) {
+    // Only use trial if this is the trial project and not unlocked
+    const isTrialProject = tokenStore.isTrialProject(projectId);
+    const isUnlocked = tokenStore.isProjectUnlocked(projectId);
+    if (isTrialProject && !isUnlocked) {
       tokenStore.useTrial();
     }
 
@@ -1457,7 +1460,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     cameraFieldId: string,
     cameraFromNumber: number
   ) => {
-    if (tokens === 0) {
+    // Only use trial if this is the trial project and not unlocked
+    const isTrialProject = tokenStore.isTrialProject(projectId);
+    const isUnlocked = tokenStore.isProjectUnlocked(projectId);
+    if (isTrialProject && !isUnlocked) {
       tokenStore.useTrial();
     }
 
@@ -1644,8 +1650,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
   };
 
   const addNewTake = (overrideTakeNumber?: string) => {
-    // Use trial log if no tokens available
-    if (tokens === 0) {
+    // Only use trial if this is the trial project and not unlocked
+    const isTrialProject = tokenStore.isTrialProject(projectId);
+    const isUnlocked = tokenStore.isProjectUnlocked(projectId);
+    if (isTrialProject && !isUnlocked) {
       tokenStore.useTrial();
     }
     

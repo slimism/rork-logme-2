@@ -70,9 +70,11 @@ export const useTokenStore = create<TokenState>()(
       
       canAddLog: (projectId: string) => {
         const state = get();
+        // Check if project is unlocked (purchased with token or unlocked later)
         if (state.unlockedProjects.includes(projectId)) {
           return true;
         }
+        // Check if it's the trial project and still has logs remaining
         if (state.trialProjectId === projectId && state.trialLogsUsed < 15) {
           return true;
         }

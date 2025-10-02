@@ -43,18 +43,19 @@ export const useProjectStore = create<ProjectState>()(
         const state = get();
         const tokenStore = useTokenStore.getState();
         
+        // First project and no tokens = trial project
         if (state.projects.length === 0 && tokenStore.trialProjectId === null && tokenStore.tokens === 0) {
-          tokenStore.useToken = () => {
-            const currentState = useTokenStore.getState();
-            if (currentState.tokens > 0) {
-              useTokenStore.setState({ tokens: currentState.tokens - 1 });
-              return true;
-            }
-            return false;
-          };
           useTokenStore.setState({ trialProjectId: newProject.id });
-        } else if (tokenStore.tokens > 0) {
-          tokenStore.useToken();
+        } 
+        // Has tokens = use token and unlock project
+        else if (tokenStore.tokens > 0) {
+          const success = tokenStore.useToken();
+          if (success) {
+            // Add to unlocked projects immediately
+            useTokenStore.setState({ 
+              unlockedProjects: [...tokenStore.unlockedProjects, newProject.id] 
+            });
+          }
         }
         
         set((state) => ({
