@@ -72,14 +72,7 @@ export default function ProjectScreen() {
     if (!id) return;
     
     if (tokens === 0) {
-      Alert.alert(
-        'No Tokens Available',
-        'You need to purchase a token to unlock unlimited logs for this project.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy Token', onPress: () => router.push('/store') }
-        ]
-      );
+      router.push('/(tabs)/store');
       return;
     }
     
