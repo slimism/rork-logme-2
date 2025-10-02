@@ -883,7 +883,7 @@ export default function AddTakeScreen() {
     return true;
   };
 
-  const handleAddTake = (skipDuplicateCheck = false) => {
+  const handleAddTake = (skipDuplicateCheck = false, overrideTakeNumber?: string) => {
     // Check if user can add more logs
     if (!canAddLog()) {
       Alert.alert(
@@ -900,6 +900,11 @@ export default function AddTakeScreen() {
       return;
     }
     
+    // If we have an override take number, update the state before proceeding
+    if (overrideTakeNumber) {
+      setTakeData(prev => ({ ...prev, takeNumber: overrideTakeNumber }));
+    }
+    
     // Validate mandatory fields first
     if (!validateMandatoryFields()) {
       return;
@@ -909,20 +914,17 @@ export default function AddTakeScreen() {
     if (!skipDuplicateCheck) {
       const takeDup = findDuplicateTake();
       if (takeDup) {
+        const nextTakeNumber = String((takeDup.highest || 0) + 1);
         Alert.alert(
           'Take Number Exists',
-          `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${String((takeDup.highest || 0) + 1)} instead?`,
+          `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${nextTakeNumber} instead?`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Yes',
               onPress: () => {
-                const next = String((takeDup.highest || 0) + 1);
-                setTakeData(prev => ({ ...prev, takeNumber: next }));
-                // Skip duplicate check on next call since we just set it to the next available number
-                setTimeout(() => {
-                  handleAddTake(true);
-                }, 100);
+                // Pass the new take number directly and skip duplicate check
+                handleAddTake(true, nextTakeNumber);
               },
             },
           ]
@@ -1070,8 +1072,8 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       return;
     }
     
-    // No duplicate, add normally
-    addNewTake();
+    // No duplicate, add normally (pass override if provided)
+    addNewTake(overrideTakeNumber);
   };
   
   const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
@@ -1597,7 +1599,7 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     router.back();
   };
 
-  const addNewTake = () => {
+  const addNewTake = (overrideTakeNumber?: string) => {
     // Use trial log if no tokens available
     if (tokens === 0) {
       tokenStore.useTrial();
@@ -1612,6 +1614,11 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
     
     // Prepare final take data with REC state considerations
     let finalTakeData = { ...takeData };
+    
+    // Apply override take number if provided
+    if (overrideTakeNumber) {
+      finalTakeData.takeNumber = overrideTakeNumber;
+    }
     
     // For multiple cameras, only include file data for cameras with active REC
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
