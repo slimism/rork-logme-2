@@ -885,7 +885,11 @@ export default function AddTakeScreen() {
 
   const handleAddTake = (skipDuplicateCheck = false, overrideTakeNumber?: string) => {
     // Check if user can add more logs
-    if (!canAddLog(projectId)) {
+    console.log('[handleAddTake] Checking if can add log for project:', projectId);
+    const canAdd = canAddLog(projectId);
+    console.log('[handleAddTake] canAddLog result:', canAdd);
+    
+    if (!canAdd) {
       Alert.alert(
         'Out of Free Logs',
         'You have used all your free trial logs. Purchase a token to get unlimited logs for this project.',

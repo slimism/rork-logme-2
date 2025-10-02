@@ -70,14 +70,22 @@ export const useTokenStore = create<TokenState>()(
       
       canAddLog: (projectId: string) => {
         const state = get();
+        console.log('[canAddLog] Checking project:', projectId);
+        console.log('[canAddLog] Unlocked projects:', state.unlockedProjects);
+        console.log('[canAddLog] Trial project ID:', state.trialProjectId);
+        console.log('[canAddLog] Trial logs used:', state.trialLogsUsed);
+        
         // Check if project is unlocked (purchased with token or unlocked later)
         if (state.unlockedProjects.includes(projectId)) {
+          console.log('[canAddLog] Project is unlocked - allowing log');
           return true;
         }
         // Check if it's the trial project and still has logs remaining
         if (state.trialProjectId === projectId && state.trialLogsUsed < 15) {
+          console.log('[canAddLog] Trial project with remaining logs - allowing log');
           return true;
         }
+        console.log('[canAddLog] Cannot add log - project not unlocked and not trial with remaining logs');
         return false;
       },
       
