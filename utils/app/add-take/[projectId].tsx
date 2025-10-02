@@ -219,7 +219,7 @@ export default function AddTakeScreen() {
 
   const handleAddTake = () => {
     // Check if user can add more logs
-    if (!canAddLog()) {
+    if (!canAddLog(projectId!)) {
       Alert.alert(
         'Out of Free Logs',
         'You have used all your free trial logs. Purchase a token to get unlimited logs for a project.',
