@@ -4,6 +4,7 @@ import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useTokenStore } from '@/store/subscriptionStore';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -15,6 +16,7 @@ export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projects, logSheets } = useProjectStore();
   const { darkMode } = useThemeStore();
+  const { isTrialProject, isProjectUnlocked, consumeTokenForProject, tokens } = useTokenStore();
 
   
   const [project, setProject] = useState(projects.find(p => p.id === id));
@@ -46,13 +48,60 @@ export default function ProjectScreen() {
     </TouchableOpacity>
   );
 
-  const HeaderRight = () => (
-    <View style={styles.headerRightContainer}>
-      <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
-        <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
-      </TouchableOpacity>
-    </View>
-  );
+  const HeaderRight = () => {
+    const showConsumeToken = id && isTrialProject(id) && !isProjectUnlocked(id);
+    
+    return (
+      <View style={styles.headerRightContainer}>
+        {showConsumeToken && (
+          <TouchableOpacity 
+            onPress={handleConsumeToken} 
+            style={[styles.consumeTokenButton, darkMode && styles.consumeTokenButtonDark]}
+          >
+            <Text style={styles.consumeTokenText}>Unlock</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
+          <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const handleConsumeToken = () => {
+    if (!id) return;
+    
+    if (tokens === 0) {
+      Alert.alert(
+        'No Tokens Available',
+        'You need to purchase a token to unlock unlimited logs for this project.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Buy Token', onPress: () => router.push('/store') }
+        ]
+      );
+      return;
+    }
+    
+    Alert.alert(
+      'Unlock Project',
+      'Use 1 token to unlock unlimited logs for this project?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlock',
+          onPress: () => {
+            const success = consumeTokenForProject(id);
+            if (success) {
+              Alert.alert('Success', 'Project unlocked! You can now add unlimited logs.');
+            } else {
+              Alert.alert('Error', 'Failed to unlock project. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleExportPDF = () => {
     if (!project) return;
@@ -1159,5 +1208,20 @@ const styles = StyleSheet.create({
   },
   cameraList: {
     marginTop: 2,
+  },
+  consumeTokenButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  consumeTokenButtonDark: {
+    backgroundColor: colors.primary,
+  },
+  consumeTokenText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

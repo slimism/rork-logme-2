@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Project, Folder, LogSheet, ProjectSettings } from '@/types';
+import { useTokenStore } from './subscriptionStore';
 
 interface ProjectState {
   projects: Project[];
@@ -38,6 +39,23 @@ export const useProjectStore = create<ProjectState>()(
           settings,
           logoUri,
         };
+        
+        const state = get();
+        const tokenStore = useTokenStore.getState();
+        
+        if (state.projects.length === 0 && tokenStore.trialProjectId === null && tokenStore.tokens === 0) {
+          tokenStore.useToken = () => {
+            const currentState = useTokenStore.getState();
+            if (currentState.tokens > 0) {
+              useTokenStore.setState({ tokens: currentState.tokens - 1 });
+              return true;
+            }
+            return false;
+          };
+          useTokenStore.setState({ trialProjectId: newProject.id });
+        } else if (tokenStore.tokens > 0) {
+          tokenStore.useToken();
+        }
         
         set((state) => ({
           projects: [...state.projects, newProject],

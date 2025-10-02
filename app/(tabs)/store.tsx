@@ -90,6 +90,26 @@ export default function Store() {
     }
   };
 
+  const handleTestPurchase = (tokenCount: number) => {
+    Alert.alert(
+      'Test Purchase',
+      `Add ${tokenCount} token${tokenCount > 1 ? 's' : ''} for testing? (No payment required)`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Add Tokens',
+          onPress: () => {
+            addTokens(tokenCount);
+            Alert.alert(
+              'Success!',
+              `${tokenCount} token${tokenCount > 1 ? 's' : ''} added to your account.`
+            );
+          }
+        }
+      ]
+    );
+  };
+
   const handleRestorePurchases = async () => {
     if (Platform.OS === 'web') {
       Alert.alert(
@@ -184,35 +204,44 @@ export default function Store() {
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Purchase Tokens</Text>
           
-          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
+          <TouchableOpacity 
+            style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
+            onPress={() => handleTestPurchase(1)}
+          >
             <View style={styles.purchaseInfo}>
-              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>1 Project</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>1 Token</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Unlock one project</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$4.99</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           
-          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
+          <TouchableOpacity 
+            style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
+            onPress={() => handleTestPurchase(4)}
+          >
             <View style={styles.purchaseInfo}>
-              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>4 Projects</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>4 Tokens</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Best value</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$14.99</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           
-          <View style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}>
+          <TouchableOpacity 
+            style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
+            onPress={() => handleTestPurchase(10)}
+          >
             <View style={styles.purchaseInfo}>
-              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>10 Projects</Text>
+              <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>10 Tokens</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>For the pros</Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>$29.99</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
       {Platform.OS !== 'web' && (
