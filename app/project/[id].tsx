@@ -152,7 +152,7 @@ export default function ProjectScreen() {
   const sortedScenes = Object.keys(organizedTakes).sort((a, b) => {
     if (a === 'Unknown') return 1;
     if (b === 'Unknown') return -1;
-    return parseInt(a) - parseInt(b);
+    return parseInt(b) - parseInt(a);
   });
 
 
@@ -508,7 +508,7 @@ export default function ProjectScreen() {
                 {Object.keys(organizedTakes[sceneNumber]).sort((a, b) => {
                   if (a === 'Unknown') return 1;
                   if (b === 'Unknown') return -1;
-                  return parseInt(a) - parseInt(b);
+                  return parseInt(b) - parseInt(a);
                 }).map(shotNumber => (
                   <View key={`${sceneNumber}-${shotNumber}`} style={[styles.shotContainer, darkMode && styles.shotContainerDark]}>
                     <View style={[styles.shotHeader, darkMode && styles.shotHeaderDark]}>
