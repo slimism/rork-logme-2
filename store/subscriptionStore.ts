@@ -74,18 +74,28 @@ export const useTokenStore = create<TokenState>()(
         console.log('[canAddLog] Unlocked projects:', state.unlockedProjects);
         console.log('[canAddLog] Trial project ID:', state.trialProjectId);
         console.log('[canAddLog] Trial logs used:', state.trialLogsUsed);
-        
-        // Check if project is unlocked (purchased with token or unlocked later)
-        if (state.unlockedProjects.includes(projectId)) {
-          console.log('[canAddLog] Project is unlocked - allowing log');
+
+        // If this is the designated trial project
+        if (state.trialProjectId === projectId) {
+          // If unlocked via token, unlimited
+          if (state.unlockedProjects.includes(projectId)) {
+            console.log('[canAddLog] Trial project unlocked via token - allowing unlimited');
+            return true;
+          }
+          // Otherwise enforce remaining free logs
+          const allowed = state.trialLogsUsed < 15;
+          console.log('[canAddLog] Trial project remaining check ->', allowed);
+          return allowed;
+        }
+
+        // Any non-trial project should have been created using a token and is unlimited
+        // Additionally, keep backward compatibility: if explicitly unlocked, allow too
+        if (state.trialProjectId !== projectId) {
+          console.log('[canAddLog] Non-trial project - allowing unlimited');
           return true;
         }
-        // Check if it's the trial project and still has logs remaining
-        if (state.trialProjectId === projectId && state.trialLogsUsed < 15) {
-          console.log('[canAddLog] Trial project with remaining logs - allowing log');
-          return true;
-        }
-        console.log('[canAddLog] Cannot add log - project not unlocked and not trial with remaining logs');
+
+        console.log('[canAddLog] Fallback deny');
         return false;
       },
       
