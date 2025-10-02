@@ -883,7 +883,7 @@ export default function AddTakeScreen() {
     return true;
   };
 
-  const handleAddTake = () => {
+  const handleAddTake = (skipDuplicateCheck = false) => {
     // Check if user can add more logs
     if (!canAddLog()) {
       Alert.alert(
@@ -905,26 +905,30 @@ export default function AddTakeScreen() {
       return;
     }
 
-    const takeDup = findDuplicateTake();
-    if (takeDup) {
-      Alert.alert(
-        'Take Number Exists',
-        `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${String((takeDup.highest || 0) + 1)} instead?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Use Next',
-            onPress: () => {
-              const next = String((takeDup.highest || 0) + 1);
-              setTakeData(prev => ({ ...prev, takeNumber: next }));
-              setTimeout(() => {
-                handleAddTake();
-              }, 0);
+    // Only check for duplicate take if not skipping
+    if (!skipDuplicateCheck) {
+      const takeDup = findDuplicateTake();
+      if (takeDup) {
+        Alert.alert(
+          'Take Number Exists',
+          `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${String((takeDup.highest || 0) + 1)} instead?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Yes',
+              onPress: () => {
+                const next = String((takeDup.highest || 0) + 1);
+                setTakeData(prev => ({ ...prev, takeNumber: next }));
+                // Skip duplicate check on next call since we just set it to the next available number
+                setTimeout(() => {
+                  handleAddTake(true);
+                }, 100);
+              },
             },
-          },
-        ]
-      );
-      return;
+          ]
+        );
+        return;
+      }
     }
 
     // Block if any current file value belongs to an existing ranged take
@@ -3032,7 +3036,7 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
             <TouchableOpacity
               testID="add-take-button"
               style={styles.addTakeButton}
-              onPress={handleAddTake}
+              onPress={() => handleAddTake()}
               activeOpacity={0.8}
             >
               <Text style={styles.addTakeText}>Add Log</Text>
