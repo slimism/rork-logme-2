@@ -148,12 +148,6 @@ export default function ProjectSettingsScreen() {
       loggerName: loggerName.trim(),
     };
 
-    // Consume token if user has tokens
-    if (tokens > 0) {
-      const tokenConsumed = tokenStore.useToken();
-      console.log('Token consumed:', tokenConsumed);
-    }
-
     const project = addProject(projectName, projectSettings, projectLogo);
     setShowConfirmModal(false);
     router.replace(`/project/${project.id}`);
