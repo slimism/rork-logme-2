@@ -937,7 +937,15 @@ export default function AddTakeScreen() {
     const rangeMembership = findRangeMembershipConflict();
     if (rangeMembership) {
       const e = rangeMembership.existingEntry;
-      const loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      const classification = e.data?.classification;
+      let loc: string;
+      if (classification === 'SFX') {
+        loc = 'SFX';
+      } else if (classification === 'Ambience') {
+        loc = 'Ambience';
+      } else {
+        loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      }
       Alert.alert(
         'Part of Ranged Take',
         `${rangeMembership.label} is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
@@ -1027,12 +1035,21 @@ export default function AddTakeScreen() {
     if (soundDup && cameraDup) {
       if (soundDup.existingEntry?.id === cameraDup.existingEntry?.id) {
         const existingEntry = soundDup.existingEntry;
-        const sceneNumber = existingEntry.data?.sceneNumber || 'Unknown';
-        const shotNumber = existingEntry.data?.shotNumber || 'Unknown';
-        const takeNumber = existingEntry.data?.takeNumber || 'Unknown';
+        const classification = existingEntry.data?.classification;
+        let location: string;
+        if (classification === 'SFX') {
+          location = 'SFX';
+        } else if (classification === 'Ambience') {
+          location = 'Ambience';
+        } else {
+          const sceneNumber = existingEntry.data?.sceneNumber || 'Unknown';
+          const shotNumber = existingEntry.data?.shotNumber || 'Unknown';
+          const takeNumber = existingEntry.data?.takeNumber || 'Unknown';
+          location = `Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}`;
+        }
         Alert.alert(
           'Duplicate Detected',
-          `Found in Scene ${sceneNumber}, Shot ${shotNumber}, Take ${takeNumber}. Do you want to insert before?`,
+          `Found in ${location}. Do you want to insert before?`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -1045,14 +1062,33 @@ export default function AddTakeScreen() {
       } else {
         const se = soundDup.existingEntry;
         const ce = cameraDup.existingEntry;
-        const sLoc = `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`;
-        const cLoc = `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`;
+        const sClassification = se.data?.classification;
+        const cClassification = ce.data?.classification;
+        let sLoc: string;
+        let cLoc: string;
+        
+        if (sClassification === 'SFX') {
+          sLoc = 'SFX';
+        } else if (sClassification === 'Ambience') {
+          sLoc = 'Ambience';
+        } else {
+          sLoc = `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`;
+        }
+        
+        if (cClassification === 'SFX') {
+          cLoc = 'SFX';
+        } else if (cClassification === 'Ambience') {
+          cLoc = 'Ambience';
+        } else {
+          cLoc = `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`;
+        }
+        
         Alert.alert(
           'Conflict',
           `Camera and sound file are duplicates but belong to different takes.
 Sound: ${sLoc}
 Camera: ${cLoc}
-Cannot replace because the other one is not a duplicate and will ruin the logging.`,
+The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
           [{ text: 'OK', style: 'default' }]
         );
         return;
@@ -1063,10 +1099,18 @@ Cannot replace because the other one is not a duplicate and will ruin the loggin
       const dup = soundDup || cameraDup!;
       const label = dup.fieldId.startsWith('sound') ? 'Sound' : 'Camera';
       const e = dup.existingEntry;
-      const loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      const classification = e.data?.classification;
+      let loc: string;
+      if (classification === 'SFX') {
+        loc = 'SFX';
+      } else if (classification === 'Ambience') {
+        loc = 'Ambience';
+      } else {
+        loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      }
       Alert.alert(
         'Duplicate Found',
-        `${label} file is a duplicate at ${loc}. Cannot replace because the other one is not a duplicate and will ruin the logging.`,
+        `${label} file is a duplicate at ${loc}. The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
         [{ text: 'OK', style: 'default' }]
       );
       return;
