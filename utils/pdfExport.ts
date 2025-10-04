@@ -311,9 +311,9 @@ const generateSmartExportSections = (
   fieldList: string[],
   customFields: string[]
 ): string => {
-  const goodTakes = logSheets.filter(sheet => sheet.data?.isGoodTake);
-  const inserts = logSheets.filter(sheet => sheet.data?.classification === 'Insert');
-  const wastes = logSheets.filter(sheet => sheet.data?.classification === 'Waste');
+  const goodTakes = logSheets.filter(sheet => sheet.data?.isGoodTake && sheet.data?.sceneNumber);
+  const inserts = logSheets.filter(sheet => sheet.data?.classification === 'Insert' && sheet.data?.sceneNumber);
+  const wastes = logSheets.filter(sheet => sheet.data?.classification === 'Waste' && sheet.data?.sceneNumber);
   const ambiences = logSheets.filter(sheet => sheet.data?.classification === 'Ambience');
   const sfxs = logSheets.filter(sheet => sheet.data?.classification === 'SFX');
   
@@ -395,17 +395,25 @@ const generateFilmLogHTML = (
   const takesByScene: Record<string, Record<string, LogSheet[]>> = {};
   
   logSheets.forEach(logSheet => {
-    const scene = logSheet.data?.sceneNumber || 'Unknown';
-    const shot = logSheet.data?.shotNumber || 'Unknown';
+    const scene = logSheet.data?.sceneNumber;
+    const shot = logSheet.data?.shotNumber;
     
-    if (!takesByScene[scene]) {
-      takesByScene[scene] = {};
-    }
-    if (!takesByScene[scene][shot]) {
-      takesByScene[scene][shot] = [];
+    // Skip takes without scene number in smart export mode
+    if (isSmartExport && !scene) {
+      return;
     }
     
-    takesByScene[scene][shot].push(logSheet);
+    const sceneKey = scene || 'Unknown';
+    const shotKey = shot || 'Unknown';
+    
+    if (!takesByScene[sceneKey]) {
+      takesByScene[sceneKey] = {};
+    }
+    if (!takesByScene[sceneKey][shotKey]) {
+      takesByScene[sceneKey][shotKey] = [];
+    }
+    
+    takesByScene[sceneKey][shotKey].push(logSheet);
   });
 
   // Sort scenes and shots
