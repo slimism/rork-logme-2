@@ -328,6 +328,13 @@ export default function AddTakeScreen() {
           // DON'T prefill description or notes for new logs - keep them blank
           // Users should enter these fresh for each new log
           
+          // Check if there's a previous description for this shot
+          const shotKey = `${autoFillData.sceneNumber}_${autoFillData.shotNumber}`;
+          const lastDesc = shotDescMap[shotKey];
+          if (lastDesc) {
+            autoFillData.descriptionOfShot = lastDesc;
+          }
+          
           setTakeData(autoFillData);
         }
       }
