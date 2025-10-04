@@ -38,6 +38,7 @@ export default function AddTakeScreen() {
   const savedFieldValuesRef = useRef<TakeData>({});
   const writingProgrammaticallyRef = useRef(false);
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
+  const wasteTemporaryStorageRef = useRef<{ [key: string]: string }>({});
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
@@ -1929,19 +1930,14 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Don't set disabled fields yet, wait for waste modal confirmation
       return;
     } else if (classification === 'Waste' && newClassification === null) {
-      // Toggling Waste OFF - re-enable fields and auto-fill
-      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-      const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+      // Toggling Waste OFF - restore temporarily stored values
       
-      // Re-enable and auto-fill Camera Files
+      // Re-enable and restore Camera Files
       if (wasteOptions.camera) {
         if (project?.settings?.cameraConfiguration === 1) {
           if (prevDisabled.has('cameraFile')) {
             setTimeout(() => {
-              const nextCameraNum = nextNumbers['cameraFile'];
-              if (lastAutoIncrementRef.current['cameraFile'] === nextCameraNum) return;
-              lastAutoIncrementRef.current['cameraFile'] = nextCameraNum;
-              const formattedCamera = String(nextCameraNum).padStart(4, '0');
+              const storedValue = wasteTemporaryStorageRef.current['cameraFile'];
               
               writingProgrammaticallyRef.current = true;
               setTakeData(prev => {
@@ -1949,10 +1945,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                 if (showRangeMode['cameraFile']) {
                   setRangeData(prevRange => ({
                     ...prevRange,
-                    cameraFile: { from: formattedCamera, to: prevRange['cameraFile']?.to || '' }
+                    cameraFile: { from: storedValue || '', to: prevRange['cameraFile']?.to || '' }
                   }));
                 } else {
-                  updated.cameraFile = formattedCamera;
+                  updated.cameraFile = storedValue || '';
                 }
                 return updated;
               });
@@ -1964,10 +1960,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const fieldId = `cameraFile${i}`;
             if (prevDisabled.has(fieldId)) {
               setTimeout(() => {
-                const nextCameraNum = nextNumbers[fieldId];
-                if (lastAutoIncrementRef.current[fieldId] === nextCameraNum) return;
-                lastAutoIncrementRef.current[fieldId] = nextCameraNum;
-                const formattedCamera = String(nextCameraNum).padStart(4, '0');
+                const storedValue = wasteTemporaryStorageRef.current[fieldId];
                 
                 writingProgrammaticallyRef.current = true;
                 setTakeData(prev => {
@@ -1975,10 +1968,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   if (showRangeMode[fieldId]) {
                     setRangeData(prevRange => ({
                       ...prevRange,
-                      [fieldId]: { from: formattedCamera, to: prevRange[fieldId]?.to || '' }
+                      [fieldId]: { from: storedValue || '', to: prevRange[fieldId]?.to || '' }
                     }));
                   } else {
-                    updated[fieldId] = formattedCamera;
+                    updated[fieldId] = storedValue || '';
                   }
                   return updated;
                 });
@@ -1989,13 +1982,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
       }
       
-      // Re-enable and auto-fill Sound File
+      // Re-enable and restore Sound File
       if (wasteOptions.sound && prevDisabled.has('soundFile')) {
         setTimeout(() => {
-          const nextSoundNum = nextNumbers['soundFile'];
-          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) return;
-          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
-          const formattedSound = String(nextSoundNum).padStart(4, '0');
+          const storedValue = wasteTemporaryStorageRef.current['soundFile'];
           
           writingProgrammaticallyRef.current = true;
           setTakeData(prev => {
@@ -2003,10 +1993,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             if (showRangeMode['soundFile']) {
               setRangeData(prevRange => ({
                 ...prevRange,
-                soundFile: { from: formattedSound, to: prevRange['soundFile']?.to || '' }
+                soundFile: { from: storedValue || '', to: prevRange['soundFile']?.to || '' }
               }));
             } else {
-              updated.soundFile = formattedSound;
+              updated.soundFile = storedValue || '';
             }
             return updated;
           });
@@ -2360,19 +2350,23 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     
     setDisabledFields(nextDisabled);
     
-    // Clear only fields that transitioned from enabled to disabled
+    // Store current values before clearing, then clear fields that transitioned from enabled to disabled
     setTakeData(prev => {
       const updated = { ...prev };
       
       if (!wasteOptions.camera) {
         if (project?.settings?.cameraConfiguration === 1) {
           if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
+            // Store the current value before clearing
+            wasteTemporaryStorageRef.current['cameraFile'] = prev.cameraFile || '';
             updated.cameraFile = '';
           }
         } else {
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
             if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
+              // Store the current value before clearing
+              wasteTemporaryStorageRef.current[fieldId] = prev[fieldId] || '';
               updated[fieldId] = '';
             }
           }
@@ -2381,6 +2375,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       
       if (!wasteOptions.sound) {
         if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
+          // Store the current value before clearing
+          wasteTemporaryStorageRef.current['soundFile'] = prev.soundFile || '';
           updated.soundFile = '';
         }
       }
