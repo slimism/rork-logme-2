@@ -2150,6 +2150,37 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Only keep MOS disabled fields if MOS is active
       setDisabledFields(nextDisabled);
       
+      // Auto-prefill Sound when transitioning from disabled to enabled (e.g., when disabling Insert)
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
+      
       // Clear fields that are newly disabled (but not scene/shot/take when restoring)
       setTakeData(prev => {
         const updated = { ...prev };
@@ -2302,9 +2333,40 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         });
       }
     } else {
-      // If user selects "Yes", remove soundFile from disabled fields
+      // If user selects "Yes", remove soundFile from disabled fields and auto-fill
       nextDisabled.delete('soundFile');
       setDisabledFields(nextDisabled);
+      
+      // Auto-prefill Sound when transitioning from disabled to enabled
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
     }
     setShowInsertModal(false);
   };
