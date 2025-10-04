@@ -393,14 +393,28 @@ const generateFilmLogHTML = (
 
   // Group takes by scene and shot
   const takesByScene: Record<string, Record<string, LogSheet[]>> = {};
+  const sfxTakes: LogSheet[] = [];
+  const ambienceTakes: LogSheet[] = [];
   
   logSheets.forEach(logSheet => {
     const scene = logSheet.data?.sceneNumber;
     const shot = logSheet.data?.shotNumber;
+    const classification = logSheet.data?.classification;
     
     // Skip takes without scene number in smart export mode
     if (isSmartExport && !scene) {
       return;
+    }
+    
+    // In regular export, separate SFX and Ambiences without scene numbers
+    if (!isSmartExport && !scene) {
+      if (classification === 'SFX') {
+        sfxTakes.push(logSheet);
+        return;
+      } else if (classification === 'Ambience') {
+        ambienceTakes.push(logSheet);
+        return;
+      }
     }
     
     const sceneKey = scene || 'Unknown';
@@ -514,6 +528,65 @@ const generateFilmLogHTML = (
   if (isSmartExport) {
     const smartSections = generateSmartExportSections(logSheets, fieldList, customFields);
     content += `\n<div class=\"page-break\"></div>\n<div>\n  ${smartSections}\n</div>`;
+  } else {
+    // Add SFX and Ambience tables for regular export
+    if (sfxTakes.length > 0) {
+      content += `
+        <div class="scene-header">SFX</div>
+        <table>
+          <thead>
+            <tr>${tableHeaders}</tr>
+          </thead>
+          <tbody>
+      `;
+      
+      sfxTakes.forEach(take => {
+        const cells = fieldList.map(fieldId => {
+          let value = take.data?.[fieldId] || '';
+          // Clear scene, shot, take for SFX
+          if (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber') {
+            value = '';
+          }
+          const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
+          return `<td class="${cellClass}">${value}</td>`;
+        }).join('');
+        content += `<tr class="take-row">${cells}</tr>`;
+      });
+      
+      content += `
+          </tbody>
+        </table>
+      `;
+    }
+    
+    if (ambienceTakes.length > 0) {
+      content += `
+        <div class="scene-header">Ambiences</div>
+        <table>
+          <thead>
+            <tr>${tableHeaders}</tr>
+          </thead>
+          <tbody>
+      `;
+      
+      ambienceTakes.forEach(take => {
+        const cells = fieldList.map(fieldId => {
+          let value = take.data?.[fieldId] || '';
+          // Clear scene, shot, take for Ambiences
+          if (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber') {
+            value = '';
+          }
+          const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
+          return `<td class="${cellClass}">${value}</td>`;
+        }).join('');
+        content += `<tr class="take-row">${cells}</tr>`;
+      });
+      
+      content += `
+          </tbody>
+        </table>
+      `;
+    }
   }
   
   // Add page numbers
