@@ -36,6 +36,8 @@ export default function AddTakeScreen() {
   const notificationOpacity = useRef(new Animated.Value(0)).current;
   const notificationTranslateY = useRef(new Animated.Value(-100)).current;
   const savedFieldValuesRef = useRef<TakeData>({});
+  const writingProgrammaticallyRef = useRef(false);
+  const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
@@ -2155,30 +2157,44 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       const soundNowEnabled = !nextDisabled.has('soundFile');
       
       if (soundWasDisabled && soundNowEnabled) {
-        // Compute next sound file number
-        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
-        const nextSoundNum = nextNumbers['soundFile'];
-        const formattedSound = String(nextSoundNum).padStart(4, '0');
-        
-        setTakeData(prev => {
-          const updated = { ...prev };
-          // Auto-prefill sound based on range mode
-          if (showRangeMode['soundFile']) {
-            // Range mode: set 'from' only, don't overwrite existing 'to'
-            setRangeData(prevRange => ({
-              ...prevRange,
-              soundFile: {
-                from: formattedSound,
-                to: prevRange['soundFile']?.to || ''
-              }
-            }));
-          } else {
-            // Single mode: set sound file
-            updated.soundFile = formattedSound;
+        // Small debounce to prevent double increments
+        setTimeout(() => {
+          // Compute next sound file number
+          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+          const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+          const nextSoundNum = nextNumbers['soundFile'];
+          
+          // Guard against double increments
+          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) {
+            return;
           }
-          return updated;
-        });
+          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
+          
+          const formattedSound = String(nextSoundNum).padStart(4, '0');
+          
+          writingProgrammaticallyRef.current = true;
+          setTakeData(prev => {
+            const updated = { ...prev };
+            // Auto-prefill sound based on range mode
+            if (showRangeMode['soundFile']) {
+              // Range mode: set 'from' only, don't overwrite existing 'to'
+              setRangeData(prevRange => ({
+                ...prevRange,
+                soundFile: {
+                  from: formattedSound,
+                  to: prevRange['soundFile']?.to || ''
+                }
+              }));
+            } else {
+              // Single mode: set sound file
+              updated.soundFile = formattedSound;
+            }
+            return updated;
+          });
+          setTimeout(() => {
+            writingProgrammaticallyRef.current = false;
+          }, 100);
+        }, 100);
       }
       
       // Clear fields that are newly disabled (but not scene/shot/take when restoring)
@@ -2342,30 +2358,44 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       const soundNowEnabled = !nextDisabled.has('soundFile');
       
       if (soundWasDisabled && soundNowEnabled) {
-        // Compute next sound file number
-        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
-        const nextSoundNum = nextNumbers['soundFile'];
-        const formattedSound = String(nextSoundNum).padStart(4, '0');
-        
-        setTakeData(prev => {
-          const updated = { ...prev };
-          // Auto-prefill sound based on range mode
-          if (showRangeMode['soundFile']) {
-            // Range mode: set 'from' only, don't overwrite existing 'to'
-            setRangeData(prevRange => ({
-              ...prevRange,
-              soundFile: {
-                from: formattedSound,
-                to: prevRange['soundFile']?.to || ''
-              }
-            }));
-          } else {
-            // Single mode: set sound file
-            updated.soundFile = formattedSound;
+        // Small debounce to prevent double increments
+        setTimeout(() => {
+          // Compute next sound file number
+          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+          const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+          const nextSoundNum = nextNumbers['soundFile'];
+          
+          // Guard against double increments
+          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) {
+            return;
           }
-          return updated;
-        });
+          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
+          
+          const formattedSound = String(nextSoundNum).padStart(4, '0');
+          
+          writingProgrammaticallyRef.current = true;
+          setTakeData(prev => {
+            const updated = { ...prev };
+            // Auto-prefill sound based on range mode
+            if (showRangeMode['soundFile']) {
+              // Range mode: set 'from' only, don't overwrite existing 'to'
+              setRangeData(prevRange => ({
+                ...prevRange,
+                soundFile: {
+                  from: formattedSound,
+                  to: prevRange['soundFile']?.to || ''
+                }
+              }));
+            } else {
+              // Single mode: set sound file
+              updated.soundFile = formattedSound;
+            }
+            return updated;
+          });
+          setTimeout(() => {
+            writingProgrammaticallyRef.current = false;
+          }, 100);
+        }, 100);
       }
     }
     setShowInsertModal(false);
