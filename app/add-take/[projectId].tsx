@@ -20,7 +20,7 @@ export default function AddTakeScreen() {
   const [classification, setClassification] = useState<ClassificationType | null>(null);
   const [shotDetails, setShotDetails] = useState<ShotDetailsType[]>([]);
   const [isGoodTake, setIsGoodTake] = useState<boolean>(false);
-  const [, setLastShotDescription] = useState<string>('');
+  const [lastShotDescriptions, setLastShotDescriptions] = useState<Record<string, string>>({});
   const [stats, setStats] = useState({ totalTakes: 0, scenes: 0 });
 
   const [showRangeMode, setShowRangeMode] = useState<{ [key: string]: boolean }>({});
@@ -344,7 +344,6 @@ export default function AddTakeScreen() {
         // Clear description and notes
         newData.descriptionOfShot = '';
         newData.notesForTake = '';
-        setLastShotDescription('');
         // Clear custom fields
         project?.settings?.customFields?.forEach((_, index) => {
           newData[`custom_${index}`] = '';
@@ -356,7 +355,6 @@ export default function AddTakeScreen() {
         // Clear description and notes
         newData.descriptionOfShot = '';
         newData.notesForTake = '';
-        setLastShotDescription('');
         // Clear custom fields
         project?.settings?.customFields?.forEach((_, index) => {
           newData[`custom_${index}`] = '';
@@ -364,11 +362,16 @@ export default function AddTakeScreen() {
       } else if (fieldId === 'shotNumber') {
         // Reset only take when shot changes
         newData.takeNumber = '1';
-        // Clear description and notes only if shot actually changed
+        // When shot changes, try to bring last description for this shot
         const currentShot = prev.shotNumber;
-        if (currentShot !== value) {
-          newData.descriptionOfShot = '';
-          setLastShotDescription('');
+        if (currentShot !== value && value) {
+          const shotKey = `${newData.sceneNumber || ''}_${value}`;
+          const lastDesc = lastShotDescriptions[shotKey];
+          if (lastDesc) {
+            newData.descriptionOfShot = lastDesc;
+          } else {
+            newData.descriptionOfShot = '';
+          }
         }
         newData.notesForTake = '';
         // Clear custom fields
@@ -377,7 +380,13 @@ export default function AddTakeScreen() {
         });
       } else if (fieldId === 'descriptionOfShot') {
         // Update last shot description when it changes
-        setLastShotDescription(value as string);
+        const shotKey = `${prev.sceneNumber || ''}_${prev.shotNumber || ''}`;
+        if (shotKey && value) {
+          setLastShotDescriptions(prevDescs => ({
+            ...prevDescs,
+            [shotKey]: value as string
+          }));
+        }
       }
       
       return newData;
@@ -1897,7 +1906,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         sceneNumber: takeData.sceneNumber,
         shotNumber: takeData.shotNumber,
         takeNumber: takeData.takeNumber,
+        soundFile: takeData.soundFile,
+        cameraFile: takeData.cameraFile,
       };
+      
+      // Save camera files for multi-camera setup
+      if (project?.settings?.cameraConfiguration && project.settings.cameraConfiguration > 1) {
+        for (let i = 1; i <= project.settings.cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          savedFieldValuesRef.current[fieldId] = takeData[fieldId];
+        }
+      }
       
       // For SFX: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
@@ -1983,7 +2002,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         sceneNumber: takeData.sceneNumber,
         shotNumber: takeData.shotNumber,
         takeNumber: takeData.takeNumber,
+        soundFile: takeData.soundFile,
+        cameraFile: takeData.cameraFile,
       };
+      
+      // Save camera files for multi-camera setup
+      if (project?.settings?.cameraConfiguration && project.settings.cameraConfiguration > 1) {
+        for (let i = 1; i <= project.settings.cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          savedFieldValuesRef.current[fieldId] = takeData[fieldId];
+        }
+      }
       
       // For Ambience: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
@@ -2070,11 +2099,25 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     } else {
       // No classification selected - restore saved values if coming from SFX/Ambience
       if (classification === 'SFX' || classification === 'Ambience') {
+        const restoredData: TakeData = {
+          sceneNumber: savedFieldValuesRef.current.sceneNumber || takeData.sceneNumber,
+          shotNumber: savedFieldValuesRef.current.shotNumber || takeData.shotNumber,
+          takeNumber: savedFieldValuesRef.current.takeNumber || takeData.takeNumber,
+          soundFile: savedFieldValuesRef.current.soundFile || takeData.soundFile,
+          cameraFile: savedFieldValuesRef.current.cameraFile || takeData.cameraFile,
+        };
+        
+        // Restore camera files for multi-camera setup
+        if (project?.settings?.cameraConfiguration && project.settings.cameraConfiguration > 1) {
+          for (let i = 1; i <= project.settings.cameraConfiguration; i++) {
+            const fieldId = `cameraFile${i}`;
+            restoredData[fieldId] = savedFieldValuesRef.current[fieldId] || takeData[fieldId];
+          }
+        }
+        
         setTakeData(prev => ({
           ...prev,
-          sceneNumber: savedFieldValuesRef.current.sceneNumber || prev.sceneNumber,
-          shotNumber: savedFieldValuesRef.current.shotNumber || prev.shotNumber,
-          takeNumber: savedFieldValuesRef.current.takeNumber || prev.takeNumber,
+          ...restoredData
         }));
       }
       
