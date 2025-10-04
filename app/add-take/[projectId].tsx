@@ -944,29 +944,6 @@ export default function AddTakeScreen() {
       return;
     }
 
-    // Only check for duplicate take if not skipping
-    if (!skipDuplicateCheck) {
-      const takeDup = findDuplicateTake();
-      if (takeDup) {
-        const nextTakeNumber = String((takeDup.highest || 0) + 1);
-        Alert.alert(
-          'Take Number Exists',
-          `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${nextTakeNumber} instead?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Yes',
-              onPress: () => {
-                // Pass the new take number directly and skip duplicate check
-                handleAddTake(true, nextTakeNumber);
-              },
-            },
-          ]
-        );
-        return;
-      }
-    }
-
     // Block if any current file value belongs to an existing ranged take
     const rangeMembership = findRangeMembershipConflict();
     if (rangeMembership) {
@@ -1083,7 +1060,7 @@ export default function AddTakeScreen() {
         }
         Alert.alert(
           'Duplicate Detected',
-          `Found in ${location}. Do you want to insert before?`,
+          `Camera and Sound files are duplicates found in ${location}. Do you want to insert before?`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -1148,6 +1125,29 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         [{ text: 'OK', style: 'default' }]
       );
       return;
+    }
+
+    // Only check for duplicate take if not skipping AND no file duplicates were found
+    if (!skipDuplicateCheck) {
+      const takeDup = findDuplicateTake();
+      if (takeDup) {
+        const nextTakeNumber = String((takeDup.highest || 0) + 1);
+        Alert.alert(
+          'Take Number Exists',
+          `Take ${takeData.takeNumber} already exists in Scene ${takeData.sceneNumber}, Shot ${takeData.shotNumber}. Use ${nextTakeNumber} instead?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Yes',
+              onPress: () => {
+                // Pass the new take number directly and skip duplicate check
+                handleAddTake(true, nextTakeNumber);
+              },
+            },
+          ]
+        );
+        return;
+      }
     }
     
     // No duplicate, add normally (pass override if provided)
