@@ -35,6 +35,7 @@ export default function AddTakeScreen() {
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
   const notificationOpacity = useRef(new Animated.Value(0)).current;
   const notificationTranslateY = useRef(new Animated.Value(-100)).current;
+  const savedFieldValuesRef = useRef<TakeData>({});
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
@@ -1891,6 +1892,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Don't set disabled fields yet, wait for waste modal confirmation
       return;
     } else if (newClassification === 'SFX') {
+      // Save current values before disabling fields
+      savedFieldValuesRef.current = {
+        sceneNumber: takeData.sceneNumber,
+        shotNumber: takeData.shotNumber,
+        takeNumber: takeData.takeNumber,
+      };
+      
       // For SFX: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
         nextDisabled.add('cameraFile');
@@ -1941,13 +1949,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         });
       }
       
-      // Only clear fields that are newly disabled
+      // Don't clear scene/shot/take fields - they will be hidden but values preserved
       setTakeData(prev => {
         const updated = { ...prev };
-        // Clear only fields that transitioned from enabled to disabled
-        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
-        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
-        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        // Only clear camera files that are newly disabled
         if (project?.settings?.cameraConfiguration === 1) {
           if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
         } else {
@@ -1973,6 +1978,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         return updated;
       });
     } else if (newClassification === 'Ambience') {
+      // Save current values before disabling fields
+      savedFieldValuesRef.current = {
+        sceneNumber: takeData.sceneNumber,
+        shotNumber: takeData.shotNumber,
+        takeNumber: takeData.takeNumber,
+      };
+      
       // For Ambience: disable camera files and scene/shot/take fields
       if (project?.settings?.cameraConfiguration === 1) {
         nextDisabled.add('cameraFile');
@@ -2023,13 +2035,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         });
       }
       
-      // Only clear fields that are newly disabled
+      // Don't clear scene/shot/take fields - they will be hidden but values preserved
       setTakeData(prev => {
         const updated = { ...prev };
-        // Clear only fields that transitioned from enabled to disabled
-        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
-        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
-        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        // Only clear camera files that are newly disabled
         if (project?.settings?.cameraConfiguration === 1) {
           if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
         } else {
@@ -2059,16 +2068,23 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Don't set disabled fields yet, wait for insert modal confirmation
       return;
     } else {
-      // No classification selected - only keep MOS disabled fields if MOS is active
+      // No classification selected - restore saved values if coming from SFX/Ambience
+      if (classification === 'SFX' || classification === 'Ambience') {
+        setTakeData(prev => ({
+          ...prev,
+          sceneNumber: savedFieldValuesRef.current.sceneNumber || prev.sceneNumber,
+          shotNumber: savedFieldValuesRef.current.shotNumber || prev.shotNumber,
+          takeNumber: savedFieldValuesRef.current.takeNumber || prev.takeNumber,
+        }));
+      }
+      
+      // Only keep MOS disabled fields if MOS is active
       setDisabledFields(nextDisabled);
       
-      // Clear fields that are newly disabled
+      // Clear fields that are newly disabled (but not scene/shot/take when restoring)
       setTakeData(prev => {
         const updated = { ...prev };
-        // Clear only fields that transitioned from enabled to disabled
-        if (!prevDisabled.has('sceneNumber') && nextDisabled.has('sceneNumber')) updated.sceneNumber = '';
-        if (!prevDisabled.has('shotNumber') && nextDisabled.has('shotNumber')) updated.shotNumber = '';
-        if (!prevDisabled.has('takeNumber') && nextDisabled.has('takeNumber')) updated.takeNumber = '';
+        // Only clear sound/camera files that are newly disabled
         if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) updated.soundFile = '';
         if (project?.settings?.cameraConfiguration === 1) {
           if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
