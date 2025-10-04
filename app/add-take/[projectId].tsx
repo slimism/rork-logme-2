@@ -222,6 +222,17 @@ export default function AddTakeScreen() {
       scenes: scenes.size,
     });
     
+    // Build map of shot descriptions from previous records
+    const shotDescMap: Record<string, string> = {};
+    projectLogSheets.forEach(sheet => {
+      if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.descriptionOfShot) {
+        const shotKey = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
+        // Keep the most recent description for each shot
+        shotDescMap[shotKey] = sheet.data.descriptionOfShot;
+      }
+    });
+    setLastShotDescriptions(shotDescMap);
+    
     // Auto-fill logic - run only once per component mount
     if (!hasAutoFilledRef.current) {
       hasAutoFilledRef.current = true;
@@ -363,15 +374,17 @@ export default function AddTakeScreen() {
         // Reset only take when shot changes
         newData.takeNumber = '1';
         // When shot changes, try to bring last description for this shot
-        const currentShot = prev.shotNumber;
-        if (currentShot !== value && value) {
+        if (value && typeof value === 'string') {
           const shotKey = `${newData.sceneNumber || ''}_${value}`;
           const lastDesc = lastShotDescriptions[shotKey];
           if (lastDesc) {
             newData.descriptionOfShot = lastDesc;
           } else {
+            // Only clear if there was no previous description for this shot
             newData.descriptionOfShot = '';
           }
+        } else {
+          newData.descriptionOfShot = '';
         }
         newData.notesForTake = '';
         // Clear custom fields
