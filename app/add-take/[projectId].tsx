@@ -1928,6 +1928,96 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       setShowWasteModal(true);
       // Don't set disabled fields yet, wait for waste modal confirmation
       return;
+    } else if (classification === 'Waste' && newClassification === null) {
+      // Toggling Waste OFF - re-enable fields and auto-fill
+      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+      const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+      
+      // Re-enable and auto-fill Camera Files
+      if (wasteOptions.camera) {
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (prevDisabled.has('cameraFile')) {
+            setTimeout(() => {
+              const nextCameraNum = nextNumbers['cameraFile'];
+              if (lastAutoIncrementRef.current['cameraFile'] === nextCameraNum) return;
+              lastAutoIncrementRef.current['cameraFile'] = nextCameraNum;
+              const formattedCamera = String(nextCameraNum).padStart(4, '0');
+              
+              writingProgrammaticallyRef.current = true;
+              setTakeData(prev => {
+                const updated = { ...prev };
+                if (showRangeMode['cameraFile']) {
+                  setRangeData(prevRange => ({
+                    ...prevRange,
+                    cameraFile: { from: formattedCamera, to: prevRange['cameraFile']?.to || '' }
+                  }));
+                } else {
+                  updated.cameraFile = formattedCamera;
+                }
+                return updated;
+              });
+              setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+            }, 100);
+          }
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (prevDisabled.has(fieldId)) {
+              setTimeout(() => {
+                const nextCameraNum = nextNumbers[fieldId];
+                if (lastAutoIncrementRef.current[fieldId] === nextCameraNum) return;
+                lastAutoIncrementRef.current[fieldId] = nextCameraNum;
+                const formattedCamera = String(nextCameraNum).padStart(4, '0');
+                
+                writingProgrammaticallyRef.current = true;
+                setTakeData(prev => {
+                  const updated = { ...prev };
+                  if (showRangeMode[fieldId]) {
+                    setRangeData(prevRange => ({
+                      ...prevRange,
+                      [fieldId]: { from: formattedCamera, to: prevRange[fieldId]?.to || '' }
+                    }));
+                  } else {
+                    updated[fieldId] = formattedCamera;
+                  }
+                  return updated;
+                });
+                setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+              }, 100);
+            }
+          }
+        }
+      }
+      
+      // Re-enable and auto-fill Sound File
+      if (wasteOptions.sound && prevDisabled.has('soundFile')) {
+        setTimeout(() => {
+          const nextSoundNum = nextNumbers['soundFile'];
+          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) return;
+          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
+          const formattedSound = String(nextSoundNum).padStart(4, '0');
+          
+          writingProgrammaticallyRef.current = true;
+          setTakeData(prev => {
+            const updated = { ...prev };
+            if (showRangeMode['soundFile']) {
+              setRangeData(prevRange => ({
+                ...prevRange,
+                soundFile: { from: formattedSound, to: prevRange['soundFile']?.to || '' }
+              }));
+            } else {
+              updated.soundFile = formattedSound;
+            }
+            return updated;
+          });
+          setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+        }, 100);
+      }
+      
+      // Reset waste options
+      setWasteOptions({ camera: false, sound: false });
+      setDisabledFields(nextDisabled);
+      return;
     } else if (newClassification === 'SFX') {
       // Save current values before disabling fields
       savedFieldValuesRef.current = {
