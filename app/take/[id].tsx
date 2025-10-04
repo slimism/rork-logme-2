@@ -43,10 +43,91 @@ export default function EditTakeScreen() {
   const inputRefs = useRef<Record<string, TextInput | null>>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const writingProgrammaticallyRef = useRef(false);
+  const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
   const isLandscape = width > height;
+
+  // Helper function to get the highest file number from all logs for a specific field
+  const getHighestFileNumber = React.useCallback((fieldId: string, projectLogSheets: any[]) => {
+    let highestNum = 0;
+    
+    projectLogSheets.forEach(sheet => {
+      if (sheet.data) {
+        // Check single value field
+        if (sheet.data[fieldId]) {
+          const fileValue = sheet.data[fieldId];
+          if (typeof fileValue === 'string') {
+            if (fileValue.includes('-')) {
+              // Handle range format (e.g., "0001-0005")
+              const rangeParts = fileValue.split('-');
+              const endRange = parseInt(rangeParts[1]) || 0;
+              highestNum = Math.max(highestNum, endRange);
+            } else {
+              // Handle single number format
+              const num = parseInt(fileValue) || 0;
+              highestNum = Math.max(highestNum, num);
+            }
+          }
+        }
+        
+        // Check range format stored in separate fields (sound_from/sound_to, camera1_from/camera1_to, etc.)
+        if (fieldId === 'soundFile') {
+          const soundFrom = sheet.data['sound_from'];
+          const soundTo = sheet.data['sound_to'];
+          if (soundFrom) {
+            const fromNum = parseInt(soundFrom) || 0;
+            highestNum = Math.max(highestNum, fromNum);
+          }
+          if (soundTo) {
+            const toNum = parseInt(soundTo) || 0;
+            highestNum = Math.max(highestNum, toNum);
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          // Extract camera number from fieldId (e.g., cameraFile1 -> 1, cameraFile -> 1)
+          const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', '')) || 1;
+          const cameraFrom = sheet.data[`camera${cameraNum}_from`];
+          const cameraTo = sheet.data[`camera${cameraNum}_to`];
+          if (cameraFrom) {
+            const fromNum = parseInt(cameraFrom) || 0;
+            highestNum = Math.max(highestNum, fromNum);
+          }
+          if (cameraTo) {
+            const toNum = parseInt(cameraTo) || 0;
+            highestNum = Math.max(highestNum, toNum);
+          }
+        }
+      }
+    });
+    
+    return highestNum;
+  }, []);
+
+  // Helper function to compute next file numbers for all fields
+  const computeNextFileNumbers = React.useCallback((projectLogSheets: any[], currentProject: any) => {
+    const nextNumbers: { [key: string]: number } = {};
+    
+    // Compute next sound file number
+    const highestSound = getHighestFileNumber('soundFile', projectLogSheets);
+    nextNumbers['soundFile'] = highestSound + 1;
+    
+    // Compute next camera file numbers
+    const cameraConfiguration = currentProject?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration === 1) {
+      const highestCamera = getHighestFileNumber('cameraFile', projectLogSheets);
+      nextNumbers['cameraFile'] = highestCamera + 1;
+    } else {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const highestCamera = getHighestFileNumber(fieldId, projectLogSheets);
+        nextNumbers[fieldId] = highestCamera + 1;
+      }
+    }
+    
+    return nextNumbers;
+  }, [getHighestFileNumber]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -291,6 +372,7 @@ export default function EditTakeScreen() {
 
   const handleClassificationPress = (type: ClassificationType) => {
     const newClassification = classification === type ? null : type;
+    const prevDisabled = new Set(disabledFields);
     setClassification(newClassification);
 
     // Reset MOS when switching to Ambience or SFX
@@ -308,6 +390,103 @@ export default function EditTakeScreen() {
         setInsertSoundSpeed(null);
       }
     } else {
+      // Toggling Waste OFF - re-enable fields and auto-fill
+      if (classification === 'Waste' && newClassification === null && logSheet) {
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const camCount = project?.settings?.cameraConfiguration || 1;
+        
+        // Re-enable and auto-fill Camera Files
+        if (wasteOptions.camera) {
+          if (camCount === 1) {
+            if (prevDisabled.has('cameraFile')) {
+              setTimeout(() => {
+                const nextCameraNum = nextNumbers['cameraFile'];
+                if (lastAutoIncrementRef.current['cameraFile'] === nextCameraNum) return;
+                lastAutoIncrementRef.current['cameraFile'] = nextCameraNum;
+                
+                // Use stored value if exists, otherwise use next number
+                const storedValue = logSheet.data?.cameraFile;
+                const formattedCamera = storedValue || String(nextCameraNum).padStart(4, '0');
+                
+                writingProgrammaticallyRef.current = true;
+                setTakeData(prev => {
+                  const updated = { ...prev };
+                  if (showRangeMode['cameraFile']) {
+                    setRangeData(prevRange => ({
+                      ...prevRange,
+                      cameraFile: { from: formattedCamera, to: prevRange['cameraFile']?.to || '' }
+                    }));
+                  } else {
+                    updated.cameraFile = formattedCamera;
+                  }
+                  return updated;
+                });
+                setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+              }, 100);
+            }
+          } else {
+            for (let i = 1; i <= camCount; i++) {
+              const fieldId = `cameraFile${i}`;
+              if (prevDisabled.has(fieldId)) {
+                setTimeout(() => {
+                  const nextCameraNum = nextNumbers[fieldId];
+                  if (lastAutoIncrementRef.current[fieldId] === nextCameraNum) return;
+                  lastAutoIncrementRef.current[fieldId] = nextCameraNum;
+                  
+                  // Use stored value if exists, otherwise use next number
+                  const storedValue = logSheet.data?.[fieldId];
+                  const formattedCamera = storedValue || String(nextCameraNum).padStart(4, '0');
+                  
+                  writingProgrammaticallyRef.current = true;
+                  setTakeData(prev => {
+                    const updated = { ...prev };
+                    if (showRangeMode[fieldId]) {
+                      setRangeData(prevRange => ({
+                        ...prevRange,
+                        [fieldId]: { from: formattedCamera, to: prevRange[fieldId]?.to || '' }
+                      }));
+                    } else {
+                      updated[fieldId] = formattedCamera;
+                    }
+                    return updated;
+                  });
+                  setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+                }, 100);
+              }
+            }
+          }
+        }
+        
+        // Re-enable and auto-fill Sound File
+        if (wasteOptions.sound && prevDisabled.has('soundFile')) {
+          setTimeout(() => {
+            const nextSoundNum = nextNumbers['soundFile'];
+            if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) return;
+            lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
+            
+            // Use stored value if exists, otherwise use next number
+            const storedValue = logSheet.data?.soundFile;
+            const formattedSound = storedValue || String(nextSoundNum).padStart(4, '0');
+            
+            writingProgrammaticallyRef.current = true;
+            setTakeData(prev => {
+              const updated = { ...prev };
+              if (showRangeMode['soundFile']) {
+                setRangeData(prevRange => ({
+                  ...prevRange,
+                  soundFile: { from: formattedSound, to: prevRange['soundFile']?.to || '' }
+                }));
+              } else {
+                updated.soundFile = formattedSound;
+              }
+              return updated;
+            });
+            setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+          }, 100);
+        }
+      }
+      
       setWasteOptions({ camera: false, sound: false });
       setInsertSoundSpeed(null);
     }
