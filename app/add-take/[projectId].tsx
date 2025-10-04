@@ -1503,6 +1503,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     const camCount = project?.settings?.cameraConfiguration || 1;
 
+    // Preserve the original scene and shot from before insertion
+    const originalSceneNumber = takeData.sceneNumber;
+    const originalShotNumber = takeData.shotNumber;
+
     let newLogData = { ...takeData };
     if (existingEntry.data?.soundFile) {
       newLogData.soundFile = existingEntry.data.soundFile;
@@ -1518,20 +1522,22 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       }
     }
 
-    const currentSceneNumber = takeData.sceneNumber;
-    const currentShotNumber = takeData.shotNumber;
+    // Always use the original scene and shot values
+    newLogData.sceneNumber = originalSceneNumber;
+    newLogData.shotNumber = originalShotNumber;
+
     const targetSceneNumber = existingEntry.data?.sceneNumber;
     const targetShotNumber = existingEntry.data?.shotNumber;
 
-    if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
+    if (originalSceneNumber === targetSceneNumber && originalShotNumber === targetShotNumber) {
       if (existingEntry.data?.takeNumber) {
         newLogData.takeNumber = existingEntry.data.takeNumber;
       }
     } else {
       const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
       const sameShotTakes = projectLogSheets.filter(sheet =>
-        sheet.data?.sceneNumber === currentSceneNumber &&
-        sheet.data?.shotNumber === currentShotNumber
+        sheet.data?.sceneNumber === originalSceneNumber &&
+        sheet.data?.shotNumber === originalShotNumber
       );
       let lastTakeNumber = 0;
       sameShotTakes.forEach(sheet => {
@@ -1546,7 +1552,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     const tScene = existingEntry.data?.sceneNumber as string | undefined;
     const tShot = existingEntry.data?.shotNumber as string | undefined;
     const tTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
-    const sameSceneShot = takeData.sceneNumber === tScene && takeData.shotNumber === tShot;
+    const sameSceneShot = originalSceneNumber === tScene && originalShotNumber === tShot;
     if (sameSceneShot && !Number.isNaN(tTake)) {
       updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
     }
