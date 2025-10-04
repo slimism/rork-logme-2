@@ -1932,10 +1932,12 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     } else if (classification === 'Waste' && newClassification === null) {
       // Toggling Waste OFF - restore temporarily stored values
       
-      // Re-enable and restore Camera Files
-      if (wasteOptions.camera) {
+      // Re-enable and restore Camera Files (check if they were disabled by Waste)
+      if (!wasteOptions.camera) {
+        // Camera was NOT selected for waste, so it was disabled - restore it
         if (project?.settings?.cameraConfiguration === 1) {
           if (prevDisabled.has('cameraFile')) {
+            nextDisabled.delete('cameraFile');
             setTimeout(() => {
               const storedValue = wasteTemporaryStorageRef.current['cameraFile'];
               
@@ -1959,6 +1961,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
             if (prevDisabled.has(fieldId)) {
+              nextDisabled.delete(fieldId);
               setTimeout(() => {
                 const storedValue = wasteTemporaryStorageRef.current[fieldId];
                 
@@ -1982,8 +1985,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
       }
       
-      // Re-enable and restore Sound File
-      if (wasteOptions.sound && prevDisabled.has('soundFile')) {
+      // Re-enable and restore Sound File (check if it was disabled by Waste)
+      if (!wasteOptions.sound && prevDisabled.has('soundFile')) {
+        // Sound was NOT selected for waste, so it was disabled - restore it
+        nextDisabled.delete('soundFile');
         setTimeout(() => {
           const storedValue = wasteTemporaryStorageRef.current['soundFile'];
           
@@ -2004,8 +2009,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }, 100);
       }
       
-      // Reset waste options
+      // Reset waste options and clear temporary storage
       setWasteOptions({ camera: false, sound: false });
+      wasteTemporaryStorageRef.current = {};
       setDisabledFields(nextDisabled);
       return;
     } else if (newClassification === 'SFX') {
@@ -2519,7 +2525,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     }
     
     setShowWasteModal(false);
-    setWasteOptions({ camera: false, sound: false });
+    // DON'T reset wasteOptions here - keep them so we can restore values when Waste is toggled off
   };
 
   const handleWasteCancel = () => {
