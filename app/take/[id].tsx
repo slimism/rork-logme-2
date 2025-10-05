@@ -957,18 +957,28 @@ export default function EditTakeScreen() {
     // Check Camera Files (mandatory unless disabled)
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
-      if (!disabledFields.has('cameraFile') && !takeData.cameraFile?.trim()) {
-        errors.add('cameraFile');
-        missingFields.push('Camera File');
+      if (!disabledFields.has('cameraFile')) {
+        const hasValue = showRangeMode['cameraFile'] 
+          ? (rangeData['cameraFile']?.from?.trim() && rangeData['cameraFile']?.to?.trim())
+          : takeData.cameraFile?.trim();
+        if (!hasValue) {
+          errors.add('cameraFile');
+          missingFields.push('Camera File');
+        }
       }
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
         const isRecActive = cameraRecState[fieldId] ?? true;
         // Only validate if field is not disabled AND REC is active
-        if (!disabledFields.has(fieldId) && isRecActive && !takeData[fieldId]?.trim()) {
-          errors.add(fieldId);
-          missingFields.push(`Camera File ${i}`);
+        if (!disabledFields.has(fieldId) && isRecActive) {
+          const hasValue = showRangeMode[fieldId]
+            ? (rangeData[fieldId]?.from?.trim() && rangeData[fieldId]?.to?.trim())
+            : takeData[fieldId]?.trim();
+          if (!hasValue) {
+            errors.add(fieldId);
+            missingFields.push(`Camera File ${i}`);
+          }
         }
       }
     }
