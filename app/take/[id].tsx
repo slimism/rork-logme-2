@@ -571,8 +571,19 @@ export default function EditTakeScreen() {
     const max1 = Math.max(range1From, range1To);
     const min2 = Math.min(range2From, range2To);
     const max2 = Math.max(range2From, range2To);
-    // Ranges overlap if they share any number
+    // Ranges overlap if they share any number (inclusive of all values in between)
     return !(max1 < min2 || min1 > max2);
+  };
+
+  // Helper function to expand a range into all numbers it contains
+  const expandRange = (from: number, to: number): number[] => {
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    const numbers: number[] = [];
+    for (let i = min; i <= max; i++) {
+      numbers.push(i);
+    }
+    return numbers;
   };
 
   // Helper function to get range values from stored data
@@ -616,6 +627,7 @@ export default function EditTakeScreen() {
         const currentTo = parseInt(currentRange.to) || 0;
         const currentMin = Math.min(currentFrom, currentTo);
         const currentMax = Math.max(currentFrom, currentTo);
+        const currentNumbers = expandRange(currentFrom, currentTo);
         
         for (const sheet of projectLogSheets) {
           const data = sheet.data;
@@ -626,20 +638,18 @@ export default function EditTakeScreen() {
           if (existingRange) {
             const existingFrom = parseInt(existingRange.from) || 0;
             const existingTo = parseInt(existingRange.to) || 0;
-            const existingMin = Math.min(existingFrom, existingTo);
-            const existingMax = Math.max(existingFrom, existingTo);
+            const existingNumbers = expandRange(existingFrom, existingTo);
             
-            // Check for overlap (any number in current range overlaps with existing range)
-            if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
+            // Check if any number in current range exists in existing range
+            const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
+            if (hasOverlap) {
               let conflictType: 'lower' | 'upper' | 'within';
-              if (currentMin === existingMin || currentMax === existingMax) {
-                conflictType = currentMin === existingMin ? 'lower' : 'upper';
-              } else if (currentMin >= existingMin && currentMax <= existingMax) {
-                conflictType = 'within';
-              } else if (existingMin >= currentMin && existingMax <= currentMax) {
-                conflictType = 'within';
+              if (currentMin === Math.min(existingFrom, existingTo)) {
+                conflictType = 'lower';
+              } else if (currentMax === Math.max(existingFrom, existingTo)) {
+                conflictType = 'upper';
               } else {
-                conflictType = currentMin < existingMin ? 'lower' : 'upper';
+                conflictType = 'within';
               }
               
               return {
@@ -659,8 +669,8 @@ export default function EditTakeScreen() {
           // Check against existing single values
           if (data.soundFile && typeof data.soundFile === 'string' && !data.soundFile.includes('-')) {
             const existingNum = parseInt(data.soundFile) || 0;
-            if (existingNum >= currentMin && existingNum <= currentMax) {
-              const conflictType = existingNum === currentMin ? 'lower' : 'within';
+            if (currentNumbers.includes(existingNum)) {
+              const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
               return {
                 type: 'file',
                 label: 'Sound File',
@@ -741,6 +751,7 @@ export default function EditTakeScreen() {
           const currentTo = parseInt(currentRange.to) || 0;
           const currentMin = Math.min(currentFrom, currentTo);
           const currentMax = Math.max(currentFrom, currentTo);
+          const currentNumbers = expandRange(currentFrom, currentTo);
           
           for (const sheet of projectLogSheets) {
             const data = sheet.data;
@@ -751,20 +762,18 @@ export default function EditTakeScreen() {
             if (existingRange) {
               const existingFrom = parseInt(existingRange.from) || 0;
               const existingTo = parseInt(existingRange.to) || 0;
-              const existingMin = Math.min(existingFrom, existingTo);
-              const existingMax = Math.max(existingFrom, existingTo);
+              const existingNumbers = expandRange(existingFrom, existingTo);
               
-              // Check for overlap (any number in current range overlaps with existing range)
-              if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
+              // Check if any number in current range exists in existing range
+              const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
+              if (hasOverlap) {
                 let conflictType: 'lower' | 'upper' | 'within';
-                if (currentMin === existingMin || currentMax === existingMax) {
-                  conflictType = currentMin === existingMin ? 'lower' : 'upper';
-                } else if (currentMin >= existingMin && currentMax <= existingMax) {
-                  conflictType = 'within';
-                } else if (existingMin >= currentMin && existingMax <= currentMax) {
-                  conflictType = 'within';
+                if (currentMin === Math.min(existingFrom, existingTo)) {
+                  conflictType = 'lower';
+                } else if (currentMax === Math.max(existingFrom, existingTo)) {
+                  conflictType = 'upper';
                 } else {
-                  conflictType = currentMin < existingMin ? 'lower' : 'upper';
+                  conflictType = 'within';
                 }
                 
                 return {
@@ -784,8 +793,8 @@ export default function EditTakeScreen() {
             // Check against existing single values
             if (data.cameraFile && typeof data.cameraFile === 'string' && !data.cameraFile.includes('-')) {
               const existingNum = parseInt(data.cameraFile) || 0;
-              if (existingNum >= currentMin && existingNum <= currentMax) {
-                const conflictType = existingNum === currentMin ? 'lower' : 'within';
+              if (currentNumbers.includes(existingNum)) {
+                const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
                 return {
                   type: 'file',
                   label: 'Camera File',
@@ -867,6 +876,7 @@ export default function EditTakeScreen() {
             const currentTo = parseInt(currentRange.to) || 0;
             const currentMin = Math.min(currentFrom, currentTo);
             const currentMax = Math.max(currentFrom, currentTo);
+            const currentNumbers = expandRange(currentFrom, currentTo);
             
             for (const sheet of projectLogSheets) {
               const data = sheet.data;
@@ -877,20 +887,18 @@ export default function EditTakeScreen() {
               if (existingRange) {
                 const existingFrom = parseInt(existingRange.from) || 0;
                 const existingTo = parseInt(existingRange.to) || 0;
-                const existingMin = Math.min(existingFrom, existingTo);
-                const existingMax = Math.max(existingFrom, existingTo);
+                const existingNumbers = expandRange(existingFrom, existingTo);
                 
-                // Check for overlap (any number in current range overlaps with existing range)
-                if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
+                // Check if any number in current range exists in existing range
+                const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
+                if (hasOverlap) {
                   let conflictType: 'lower' | 'upper' | 'within';
-                  if (currentMin === existingMin || currentMax === existingMax) {
-                    conflictType = currentMin === existingMin ? 'lower' : 'upper';
-                  } else if (currentMin >= existingMin && currentMax <= existingMax) {
-                    conflictType = 'within';
-                  } else if (existingMin >= currentMin && existingMax <= currentMax) {
-                    conflictType = 'within';
+                  if (currentMin === Math.min(existingFrom, existingTo)) {
+                    conflictType = 'lower';
+                  } else if (currentMax === Math.max(existingFrom, existingTo)) {
+                    conflictType = 'upper';
                   } else {
-                    conflictType = currentMin < existingMin ? 'lower' : 'upper';
+                    conflictType = 'within';
                   }
                   
                   return {
@@ -910,8 +918,8 @@ export default function EditTakeScreen() {
               // Check against existing single values
               if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
                 const existingNum = parseInt(data[fieldId]) || 0;
-                if (existingNum >= currentMin && existingNum <= currentMax) {
-                  const conflictType = existingNum === currentMin ? 'lower' : 'within';
+                if (currentNumbers.includes(existingNum)) {
+                  const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
                   return {
                     type: 'file',
                     label: `Camera File ${i}`,
