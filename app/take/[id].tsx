@@ -1120,6 +1120,23 @@ export default function EditTakeScreen() {
       return;
     }
 
+    const generalConflict = findFirstDuplicateFile();
+    if (generalConflict?.isRangeConflict && (generalConflict.conflictType === 'upper' || generalConflict.conflictType === 'within')) {
+      const e = generalConflict.existingEntry;
+      const classification = e?.data?.classification;
+      const loc =
+        classification === 'SFX'
+          ? 'SFX'
+          : (classification === 'Ambience' ? 'Ambience' :
+             `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
+      Alert.alert(
+        'Part of Ranged Take',
+        `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     const getEligibleDuplicateForField = (fieldId: string) => {
       if (!logSheet) return null as any;
       const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
