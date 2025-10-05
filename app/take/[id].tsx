@@ -1060,8 +1060,10 @@ export default function EditTakeScreen() {
           if (existingRange) {
             const exFrom = parseNum(existingRange.from);
             const exTo = parseNum(existingRange.to);
-            if (isNumberInRange(valNum, String(exFrom), String(exTo))) {
-              if (valNum === Math.min(exFrom, exTo)) {
+            const exMin = Math.min(exFrom, exTo);
+            const exMax = Math.max(exFrom, exTo);
+            if (valNum >= exMin && valNum <= exMax) {
+              if (valNum === exMin) {
                 return { fieldId, number: valNum, existingEntry: sheet };
               }
             }
