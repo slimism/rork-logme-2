@@ -562,6 +562,16 @@ export default function EditTakeScreen() {
     return number >= Math.min(from, to) && number <= Math.max(from, to);
   };
 
+  // Helper function to check if two ranges overlap (including all numbers in between)
+  const doRangesOverlap = (range1From: number, range1To: number, range2From: number, range2To: number): boolean => {
+    const min1 = Math.min(range1From, range1To);
+    const max1 = Math.max(range1From, range1To);
+    const min2 = Math.min(range2From, range2To);
+    const max2 = Math.max(range2From, range2To);
+    // Ranges overlap if they share any number
+    return !(max1 < min2 || min1 > max2);
+  };
+
   // Helper function to get range values from stored data
   const getRangeFromData = (data: any, fieldId: string): { from: string; to: string } | null => {
     if (fieldId === 'soundFile') {
@@ -616,15 +626,17 @@ export default function EditTakeScreen() {
             const existingMin = Math.min(existingFrom, existingTo);
             const existingMax = Math.max(existingFrom, existingTo);
             
-            // Check for overlap
-            if (!(currentMax < existingMin || currentMin > existingMax)) {
+            // Check for overlap (any number in current range overlaps with existing range)
+            if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
               let conflictType: 'lower' | 'upper' | 'within';
-              if (currentFrom === existingMin) {
-                conflictType = 'lower';
-              } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+              if (currentMin === existingMin || currentMax === existingMax) {
+                conflictType = currentMin === existingMin ? 'lower' : 'upper';
+              } else if (currentMin >= existingMin && currentMax <= existingMax) {
+                conflictType = 'within';
+              } else if (existingMin >= currentMin && existingMax <= currentMax) {
                 conflictType = 'within';
               } else {
-                conflictType = 'upper';
+                conflictType = currentMin < existingMin ? 'lower' : 'upper';
               }
               
               return {
@@ -728,15 +740,17 @@ export default function EditTakeScreen() {
               const existingMin = Math.min(existingFrom, existingTo);
               const existingMax = Math.max(existingFrom, existingTo);
               
-              // Check for overlap
-              if (!(currentMax < existingMin || currentMin > existingMax)) {
+              // Check for overlap (any number in current range overlaps with existing range)
+              if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
                 let conflictType: 'lower' | 'upper' | 'within';
-                if (currentFrom === existingMin) {
-                  conflictType = 'lower';
-                } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                if (currentMin === existingMin || currentMax === existingMax) {
+                  conflictType = currentMin === existingMin ? 'lower' : 'upper';
+                } else if (currentMin >= existingMin && currentMax <= existingMax) {
+                  conflictType = 'within';
+                } else if (existingMin >= currentMin && existingMax <= currentMax) {
                   conflictType = 'within';
                 } else {
-                  conflictType = 'upper';
+                  conflictType = currentMin < existingMin ? 'lower' : 'upper';
                 }
                 
                 return {
@@ -841,15 +855,17 @@ export default function EditTakeScreen() {
                 const existingMin = Math.min(existingFrom, existingTo);
                 const existingMax = Math.max(existingFrom, existingTo);
                 
-                // Check for overlap
-                if (!(currentMax < existingMin || currentMin > existingMax)) {
+                // Check for overlap (any number in current range overlaps with existing range)
+                if (doRangesOverlap(currentFrom, currentTo, existingFrom, existingTo)) {
                   let conflictType: 'lower' | 'upper' | 'within';
-                  if (currentFrom === existingMin) {
-                    conflictType = 'lower';
-                  } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                  if (currentMin === existingMin || currentMax === existingMax) {
+                    conflictType = currentMin === existingMin ? 'lower' : 'upper';
+                  } else if (currentMin >= existingMin && currentMax <= existingMax) {
+                    conflictType = 'within';
+                  } else if (existingMin >= currentMin && existingMax <= currentMax) {
                     conflictType = 'within';
                   } else {
-                    conflictType = 'upper';
+                    conflictType = currentMin < existingMin ? 'lower' : 'upper';
                   }
                   
                   return {
