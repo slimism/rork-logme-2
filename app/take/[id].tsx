@@ -34,9 +34,7 @@ export default function EditTakeScreen() {
   const [showRangeMode, setShowRangeMode] = useState<{ [key: string]: boolean }>({});
   const [rangeData, setRangeData] = useState<{ [key: string]: { from: string; to: string } }>({});
   const [cameraRangeEnabled, setCameraRangeEnabled] = useState(false);
-  const [soundRangeEnabled, setSoundRangeEnabled] = useState(false);
   const [cameraRange, setCameraRange] = useState({ from: '', to: '' });
-  const [soundRange, setSoundRange] = useState({ from: '', to: '' });
   const [cameraRecState, setCameraRecState] = useState<{ [key: string]: boolean }>({});
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
@@ -251,10 +249,6 @@ export default function EditTakeScreen() {
       if (newRangeData['cameraFile']) {
         setCameraRange(newRangeData['cameraFile']);
         setCameraRangeEnabled(true);
-      }
-      if (newRangeData['soundFile']) {
-        setSoundRange(newRangeData['soundFile']);
-        setSoundRangeEnabled(true);
       }
     }
   }, [id, projects, logSheets]);
@@ -1772,54 +1766,6 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     const isMandatory = ['sceneNumber', 'shotNumber', 'soundFile', 'cameraFile'].includes(field.id) || field.id.startsWith('cameraFile');
     const isFileField = field.id === 'soundFile';
 
-    if (isFileField && soundRangeEnabled) {
-      return (
-        <View key={field.id} style={[styles.fieldContainer, customStyle]}>
-          <View style={styles.fieldHeaderRow}>
-            <Text style={[
-              styles.fieldLabel,
-              isDisabled && styles.disabledLabel,
-              hasError && styles.errorLabel
-            ]}>
-              Sound File{!isDisabled && <Text style={styles.asterisk}> *</Text>}
-            </Text>
-            <TouchableOpacity
-              style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-              onPress={() => setSoundRangeEnabled(false)}
-              disabled={isDisabled}
-            >
-              <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.rangeContainer}>
-            <TextInput
-              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
-              value={soundRange.from}
-              onChangeText={(text) => setSoundRange(prev => ({ ...prev, from: text }))}
-              onBlur={() => setSoundRange(prev => ({ ...prev, from: formatFileNumber(prev.from) }))}
-              placeholder="From"
-              placeholderTextColor={colors.subtext}
-              keyboardType="numeric"
-              maxLength={4}
-              editable={!isDisabled}
-            />
-            <Text style={styles.rangeSeparator}>-</Text>
-            <TextInput
-              style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
-              value={soundRange.to}
-              onChangeText={(text) => setSoundRange(prev => ({ ...prev, to: text }))}
-              onBlur={() => setSoundRange(prev => ({ ...prev, to: formatFileNumber(prev.to) }))}
-              placeholder="To"
-              placeholderTextColor={colors.subtext}
-              keyboardType="numeric"
-              maxLength={4}
-              editable={!isDisabled}
-            />
-          </View>
-        </View>
-      );
-    }
-
     if (isFileField) {
       return (
         <View key={field.id} style={[styles.fieldContainer, customStyle]}>
@@ -1833,32 +1779,72 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             </Text>
             <TouchableOpacity
               style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-              onPress={() => setSoundRangeEnabled(true)}
+              onPress={() => !isDisabled && toggleRangeMode('soundFile')}
               disabled={isDisabled}
             >
               <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
             </TouchableOpacity>
           </View>
-          <TextInput
-            ref={(ref) => { inputRefs.current[field.id] = ref; }}
-            style={[
-              styles.fieldInput,
-              isDisabled && styles.disabledInput,
-              hasError && styles.errorInput,
-            ]}
-            value={value}
-            onChangeText={(text) => updateTakeData(field.id, text)}
-            onBlur={() => {
-              if (value && !isDisabled) {
-                updateTakeData(field.id, formatFileNumber(value));
-              }
-            }}
-            placeholder={isDisabled ? '' : `Enter ${field.label.toLowerCase()}`}
-            placeholderTextColor={colors.subtext}
-            keyboardType="numeric"
-            maxLength={4}
-            editable={!isDisabled}
-          />
+          {showRangeMode['soundFile'] && !isDisabled ? (
+            <View style={styles.rangeContainer}>
+              <TextInput
+                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+                value={rangeData['soundFile']?.from || ''}
+                onChangeText={(text) => updateRangeData('soundFile', 'from', text)}
+                onBlur={() => {
+                  const currentRange = rangeData['soundFile'];
+                  if (currentRange?.from) {
+                    const formatted = formatFileNumberOnBlur(currentRange.from);
+                    updateRangeData('soundFile', 'from', formatted);
+                  }
+                }}
+                placeholder="From"
+                placeholderTextColor={colors.subtext}
+                keyboardType="numeric"
+                maxLength={4}
+                editable={!isDisabled}
+              />
+              <Text style={styles.rangeSeparator}>-</Text>
+              <TextInput
+                style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
+                value={rangeData['soundFile']?.to || ''}
+                onChangeText={(text) => updateRangeData('soundFile', 'to', text)}
+                onBlur={() => {
+                  const currentRange = rangeData['soundFile'];
+                  if (currentRange?.to) {
+                    const formatted = formatFileNumberOnBlur(currentRange.to);
+                    updateRangeData('soundFile', 'to', formatted);
+                  }
+                }}
+                placeholder="To"
+                placeholderTextColor={colors.subtext}
+                keyboardType="numeric"
+                maxLength={4}
+                editable={!isDisabled}
+              />
+            </View>
+          ) : (
+            <TextInput
+              ref={(ref) => { inputRefs.current[field.id] = ref; }}
+              style={[
+                styles.fieldInput,
+                isDisabled && styles.disabledInput,
+                hasError && styles.errorInput,
+              ]}
+              value={value}
+              onChangeText={(text) => updateTakeData(field.id, text)}
+              onBlur={() => {
+                if (value && !isDisabled) {
+                  updateTakeData(field.id, formatFileNumber(value));
+                }
+              }}
+              placeholder={isDisabled ? '' : `Enter ${field.label.toLowerCase()}`}
+              placeholderTextColor={colors.subtext}
+              keyboardType="numeric"
+              maxLength={4}
+              editable={!isDisabled}
+            />
+          )}
         </View>
       );
     }
