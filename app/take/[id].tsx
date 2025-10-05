@@ -1068,14 +1068,20 @@ export default function EditTakeScreen() {
             const exMin = Math.min(exFrom, exTo);
             const exMax = Math.max(exFrom, exTo);
             if (!(curMax < exMin || curMin > exMax)) {
-              return { fieldId, number: curMin, existingEntry: sheet };
+              // Only allow insert before if current range starts at the lower bound of existing range
+              if (curFrom === exMin) {
+                return { fieldId, number: curFrom, existingEntry: sheet };
+              }
             }
           }
           const existingVal = data[fieldId] as string | undefined;
           if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
             const exNum = parseNum(existingVal);
             if (exNum >= curMin && exNum <= curMax) {
-              return { fieldId, number: curMin, existingEntry: sheet };
+              // Only allow insert before if existing value is at the lower bound of current range
+              if (exNum === curMin) {
+                return { fieldId, number: curMin, existingEntry: sheet };
+              }
             }
           }
         } else {
@@ -1085,7 +1091,10 @@ export default function EditTakeScreen() {
             const exMin = Math.min(exFrom, exTo);
             const exMax = Math.max(exFrom, exTo);
             if (valNum >= exMin && valNum <= exMax) {
-              return { fieldId, number: valNum, existingEntry: sheet };
+              // Only allow insert before if current value is at the lower bound of existing range
+              if (valNum === exMin) {
+                return { fieldId, number: valNum, existingEntry: sheet };
+              }
             }
           }
           if (data[fieldId] === currentVal) {
