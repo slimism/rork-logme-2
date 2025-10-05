@@ -520,7 +520,7 @@ export default function ProjectScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Recently Created Logs Section */}
-            {recentlyCreatedLogs.length > 0 && Object.keys(organizedTakes).length > 0 && (
+            {recentlyCreatedLogs.length > 0 && Object.keys(organizedTakes).length > 0 && !filters.goodTakesOnly && !filters.classification && (
               <View style={[styles.recentlyCreatedContainer, darkMode && styles.recentlyCreatedContainerDark]}>
                 <View style={[styles.recentlyCreatedHeader, darkMode && styles.recentlyCreatedHeaderDark]}>
                   <Text style={[styles.recentlyCreatedTitle, darkMode && styles.recentlyCreatedTitleDark]}>Recently Created</Text>
