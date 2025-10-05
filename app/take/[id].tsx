@@ -638,15 +638,21 @@ export default function EditTakeScreen() {
           if (existingRange) {
             const existingFrom = parseInt(existingRange.from) || 0;
             const existingTo = parseInt(existingRange.to) || 0;
+            const existingMin = Math.min(existingFrom, existingTo);
+            const existingMax = Math.max(existingFrom, existingTo);
             const existingNumbers = expandRange(existingFrom, existingTo);
             
             // Check if any number in current range exists in existing range
             const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
             if (hasOverlap) {
+              // Determine conflict type: check if overlap is at boundaries or within
               let conflictType: 'lower' | 'upper' | 'within';
-              if (currentMin === Math.min(existingFrom, existingTo)) {
+              const overlapAtLower = currentNumbers.some(n => n === existingMin);
+              const overlapAtUpper = currentNumbers.some(n => n === existingMax);
+              
+              if (overlapAtLower && !overlapAtUpper) {
                 conflictType = 'lower';
-              } else if (currentMax === Math.max(existingFrom, existingTo)) {
+              } else if (overlapAtUpper && !overlapAtLower) {
                 conflictType = 'upper';
               } else {
                 conflictType = 'within';
@@ -696,11 +702,12 @@ export default function EditTakeScreen() {
           // Check against existing ranges
           const existingRange = getRangeFromData(data, 'soundFile');
           if (existingRange) {
+            const existingFrom = parseInt(existingRange.from) || 0;
+            const existingTo = parseInt(existingRange.to) || 0;
+            const existingMin = Math.min(existingFrom, existingTo);
+            const existingMax = Math.max(existingFrom, existingTo);
+            
             if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
-              const existingFrom = parseInt(existingRange.from) || 0;
-              const existingTo = parseInt(existingRange.to) || 0;
-              const existingMin = Math.min(existingFrom, existingTo);
-              const existingMax = Math.max(existingFrom, existingTo);
               // Determine conflict type based on position in range
               let conflictType: 'lower' | 'upper' | 'within';
               if (currentNum === existingMin) {
@@ -762,15 +769,21 @@ export default function EditTakeScreen() {
             if (existingRange) {
               const existingFrom = parseInt(existingRange.from) || 0;
               const existingTo = parseInt(existingRange.to) || 0;
+              const existingMin = Math.min(existingFrom, existingTo);
+              const existingMax = Math.max(existingFrom, existingTo);
               const existingNumbers = expandRange(existingFrom, existingTo);
               
               // Check if any number in current range exists in existing range
               const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
               if (hasOverlap) {
+                // Determine conflict type: check if overlap is at boundaries or within
                 let conflictType: 'lower' | 'upper' | 'within';
-                if (currentMin === Math.min(existingFrom, existingTo)) {
+                const overlapAtLower = currentNumbers.some(n => n === existingMin);
+                const overlapAtUpper = currentNumbers.some(n => n === existingMax);
+                
+                if (overlapAtLower && !overlapAtUpper) {
                   conflictType = 'lower';
-                } else if (currentMax === Math.max(existingFrom, existingTo)) {
+                } else if (overlapAtUpper && !overlapAtLower) {
                   conflictType = 'upper';
                 } else {
                   conflictType = 'within';
@@ -820,11 +833,12 @@ export default function EditTakeScreen() {
             // Check against existing ranges
             const existingRange = getRangeFromData(data, 'cameraFile');
             if (existingRange) {
+              const existingFrom = parseInt(existingRange.from) || 0;
+              const existingTo = parseInt(existingRange.to) || 0;
+              const existingMin = Math.min(existingFrom, existingTo);
+              const existingMax = Math.max(existingFrom, existingTo);
+              
               if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
-                const existingFrom = parseInt(existingRange.from) || 0;
-                const existingTo = parseInt(existingRange.to) || 0;
-                const existingMin = Math.min(existingFrom, existingTo);
-                const existingMax = Math.max(existingFrom, existingTo);
                 // Determine conflict type based on position in range
                 let conflictType: 'lower' | 'upper' | 'within';
                 if (currentNum === existingMin) {
@@ -887,15 +901,21 @@ export default function EditTakeScreen() {
               if (existingRange) {
                 const existingFrom = parseInt(existingRange.from) || 0;
                 const existingTo = parseInt(existingRange.to) || 0;
+                const existingMin = Math.min(existingFrom, existingTo);
+                const existingMax = Math.max(existingFrom, existingTo);
                 const existingNumbers = expandRange(existingFrom, existingTo);
                 
                 // Check if any number in current range exists in existing range
                 const hasOverlap = currentNumbers.some(num => existingNumbers.includes(num));
                 if (hasOverlap) {
+                  // Determine conflict type: check if overlap is at boundaries or within
                   let conflictType: 'lower' | 'upper' | 'within';
-                  if (currentMin === Math.min(existingFrom, existingTo)) {
+                  const overlapAtLower = currentNumbers.some(n => n === existingMin);
+                  const overlapAtUpper = currentNumbers.some(n => n === existingMax);
+                  
+                  if (overlapAtLower && !overlapAtUpper) {
                     conflictType = 'lower';
-                  } else if (currentMax === Math.max(existingFrom, existingTo)) {
+                  } else if (overlapAtUpper && !overlapAtLower) {
                     conflictType = 'upper';
                   } else {
                     conflictType = 'within';
@@ -944,11 +964,12 @@ export default function EditTakeScreen() {
               // Check against existing ranges
               const existingRange = getRangeFromData(data, fieldId);
               if (existingRange) {
+                const existingFrom = parseInt(existingRange.from) || 0;
+                const existingTo = parseInt(existingRange.to) || 0;
+                const existingMin = Math.min(existingFrom, existingTo);
+                const existingMax = Math.max(existingFrom, existingTo);
+                
                 if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
-                  const existingFrom = parseInt(existingRange.from) || 0;
-                  const existingTo = parseInt(existingRange.to) || 0;
-                  const existingMin = Math.min(existingFrom, existingTo);
-                  const existingMax = Math.max(existingFrom, existingTo);
                   // Determine conflict type based on position in range
                   let conflictType: 'lower' | 'upper' | 'within';
                   if (currentNum === existingMin) {
