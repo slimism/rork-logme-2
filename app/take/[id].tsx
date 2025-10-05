@@ -586,8 +586,15 @@ export default function EditTakeScreen() {
     return numbers;
   };
 
+  // Helper regex to match both hyphen and en-dash
+  const RANGE_SEP = /[-–]/;
+
+  // Helper function to check if a string is a range (contains hyphen or en-dash)
+  const isRangeString = (s?: string) => !!s && RANGE_SEP.test(s);
+
   // Helper function to get range values from stored data
   const getRangeFromData = (data: any, fieldId: string): { from: string; to: string } | null => {
+    // First, check stable keys
     if (fieldId === 'soundFile') {
       const from = data['sound_from'];
       const to = data['sound_to'];
@@ -598,6 +605,16 @@ export default function EditTakeScreen() {
       const to = data[`camera${cameraNum}_to`];
       if (from && to) return { from, to };
     }
+    
+    // Fallback: parse display field if it contains a range separator
+    const raw = data[fieldId];
+    if (typeof raw === 'string' && isRangeString(raw)) {
+      const parts = raw.split(RANGE_SEP).map(s => s.replace(/\D/g, '')).filter(Boolean);
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        return { from: parts[0], to: parts[1] };
+      }
+    }
+    
     return null;
   };
 
@@ -673,7 +690,7 @@ export default function EditTakeScreen() {
           }
           
           // Check against existing single values
-          if (data.soundFile && typeof data.soundFile === 'string' && !data.soundFile.includes('-')) {
+          if (data.soundFile && typeof data.soundFile === 'string' && !isRangeString(data.soundFile)) {
             const existingNum = parseInt(data.soundFile) || 0;
             if (currentNumbers.includes(existingNum)) {
               const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
@@ -804,7 +821,7 @@ export default function EditTakeScreen() {
             }
             
             // Check against existing single values
-            if (data.cameraFile && typeof data.cameraFile === 'string' && !data.cameraFile.includes('-')) {
+            if (data.cameraFile && typeof data.cameraFile === 'string' && !isRangeString(data.cameraFile)) {
               const existingNum = parseInt(data.cameraFile) || 0;
               if (currentNumbers.includes(existingNum)) {
                 const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
@@ -936,7 +953,7 @@ export default function EditTakeScreen() {
               }
               
               // Check against existing single values
-              if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
+              if (data[fieldId] && typeof data[fieldId] === 'string' && !isRangeString(data[fieldId])) {
                 const existingNum = parseInt(data[fieldId]) || 0;
                 if (currentNumbers.includes(existingNum)) {
                   const conflictType = existingNum === currentMin ? 'lower' : (existingNum === currentMax ? 'upper' : 'within');
@@ -1140,7 +1157,7 @@ export default function EditTakeScreen() {
             }
           }
           const existingVal = data[fieldId] as string | undefined;
-          if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
+          if (existingVal && typeof existingVal === 'string' && !isRangeString(existingVal)) {
             const exNum = parseNum(existingVal);
             if (exNum >= curMin && exNum <= curMax) {
               // Only allow insert before if existing value is at the lower bound of current range
@@ -1326,7 +1343,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           }
         }
         const existingVal = sheet.data[fieldId] as string | undefined;
-        if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
+        if (existingVal && typeof existingVal === 'string' && !isRangeString(existingVal)) {
           const exNum = parseInt(existingVal, 10) || 0;
           if (exNum >= curMin && exNum <= curMax) {
             return true;
