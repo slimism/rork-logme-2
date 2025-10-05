@@ -42,8 +42,11 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
             th, td { 
               border: 1px solid #333; 
               padding: 4px 6px; 
-              text-align: left; 
-              vertical-align: top;
+              text-align: center; 
+              vertical-align: middle;
+            }
+            td:empty::before {
+              content: "-";
             }
             th { 
               background-color: #f0f0f0; 
@@ -168,9 +171,12 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
             th, td { 
               border: 1px solid #333; 
               padding: 3px 5px; 
-              text-align: left; 
-              vertical-align: top;
+              text-align: center; 
+              vertical-align: middle;
               word-wrap: break-word;
+            }
+            td:empty::before {
+              content: "-";
             }
             th { 
               background-color: #f0f0f0; 
@@ -306,6 +312,53 @@ const formatFieldName = (fieldId: string, customFields: string[] = []): string =
   return fieldNames[fieldId] || fieldId;
 };
 
+const getFieldValue = (take: LogSheet, fieldId: string): string => {
+  const data = take.data;
+  if (!data) return '-';
+  
+  // Handle sound file ranges
+  if (fieldId === 'soundFile') {
+    if (data.sound_from && data.sound_to) {
+      return `${data.sound_from}-${data.sound_to}`;
+    }
+    return data.soundFile || '-';
+  }
+  
+  // Handle camera file ranges
+  if (fieldId.startsWith('cameraFile')) {
+    const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', ''));
+    if (data[`camera${cameraNum}_from`] && data[`camera${cameraNum}_to`]) {
+      return `${data[`camera${cameraNum}_from`]}-${data[`camera${cameraNum}_to`]}`;
+    }
+    return data[fieldId] || '-';
+  }
+  
+  // Return value or dash for empty fields
+  return data[fieldId] || '-';
+};
+
+const buildNotesWithClassifications = (take: LogSheet): string => {
+  const data = take.data;
+  const parts: string[] = [];
+  
+  // Add existing notes
+  if (data?.notesForTake && data.notesForTake.trim()) {
+    parts.push(data.notesForTake.trim());
+  }
+  
+  // Add shot details
+  if (data?.shotDetails && Array.isArray(data.shotDetails) && data.shotDetails.length > 0) {
+    parts.push(data.shotDetails.join(', '));
+  }
+  
+  // Add classification
+  if (data?.classification) {
+    parts.push(data.classification);
+  }
+  
+  return parts.length > 0 ? parts.join(' - ') : '-';
+};
+
 const generateSmartExportSections = (
   logSheets: LogSheet[],
   fieldList: string[],
@@ -328,10 +381,19 @@ const generateSmartExportSections = (
       const cells = fieldList.map(fieldId => {
         const cls = take.data?.classification;
         const isAmbOrSfx = cls === 'Ambience' || cls === 'SFX';
-        let value = take.data?.[fieldId] || '';
+        let value: string;
+        
+        // Clear scene/shot/take for Ambience/SFX
         if (isAmbOrSfx && (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber')) {
-          value = '';
+          value = '-';
+        } else if (fieldId === 'notesForTake') {
+          // Build notes with classifications
+          value = buildNotesWithClassifications(take);
+        } else {
+          // Get field value (handles ranges)
+          value = getFieldValue(take, fieldId);
         }
+        
         const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
         return `<td class="${cellClass}">${value}</td>`;
       }).join('');
@@ -504,7 +566,15 @@ const generateFilmLogHTML = (
       
       takes.forEach((take, index) => {
         const cells = fieldList.map(fieldId => {
-          const value = take.data?.[fieldId] || '';
+          let value: string;
+          
+          if (fieldId === 'notesForTake') {
+            // Build notes with classifications
+            value = buildNotesWithClassifications(take);
+          } else {
+            // Get field value (handles ranges)
+            value = getFieldValue(take, fieldId);
+          }
           
           // Handle notes and description fields with special formatting
           const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
@@ -542,11 +612,19 @@ const generateFilmLogHTML = (
       
       sfxTakes.forEach(take => {
         const cells = fieldList.map(fieldId => {
-          let value = take.data?.[fieldId] || '';
+          let value: string;
+          
           // Clear scene, shot, take for SFX
           if (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber') {
-            value = '';
+            value = '-';
+          } else if (fieldId === 'notesForTake') {
+            // Build notes with classifications
+            value = buildNotesWithClassifications(take);
+          } else {
+            // Get field value (handles ranges)
+            value = getFieldValue(take, fieldId);
           }
+          
           const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
           return `<td class="${cellClass}">${value}</td>`;
         }).join('');
@@ -571,11 +649,19 @@ const generateFilmLogHTML = (
       
       ambienceTakes.forEach(take => {
         const cells = fieldList.map(fieldId => {
-          let value = take.data?.[fieldId] || '';
+          let value: string;
+          
           // Clear scene, shot, take for Ambiences
           if (fieldId === 'sceneNumber' || fieldId === 'shotNumber' || fieldId === 'takeNumber') {
-            value = '';
+            value = '-';
+          } else if (fieldId === 'notesForTake') {
+            // Build notes with classifications
+            value = buildNotesWithClassifications(take);
+          } else {
+            // Get field value (handles ranges)
+            value = getFieldValue(take, fieldId);
           }
+          
           const cellClass = (fieldId === 'notesForTake' || fieldId === 'descriptionOfShot') ? 'notes-cell' : '';
           return `<td class="${cellClass}">${value}</td>`;
         }).join('');
