@@ -1068,18 +1068,14 @@ export default function EditTakeScreen() {
             const exMin = Math.min(exFrom, exTo);
             const exMax = Math.max(exFrom, exTo);
             if (!(curMax < exMin || curMin > exMax)) {
-              if (curFrom === exMin) {
-                return { fieldId, number: curFrom, existingEntry: sheet };
-              }
+              return { fieldId, number: curMin, existingEntry: sheet };
             }
           }
           const existingVal = data[fieldId] as string | undefined;
           if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
             const exNum = parseNum(existingVal);
             if (exNum >= curMin && exNum <= curMax) {
-              if (exNum === curMin) {
-                return { fieldId, number: curMin, existingEntry: sheet };
-              }
+              return { fieldId, number: curMin, existingEntry: sheet };
             }
           }
         } else {
@@ -1089,9 +1085,7 @@ export default function EditTakeScreen() {
             const exMin = Math.min(exFrom, exTo);
             const exMax = Math.max(exFrom, exTo);
             if (valNum >= exMin && valNum <= exMax) {
-              if (valNum === exMin) {
-                return { fieldId, number: valNum, existingEntry: sheet };
-              }
+              return { fieldId, number: valNum, existingEntry: sheet };
             }
           }
           if (data[fieldId] === currentVal) {
