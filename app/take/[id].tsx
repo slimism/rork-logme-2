@@ -555,11 +555,14 @@ export default function EditTakeScreen() {
     return null;
   };
 
-  // Helper function to check if a number falls within a range
+  // Helper function to check if a number falls within a range (inclusive of both bounds)
   const isNumberInRange = (number: number, fromValue: string, toValue: string): boolean => {
     const from = parseInt(fromValue) || 0;
     const to = parseInt(toValue) || 0;
-    return number >= Math.min(from, to) && number <= Math.max(from, to);
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    // Check if number is within the range (inclusive)
+    return number >= min && number <= max;
   };
 
   // Helper function to check if two ranges overlap (including all numbers in between)
@@ -685,7 +688,18 @@ export default function EditTakeScreen() {
           if (existingRange) {
             if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
               const existingFrom = parseInt(existingRange.from) || 0;
-              const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+              const existingTo = parseInt(existingRange.to) || 0;
+              const existingMin = Math.min(existingFrom, existingTo);
+              const existingMax = Math.max(existingFrom, existingTo);
+              // Determine conflict type based on position in range
+              let conflictType: 'lower' | 'upper' | 'within';
+              if (currentNum === existingMin) {
+                conflictType = 'lower';
+              } else if (currentNum === existingMax) {
+                conflictType = 'upper';
+              } else {
+                conflictType = 'within';
+              }
               return {
                 type: 'file',
                 label: 'Sound File',
@@ -799,7 +813,18 @@ export default function EditTakeScreen() {
             if (existingRange) {
               if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
                 const existingFrom = parseInt(existingRange.from) || 0;
-                const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+                const existingTo = parseInt(existingRange.to) || 0;
+                const existingMin = Math.min(existingFrom, existingTo);
+                const existingMax = Math.max(existingFrom, existingTo);
+                // Determine conflict type based on position in range
+                let conflictType: 'lower' | 'upper' | 'within';
+                if (currentNum === existingMin) {
+                  conflictType = 'lower';
+                } else if (currentNum === existingMax) {
+                  conflictType = 'upper';
+                } else {
+                  conflictType = 'within';
+                }
                 return {
                   type: 'file',
                   label: 'Camera File',
@@ -913,7 +938,18 @@ export default function EditTakeScreen() {
               if (existingRange) {
                 if (isNumberInRange(currentNum, existingRange.from, existingRange.to)) {
                   const existingFrom = parseInt(existingRange.from) || 0;
-                  const conflictType = currentNum === existingFrom ? 'lower' : 'within';
+                  const existingTo = parseInt(existingRange.to) || 0;
+                  const existingMin = Math.min(existingFrom, existingTo);
+                  const existingMax = Math.max(existingFrom, existingTo);
+                  // Determine conflict type based on position in range
+                  let conflictType: 'lower' | 'upper' | 'within';
+                  if (currentNum === existingMin) {
+                    conflictType = 'lower';
+                  } else if (currentNum === existingMax) {
+                    conflictType = 'upper';
+                  } else {
+                    conflictType = 'within';
+                  }
                   return {
                     type: 'file',
                     label: `Camera File ${i}`,
@@ -1129,6 +1165,18 @@ export default function EditTakeScreen() {
         if (classification === 'SFX') location = 'SFX';
         else if (classification === 'Ambience') location = 'Ambience';
         else location = `Scene ${existingEntry.data?.sceneNumber || 'Unknown'}, Shot ${existingEntry.data?.shotNumber || 'Unknown'}, Take ${existingEntry.data?.takeNumber || 'Unknown'}`;
+        
+        // Check if this is a range conflict (upper or within)
+        const soundConflict = findFirstDuplicateFile();
+        if (soundConflict?.isRangeConflict && (soundConflict.conflictType === 'upper' || soundConflict.conflictType === 'within')) {
+          Alert.alert(
+            'Part of Ranged Take',
+            `The file number is part of a take that contains a range at ${location}. Adjust the value(s) to continue.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+        
         Alert.alert(
           'Duplicate Detected',
           `Camera and Sound files are duplicates found in ${location}. Do you want to insert before?`,
@@ -1161,6 +1209,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       const e = dup.existingEntry;
       const classification = e.data?.classification;
       const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+      
+      // Check if this is a range conflict (upper or within)
+      const fileConflict = findFirstDuplicateFile();
+      if (fileConflict?.isRangeConflict && (fileConflict.conflictType === 'upper' || fileConflict.conflictType === 'within')) {
+        Alert.alert(
+          'Part of Ranged Take',
+          `${label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
       Alert.alert(
         'Duplicate Found',
         `${label} file is a duplicate at ${loc}. The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
