@@ -21,6 +21,7 @@ export default function AddTakeScreen() {
   const [shotDetails, setShotDetails] = useState<ShotDetailsType[]>([]);
   const [isGoodTake, setIsGoodTake] = useState<boolean>(false);
   const [lastShotDescriptions, setLastShotDescriptions] = useState<Record<string, string>>({});
+  const [lastEpisodeNumbers, setLastEpisodeNumbers] = useState<Record<string, string>>({});
   const [stats, setStats] = useState({ totalTakes: 0, scenes: 0 });
 
   const [showRangeMode, setShowRangeMode] = useState<{ [key: string]: boolean }>({});
@@ -227,14 +228,21 @@ export default function AddTakeScreen() {
     
     // Build map of shot descriptions from previous records
     const shotDescMap: Record<string, string> = {};
+    const episodeMap: Record<string, string> = {};
     projectLogSheets.forEach(sheet => {
       if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.descriptionOfShot) {
         const shotKey = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
         // Keep the most recent description for each shot
         shotDescMap[shotKey] = sheet.data.descriptionOfShot;
       }
+      if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.episodeNumber) {
+        const shotKey = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
+        // Keep the most recent episode for each shot
+        episodeMap[shotKey] = sheet.data.episodeNumber;
+      }
     });
     setLastShotDescriptions(shotDescMap);
+    setLastEpisodeNumbers(episodeMap);
     
     // Auto-fill logic - run only once per component mount
     if (!hasAutoFilledRef.current) {
@@ -383,18 +391,25 @@ export default function AddTakeScreen() {
       } else if (fieldId === 'shotNumber') {
         // Reset only take when shot changes
         newData.takeNumber = '1';
-        // When shot changes, try to bring last description for this shot
+        // When shot changes, try to bring last description and episode for this shot
         if (value && typeof value === 'string') {
           const shotKey = `${newData.sceneNumber || ''}_${value}`;
           const lastDesc = lastShotDescriptions[shotKey];
+          const lastEpisode = lastEpisodeNumbers[shotKey];
           if (lastDesc) {
             newData.descriptionOfShot = lastDesc;
           } else {
             // Only clear if there was no previous description for this shot
             newData.descriptionOfShot = '';
           }
+          if (lastEpisode) {
+            newData.episodeNumber = lastEpisode;
+          } else {
+            newData.episodeNumber = '';
+          }
         } else {
           newData.descriptionOfShot = '';
+          newData.episodeNumber = '';
         }
         newData.notesForTake = '';
         // Clear custom fields
@@ -407,6 +422,15 @@ export default function AddTakeScreen() {
         if (shotKey && value) {
           setLastShotDescriptions(prevDescs => ({
             ...prevDescs,
+            [shotKey]: value as string
+          }));
+        }
+      } else if (fieldId === 'episodeNumber') {
+        // Update last episode number when it changes
+        const shotKey = `${prev.sceneNumber || ''}_${prev.shotNumber || ''}`;
+        if (shotKey && value) {
+          setLastEpisodeNumbers(prevEpisodes => ({
+            ...prevEpisodes,
             [shotKey]: value as string
           }));
         }
@@ -2715,6 +2739,52 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
         <View style={styles.formContainer}>
+          {/* Episode field (if enabled) */}
+          {enabledFields.find(f => f.id === 'episodeNumber') && (
+            <View style={styles.fieldContainer}>
+              <Text style={[
+                styles.fieldLabel,
+                disabledFields.has('episodeNumber') && styles.disabledLabel,
+                validationErrors.has('episodeNumber') && styles.errorLabel
+              ]}>
+                Episode
+              </Text>
+              <TextInput
+                ref={(ref) => { inputRefs.current['episodeNumber'] = ref; }}
+                style={[
+                  styles.fieldInput,
+                  disabledFields.has('episodeNumber') && styles.disabledInput,
+                  validationErrors.has('episodeNumber') && styles.errorInput
+                ]}
+                value={disabledFields.has('episodeNumber') ? '' : (takeData.episodeNumber || '')}
+                onChangeText={(text) => {
+                  updateTakeData('episodeNumber', text);
+                  if (validationErrors.has('episodeNumber')) {
+                    setValidationErrors(prev => {
+                      const newErrors = new Set(prev);
+                      newErrors.delete('episodeNumber');
+                      return newErrors;
+                    });
+                  }
+                }}
+                placeholder="Enter episode number"
+                placeholderTextColor={colors.subtext}
+                returnKeyType="next"
+                editable={!disabledFields.has('episodeNumber')}
+                onSubmitEditing={() => !disabledFields.has('episodeNumber') && focusNextField('episodeNumber', allFieldIds)}
+                onFocus={(event) => {
+                  const target: any = undefined;
+                  setTimeout(() => {
+                    target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                      const scrollY = Math.max(0, pageY - 100);
+                      scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                    });
+                  }, 100);
+                }}
+              />
+            </View>
+          )}
+
           {/* Scene, Shot, Take on same row */}
           <View style={styles.topRowContainer}>
             {enabledFields.find(f => f.id === 'sceneNumber') && (
