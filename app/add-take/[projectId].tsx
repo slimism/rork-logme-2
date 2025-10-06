@@ -1930,102 +1930,29 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Don't set disabled fields yet, wait for waste modal confirmation
       return;
     } else if (classification === 'Waste' && newClassification === null) {
-      // Toggling Waste OFF - recalculate latest file numbers
+      // Toggling Waste OFF - preserve current values, don't auto-fill
       
-      // Compute next file numbers from project
-      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-      const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
-      
-      // Re-enable and auto-fill Camera Files (check if they were disabled by Waste)
+      // Re-enable Camera Files (check if they were disabled by Waste)
       if (!wasteOptions.camera) {
-        // Camera was NOT selected for waste, so it was disabled - re-enable and auto-fill
+        // Camera was NOT selected for waste, so it was disabled - re-enable
         if (project?.settings?.cameraConfiguration === 1) {
           if (prevDisabled.has('cameraFile')) {
             nextDisabled.delete('cameraFile');
-            setTimeout(() => {
-              const nextCameraNum = nextNumbers['cameraFile'];
-              if (lastAutoIncrementRef.current['cameraFile'] === nextCameraNum) {
-                return;
-              }
-              lastAutoIncrementRef.current['cameraFile'] = nextCameraNum;
-              const formattedCamera = String(nextCameraNum).padStart(4, '0');
-              
-              writingProgrammaticallyRef.current = true;
-              setTakeData(prev => {
-                const updated = { ...prev };
-                if (showRangeMode['cameraFile']) {
-                  setRangeData(prevRange => ({
-                    ...prevRange,
-                    cameraFile: { from: formattedCamera, to: prevRange['cameraFile']?.to || '' }
-                  }));
-                } else {
-                  updated.cameraFile = formattedCamera;
-                }
-                return updated;
-              });
-              setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
-            }, 100);
           }
         } else {
           for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
             const fieldId = `cameraFile${i}`;
             if (prevDisabled.has(fieldId)) {
               nextDisabled.delete(fieldId);
-              setTimeout(() => {
-                const nextCameraNum = nextNumbers[fieldId];
-                if (lastAutoIncrementRef.current[fieldId] === nextCameraNum) {
-                  return;
-                }
-                lastAutoIncrementRef.current[fieldId] = nextCameraNum;
-                const formattedCamera = String(nextCameraNum).padStart(4, '0');
-                
-                writingProgrammaticallyRef.current = true;
-                setTakeData(prev => {
-                  const updated = { ...prev };
-                  if (showRangeMode[fieldId]) {
-                    setRangeData(prevRange => ({
-                      ...prevRange,
-                      [fieldId]: { from: formattedCamera, to: prevRange[fieldId]?.to || '' }
-                    }));
-                  } else {
-                    updated[fieldId] = formattedCamera;
-                  }
-                  return updated;
-                });
-                setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
-              }, 100);
             }
           }
         }
       }
       
-      // Re-enable and auto-fill Sound File (check if it was disabled by Waste)
+      // Re-enable Sound File (check if it was disabled by Waste)
       if (!wasteOptions.sound && prevDisabled.has('soundFile')) {
-        // Sound was NOT selected for waste, so it was disabled - re-enable and auto-fill
+        // Sound was NOT selected for waste, so it was disabled - re-enable
         nextDisabled.delete('soundFile');
-        setTimeout(() => {
-          const nextSoundNum = nextNumbers['soundFile'];
-          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) {
-            return;
-          }
-          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
-          const formattedSound = String(nextSoundNum).padStart(4, '0');
-          
-          writingProgrammaticallyRef.current = true;
-          setTakeData(prev => {
-            const updated = { ...prev };
-            if (showRangeMode['soundFile']) {
-              setRangeData(prevRange => ({
-                ...prevRange,
-                soundFile: { from: formattedSound, to: prevRange['soundFile']?.to || '' }
-              }));
-            } else {
-              updated.soundFile = formattedSound;
-            }
-            return updated;
-          });
-          setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
-        }, 100);
       }
       
       // Reset waste options and clear temporary storage
@@ -2257,50 +2184,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Only keep MOS disabled fields if MOS is active
       setDisabledFields(nextDisabled);
       
-      // Auto-prefill Sound when transitioning from disabled to enabled (e.g., when disabling Insert)
-      const soundWasDisabled = prevDisabled.has('soundFile');
-      const soundNowEnabled = !nextDisabled.has('soundFile');
-      
-      if (soundWasDisabled && soundNowEnabled) {
-        // Small debounce to prevent double increments
-        setTimeout(() => {
-          // Compute next sound file number
-          const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-          const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
-          const nextSoundNum = nextNumbers['soundFile'];
-          
-          // Guard against double increments
-          if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) {
-            return;
-          }
-          lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
-          
-          const formattedSound = String(nextSoundNum).padStart(4, '0');
-          
-          writingProgrammaticallyRef.current = true;
-          setTakeData(prev => {
-            const updated = { ...prev };
-            // Auto-prefill sound based on range mode
-            if (showRangeMode['soundFile']) {
-              // Range mode: set 'from' only, don't overwrite existing 'to'
-              setRangeData(prevRange => ({
-                ...prevRange,
-                soundFile: {
-                  from: formattedSound,
-                  to: prevRange['soundFile']?.to || ''
-                }
-              }));
-            } else {
-              // Single mode: set sound file
-              updated.soundFile = formattedSound;
-            }
-            return updated;
-          });
-          setTimeout(() => {
-            writingProgrammaticallyRef.current = false;
-          }, 100);
-        }, 100);
-      }
+      // Don't auto-prefill when disabling Insert - preserve existing values
       
       // Clear fields that are newly disabled (but not scene/shot/take when restoring)
       setTakeData(prev => {
