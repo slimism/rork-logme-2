@@ -2259,67 +2259,28 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     
     setDisabledFields(nextDisabled);
     
-    // Store current values before clearing, then clear fields that transitioned from enabled to disabled
-    setTakeData(prev => {
-      const updated = { ...prev };
-      
-      if (!wasteOptions.camera) {
-        if (project?.settings?.cameraConfiguration === 1) {
-          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
-            // Store the current value before clearing
-            wasteTemporaryStorageRef.current['cameraFile'] = prev.cameraFile || '';
-            updated.cameraFile = '';
-          }
-        } else {
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            const fieldId = `cameraFile${i}`;
-            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
-              // Store the current value before clearing
-              wasteTemporaryStorageRef.current[fieldId] = prev[fieldId] || '';
-              updated[fieldId] = '';
-            }
+    // Store current values in temporary storage but DON'T clear them yet
+    // They will be cleared only when "Add Log" is clicked
+    if (!wasteOptions.camera) {
+      if (project?.settings?.cameraConfiguration === 1) {
+        if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
+          wasteTemporaryStorageRef.current['cameraFile'] = takeData.cameraFile || '';
+        }
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          const fieldId = `cameraFile${i}`;
+          if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
+            wasteTemporaryStorageRef.current[fieldId] = takeData[fieldId] || '';
           }
         }
       }
-      
-      if (!wasteOptions.sound) {
-        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
-          // Store the current value before clearing
-          wasteTemporaryStorageRef.current['soundFile'] = prev.soundFile || '';
-          updated.soundFile = '';
-        }
-      }
-      
-      return updated;
-    });
+    }
     
-    // Clear range data only for newly disabled fields
-    setRangeData(prev => {
-      const updated = { ...prev };
-      
-      if (!wasteOptions.sound) {
-        if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
-          delete updated['soundFile'];
-        }
+    if (!wasteOptions.sound) {
+      if (!prevDisabled.has('soundFile') && nextDisabled.has('soundFile')) {
+        wasteTemporaryStorageRef.current['soundFile'] = takeData.soundFile || '';
       }
-      
-      if (!wasteOptions.camera) {
-        if (project?.settings?.cameraConfiguration === 1) {
-          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) {
-            delete updated['cameraFile'];
-          }
-        } else {
-          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
-            const fieldId = `cameraFile${i}`;
-            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) {
-              delete updated[fieldId];
-            }
-          }
-        }
-      }
-      
-      return updated;
-    });
+    }
     
     // Auto-prefill fields that are being re-enabled
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
@@ -2447,19 +2408,10 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       nextDisabled.add('soundFile');
       setDisabledFields(nextDisabled);
       
-      // Clear only the soundFile value if it's transitioning to disabled
+      // Store the current value in temporary storage but DON'T clear it yet
+      // It will be cleared only when "Add Log" is clicked
       if (!prevDisabled.has('soundFile')) {
-        setTakeData(prev => ({
-          ...prev,
-          soundFile: ''
-        }));
-        
-        // Clear only soundFile range data
-        setRangeData(prev => {
-          const updated = { ...prev };
-          delete updated['soundFile'];
-          return updated;
-        });
+        wasteTemporaryStorageRef.current['soundFile'] = takeData.soundFile || '';
       }
     } else {
       // If user selects "Yes", remove soundFile from disabled fields and auto-fill
