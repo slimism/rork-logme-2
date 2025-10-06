@@ -2923,7 +2923,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                     keyboardType="numeric"
                     maxLength={4}
                   />
-                  <Text style={styles.rangeSeparator}>-</Text>
+                  <Text style={styles.rangeSeparator}>–</Text>
                   <TextInput
                     style={[styles.fieldInput, styles.rangeInput]}
                     value={rangeData['cameraFile']?.to || ''}
@@ -3049,7 +3049,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                     keyboardType="numeric"
                     maxLength={4}
                   />
-                  <Text style={styles.rangeSeparator}>-</Text>
+                  <Text style={styles.rangeSeparator}>–</Text>
                   <TextInput
                     style={[styles.fieldInput, styles.rangeInput]}
                     value={rangeData['soundFile']?.to || ''}
@@ -3181,7 +3181,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                           keyboardType="numeric"
                           maxLength={4}
                         />
-                        <Text style={styles.rangeSeparator}>-</Text>
+                        <Text style={styles.rangeSeparator}>–</Text>
                         <TextInput
                           style={[styles.fieldInput, styles.rangeInput]}
                           value={rangeData[fieldId]?.to || ''}
