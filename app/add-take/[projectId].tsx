@@ -798,8 +798,10 @@ export default function AddTakeScreen() {
     return null;
   };
 
-  // Strict range-membership blocker: if current file (single or range) belongs to any existing ranged take, block insertion
-  const findRangeMembershipConflict = () => {
+  // General conflict detector: returns conflict info when current file (single or range)
+  // overlaps an existing ranged take. It classifies overlap as 'lower' | 'upper' | 'within'.
+  // Only 'upper' and 'within' should block; 'lower' proceeds to Insert Before.
+  const findGeneralRangeConflict = () => {
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
 
     const checkAgainstExistingRanges = (
@@ -808,7 +810,7 @@ export default function AddTakeScreen() {
       currentVal?: string,
       currentRange?: { from?: string; to?: string } | null
     ) => {
-      if (disabledFields.has(fieldId)) return null;
+      if (disabledFields.has(fieldId)) return null as any;
       const parseNum = (v?: string) => (v ? (parseInt(v, 10) || 0) : 0);
       const inRangeMode = !!(currentRange && currentRange.from && currentRange.to);
       const curFrom = inRangeMode ? parseNum(currentRange?.from) : parseNum(currentVal);
@@ -827,11 +829,23 @@ export default function AddTakeScreen() {
           const exMax = Math.max(exFrom, exTo);
           const overlaps = !(curMax < exMin || curMin > exMax);
           if (overlaps) {
-            return { fieldId, label, existingEntry: sheet } as { fieldId: string; label: string; existingEntry: any };
+            let conflictType: 'lower' | 'upper' | 'within';
+            if (curMin === exMin) {
+              conflictType = 'lower';
+            } else if (curMin > exMin && curMin < exMax) {
+              conflictType = 'within';
+            } else if (curMin === exMax) {
+              conflictType = 'upper';
+            } else if (curMin < exMin && curMax >= exMin) {
+              conflictType = 'lower';
+            } else {
+              conflictType = 'within';
+            }
+            return { fieldId, label, existingEntry: sheet, conflictType } as { fieldId: string; label: string; existingEntry: any; conflictType: 'lower' | 'upper' | 'within' };
           }
         }
       }
-      return null;
+      return null as any;
     };
 
     // Sound
@@ -947,10 +961,10 @@ export default function AddTakeScreen() {
       return;
     }
 
-    // Block if any current file value belongs to an existing ranged take
-    const rangeMembership = findRangeMembershipConflict();
-    if (rangeMembership) {
-      const e = rangeMembership.existingEntry;
+    // Block only when overlap with an existing range is at upper or within; allow lower for Insert Before
+    const generalRangeConflict = findGeneralRangeConflict();
+    if (generalRangeConflict && (generalRangeConflict.conflictType === 'upper' || generalRangeConflict.conflictType === 'within')) {
+      const e = generalRangeConflict.existingEntry;
       const classification = e.data?.classification;
       let loc: string;
       if (classification === 'SFX') {
@@ -962,7 +976,7 @@ export default function AddTakeScreen() {
       }
       Alert.alert(
         'Part of Ranged Take',
-        `${rangeMembership.label} is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+        `${generalRangeConflict.label} is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
         [{ text: 'OK', style: 'default' }]
       );
       return;
