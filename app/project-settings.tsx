@@ -40,7 +40,7 @@ export default function ProjectSettingsScreen() {
     { id: 'cameraFile', label: 'Camera file', enabled: true, required: true },
     { id: 'soundFile', label: 'Sound file', enabled: true, required: true },
     { id: 'cardNumber', label: 'Card number', enabled: false },
-    { id: 'episodes', label: 'Episodes', enabled: false },
+    { id: 'episodes', label: 'Episode', enabled: false },
     { id: 'descriptionOfShot', label: 'Take description', enabled: true, required: true },
     { id: 'notesForTake', label: 'Notes', enabled: true },
   ]);
