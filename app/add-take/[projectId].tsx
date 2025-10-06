@@ -2670,7 +2670,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
   const allFieldIds: string[] = [];
   
   // Add core fields in specific order: scene, shot, take, camera, sound
-  const coreFieldOrder = ['episodeNumber', 'sceneNumber', 'shotNumber', 'takeNumber'];
+  const coreFieldOrder = ['sceneNumber', 'shotNumber', 'takeNumber'];
   coreFieldOrder.forEach(fieldId => {
     if (enabledFields.find(f => f.id === fieldId)) {
       allFieldIds.push(fieldId);
@@ -2739,51 +2739,6 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
       >
         <View style={styles.formContainer}>
-          {/* Episode field (if enabled) */}
-          {enabledFields.find(f => f.id === 'episodeNumber') && (
-            <View style={styles.fieldContainer}>
-              <Text style={[
-                styles.fieldLabel,
-                disabledFields.has('episodeNumber') && styles.disabledLabel,
-                validationErrors.has('episodeNumber') && styles.errorLabel
-              ]}>
-                Episode
-              </Text>
-              <TextInput
-                ref={(ref) => { inputRefs.current['episodeNumber'] = ref; }}
-                style={[
-                  styles.fieldInput,
-                  disabledFields.has('episodeNumber') && styles.disabledInput,
-                  validationErrors.has('episodeNumber') && styles.errorInput
-                ]}
-                value={disabledFields.has('episodeNumber') ? '' : (takeData.episodeNumber || '')}
-                onChangeText={(text) => {
-                  updateTakeData('episodeNumber', text);
-                  if (validationErrors.has('episodeNumber')) {
-                    setValidationErrors(prev => {
-                      const newErrors = new Set(prev);
-                      newErrors.delete('episodeNumber');
-                      return newErrors;
-                    });
-                  }
-                }}
-                placeholder="Enter episode number"
-                placeholderTextColor={colors.subtext}
-                returnKeyType="next"
-                editable={!disabledFields.has('episodeNumber')}
-                onSubmitEditing={() => !disabledFields.has('episodeNumber') && focusNextField('episodeNumber', allFieldIds)}
-                onFocus={(event) => {
-                  const target: any = undefined;
-                  setTimeout(() => {
-                    target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                      const scrollY = Math.max(0, pageY - 100);
-                      scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                    });
-                  }, 100);
-                }}
-              />
-            </View>
-          )}
 
           {/* Scene, Shot, Take on same row */}
           <View style={styles.topRowContainer}>
@@ -3317,6 +3272,42 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             </View>
           )}
           
+          {/* Episode field right before Take Description */}
+          {enabledFields.find(f => f.id === 'episodeNumber') && (
+            <View style={styles.fieldContainer}>
+              <Text style={[
+                styles.fieldLabel,
+                disabledFields.has('episodeNumber') && styles.disabledLabel,
+                validationErrors.has('episodeNumber') && styles.errorLabel
+              ]}>
+                Episode
+              </Text>
+              <TextInput
+                ref={(ref) => { inputRefs.current['episodeNumber'] = ref; }}
+                style={[
+                  styles.fieldInput,
+                  disabledFields.has('episodeNumber') && styles.disabledInput,
+                  validationErrors.has('episodeNumber') && styles.errorInput
+                ]}
+                value={disabledFields.has('episodeNumber') ? '' : (takeData.episodeNumber || '')}
+                onChangeText={(text) => {
+                  updateTakeData('episodeNumber', text);
+                  if (validationErrors.has('episodeNumber')) {
+                    setValidationErrors(prev => {
+                      const newErrors = new Set(prev);
+                      newErrors.delete('episodeNumber');
+                      return newErrors;
+                    });
+                  }
+                }}
+                placeholder="Enter episode number"
+                placeholderTextColor={colors.subtext}
+                returnKeyType="next"
+                editable={!disabledFields.has('episodeNumber')}
+              />
+            </View>
+          )}
+
           {/* Take Description */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Take Description</Text>
