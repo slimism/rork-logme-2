@@ -365,19 +365,7 @@ export default function AddTakeScreen() {
       const newData = { ...prev, [fieldId]: value };
       
       // Smart auto-fill logic based on field changes - only reset what's necessary
-      if (fieldId === 'episodeNumber' && project?.settings?.logSheetFields?.find(f => f.id === 'episodeNumber')?.enabled) {
-        // Reset scene, shot, take when episode changes
-        newData.sceneNumber = '';
-        newData.shotNumber = '';
-        newData.takeNumber = '1';
-        // Clear description and notes
-        newData.descriptionOfShot = '';
-        newData.notesForTake = '';
-        // Clear custom fields
-        project?.settings?.customFields?.forEach((_, index) => {
-          newData[`custom_${index}`] = '';
-        });
-      } else if (fieldId === 'sceneNumber') {
+      if (fieldId === 'sceneNumber') {
         // Reset shot and take when scene changes
         newData.shotNumber = '';
         newData.takeNumber = '1';
@@ -426,7 +414,6 @@ export default function AddTakeScreen() {
           }));
         }
       } else if (fieldId === 'episodeNumber') {
-        // Update last episode number when it changes
         const shotKey = `${prev.sceneNumber || ''}_${prev.shotNumber || ''}`;
         if (shotKey && value) {
           setLastEpisodeNumbers(prevEpisodes => ({
