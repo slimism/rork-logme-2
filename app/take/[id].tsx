@@ -2137,6 +2137,50 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             </Text>
           </View>
 
+          {/* Episode field (if enabled) */}
+          {enabledFields.find((f: FieldType) => f.id === 'episodeNumber') && (
+            <View style={styles.fieldContainer}>
+              <Text style={[
+                styles.fieldLabel,
+                disabledFields.has('episodeNumber') && styles.disabledLabel,
+                validationErrors.has('episodeNumber') && styles.errorLabel
+              ]}>
+                Episode
+              </Text>
+              <TextInput
+                ref={(ref) => { inputRefs.current['episodeNumber'] = ref; }}
+                style={[
+                  styles.fieldInput,
+                  disabledFields.has('episodeNumber') && styles.disabledInput,
+                  validationErrors.has('episodeNumber') && styles.errorInput
+                ]}
+                value={disabledFields.has('episodeNumber') ? '' : (takeData.episodeNumber || '')}
+                onChangeText={(text) => updateTakeData('episodeNumber', text)}
+                placeholder="Enter episode number"
+                placeholderTextColor={colors.subtext}
+                returnKeyType="next"
+                editable={!disabledFields.has('episodeNumber')}
+                onSubmitEditing={() => {
+                  const nextFieldId = getNextFieldId('episodeNumber', allFieldIds);
+                  if (nextFieldId && inputRefs.current[nextFieldId]) {
+                    inputRefs.current[nextFieldId]?.focus();
+                  }
+                }}
+                onFocus={(event) => {
+                  if (!disabledFields.has('episodeNumber')) {
+                    const target = event.target as any;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
+                  }
+                }}
+              />
+            </View>
+          )}
+
           <View style={styles.topRowContainer}>
             {enabledFields.find((field: FieldType) => field.id === 'sceneNumber') && (
               <View style={styles.topFieldContainer}>
