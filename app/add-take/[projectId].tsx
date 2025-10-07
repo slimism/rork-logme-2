@@ -1172,7 +1172,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', existingEntry: e, number: soundDup.number }),
+            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
           },
         ]
       );
@@ -1197,7 +1197,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', existingEntry: e, number: cameraDup.number }),
+            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
           },
         ]
       );
@@ -1449,46 +1449,50 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     const targetFileNumber = duplicateInfo.number as number;
 
-    if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
-      let soundStart = targetFileNumber;
-      if (typeof existingEntry.data?.sound_from === 'string') {
-        const n = parseInt(existingEntry.data.sound_from, 10);
-        if (!Number.isNaN(n)) soundStart = n;
-      } else if (typeof existingEntry.data?.soundFile === 'string') {
-        const n = parseInt(existingEntry.data.soundFile, 10);
-        if (!Number.isNaN(n)) soundStart = n;
+    if (duplicateInfo.fieldId === 'soundFile') {
+      if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
+        let soundStart = targetFileNumber;
+        if (typeof existingEntry.data?.sound_from === 'string') {
+          const n = parseInt(existingEntry.data.sound_from, 10);
+          if (!Number.isNaN(n)) soundStart = n;
+        } else if (typeof existingEntry.data?.soundFile === 'string') {
+          const n = parseInt(existingEntry.data.soundFile, 10);
+          if (!Number.isNaN(n)) soundStart = n;
+        }
+        updateFileNumbers(projectId, 'soundFile', soundStart, 1);
       }
-      updateFileNumbers(projectId, 'soundFile', soundStart, 1);
     }
 
-    if (camCount === 1) {
-      if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
-        let camStart = targetFileNumber;
-        if (typeof existingEntry.data?.camera1_from === 'string') {
-          const n = parseInt(existingEntry.data.camera1_from, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        } else if (typeof existingEntry.data?.cameraFile === 'string') {
-          const n = parseInt(existingEntry.data.cameraFile, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        }
-        updateFileNumbers(projectId, 'cameraFile', camStart, 1);
-      }
-    } else {
-      for (let i = 1; i <= camCount; i++) {
-        const fieldId = `cameraFile${i}`;
-        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+    if (duplicateInfo.fieldId === 'cameraFile' || (typeof duplicateInfo.fieldId === 'string' && duplicateInfo.fieldId.startsWith('cameraFile'))) {
+      if (camCount === 1) {
+        if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
           let camStart = targetFileNumber;
-          const fromKey = `camera${i}_from` as const;
-          const val = existingEntry.data?.[fieldId];
-          const fromVal = existingEntry.data?.[fromKey];
-          if (typeof fromVal === 'string') {
-            const n = parseInt(fromVal, 10);
+          if (typeof existingEntry.data?.camera1_from === 'string') {
+            const n = parseInt(existingEntry.data.camera1_from, 10);
             if (!Number.isNaN(n)) camStart = n;
-          } else if (typeof val === 'string') {
-            const n = parseInt(val, 10);
+          } else if (typeof existingEntry.data?.cameraFile === 'string') {
+            const n = parseInt(existingEntry.data.cameraFile, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(projectId, fieldId, camStart, 1);
+          updateFileNumbers(projectId, 'cameraFile', camStart, 1);
+        }
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+            let camStart = targetFileNumber;
+            const fromKey = `camera${i}_from` as const;
+            const val = existingEntry.data?.[fieldId];
+            const fromVal = existingEntry.data?.[fromKey];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            }
+            updateFileNumbers(projectId, fieldId, camStart, 1);
+          }
         }
       }
     }
