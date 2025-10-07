@@ -1071,6 +1071,25 @@ export default function AddTakeScreen() {
       }
     }
 
+    const isSoundBlank = disabledFields.has('soundFile') || !(takeData.soundFile?.trim());
+    const camConfigForBlank = project?.settings?.cameraConfiguration || 1;
+    let isCameraBlank = false;
+    if (camConfigForBlank === 1) {
+      isCameraBlank = disabledFields.has('cameraFile') || !(takeData.cameraFile?.trim());
+    } else {
+      // Consider cameras blank if all active REC camera fields are blank
+      let anyActiveProvided = false;
+      for (let i = 1; i <= camConfigForBlank; i++) {
+        const fid = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fid] ?? true;
+        if (isRecActive && !disabledFields.has(fid) && (takeData[fid]?.trim())) {
+          anyActiveProvided = true;
+          break;
+        }
+      }
+      isCameraBlank = !anyActiveProvided;
+    }
+
     if (soundDup && cameraDup) {
       if (soundDup.existingEntry?.id === cameraDup.existingEntry?.id) {
         const existingEntry = soundDup.existingEntry;
@@ -1132,6 +1151,57 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         );
         return;
       }
+    }
+
+    // New rule: allow Insert Before when only one duplicate exists AND the other field is blank
+    if (soundDup && isCameraBlank) {
+      const e = soundDup.existingEntry;
+      const classification = e.data?.classification;
+      let loc: string;
+      if (classification === 'SFX') {
+        loc = 'SFX';
+      } else if (classification === 'Ambience') {
+        loc = 'Ambience';
+      } else {
+        loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      }
+      Alert.alert(
+        'Duplicate Detected',
+        `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Insert Before',
+            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', existingEntry: e, number: soundDup.number }),
+          },
+        ]
+      );
+      return;
+    }
+
+    if (cameraDup && isSoundBlank) {
+      const e = cameraDup.existingEntry;
+      const classification = e.data?.classification;
+      let loc: string;
+      if (classification === 'SFX') {
+        loc = 'SFX';
+      } else if (classification === 'Ambience') {
+        loc = 'Ambience';
+      } else {
+        loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+      }
+      Alert.alert(
+        'Duplicate Detected',
+        `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Insert Before',
+            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', existingEntry: e, number: cameraDup.number }),
+          },
+        ]
+      );
+      return;
     }
 
     if (soundDup || cameraDup) {
