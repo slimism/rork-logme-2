@@ -1260,6 +1260,77 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       }
     }
 
+    // Allow insert-before when only one duplicate exists and the target duplicate has the other field blank
+    const camCountForBlank = project?.settings?.cameraConfiguration || 1;
+    const isCameraBlankInput = (() => {
+      if (camCountForBlank === 1) {
+        return !(takeData.cameraFile?.trim());
+      }
+      for (let i = 1; i <= camCountForBlank; i++) {
+        const fid = `cameraFile${i}`;
+        if ((cameraRecState[fid] ?? true) && takeData[fid]?.trim()) return false;
+      }
+      return true;
+    })();
+    const isSoundBlankInput = !(takeData.soundFile?.trim());
+
+    if (soundDup) {
+      const target = soundDup.existingEntry;
+      const isTargetCameraBlank = (() => {
+        if (camCountForBlank === 1) {
+          const single = typeof target.data?.cameraFile === 'string' && target.data.cameraFile.trim().length > 0;
+          const range = typeof target.data?.camera1_from === 'string' || typeof target.data?.camera1_to === 'string';
+          return !(single || range);
+        }
+        for (let i = 1; i <= camCountForBlank; i++) {
+          const val = target.data?.[`cameraFile${i}`];
+          const fromVal = target.data?.[`camera${i}_from`];
+          const toVal = target.data?.[`camera${i}_to`];
+          if ((typeof val === 'string' && val.trim().length > 0) || (typeof fromVal === 'string' && fromVal.trim().length > 0) || (typeof toVal === 'string' && toVal.trim().length > 0)) {
+            return false;
+          }
+        }
+        return true;
+      })();
+      if (isTargetCameraBlank || isCameraBlankInput) {
+        const e = target;
+        const classification = e.data?.classification;
+        const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+        Alert.alert(
+          'Duplicate Detected',
+          `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Insert Before', onPress: () => handleSaveWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+          ]
+        );
+        return;
+      }
+    }
+
+    if (cameraDup) {
+      const target = cameraDup.existingEntry;
+      const isTargetSoundBlank = (() => {
+        const single = typeof target.data?.soundFile === 'string' && target.data.soundFile.trim().length > 0;
+        const range = typeof target.data?.sound_from === 'string' || typeof target.data?.sound_to === 'string';
+        return !(single || range);
+      })();
+      if (isTargetSoundBlank || isSoundBlankInput) {
+        const e = target;
+        const classification = e.data?.classification;
+        const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+        Alert.alert(
+          'Duplicate Detected',
+          `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Insert Before', onPress: () => handleSaveWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+          ]
+        );
+        return;
+      }
+    }
+
     if (soundDup || cameraDup) {
       const dup = soundDup || cameraDup!;
       const label = dup.fieldId.startsWith('sound') ? 'Sound' : 'Camera';

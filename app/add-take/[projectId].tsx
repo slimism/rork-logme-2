@@ -1154,6 +1154,56 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     }
 
     // New rule: allow Insert Before when only one duplicate exists AND the other field is blank
+    // Allow insert-before when target duplicate has the other field blank
+    if (soundDup) {
+      const target = soundDup.existingEntry;
+      const camCount = project?.settings?.cameraConfiguration || 1;
+      const isTargetCameraBlank = (() => {
+        if (camCount === 1) {
+          const hasSingle = typeof target.data?.cameraFile === 'string' && target.data.cameraFile.trim().length > 0;
+          const hasRange = typeof target.data?.camera1_from === 'string' || typeof target.data?.camera1_to === 'string';
+          return !(hasSingle || hasRange);
+        }
+        // If multi-cam, consider any camera that duplicates will provide its own fieldId elsewhere, so just check if all cams blank
+        let anyCamPresent = false;
+        for (let i = 1; i <= camCount; i++) {
+          const val = target.data?.[`cameraFile${i}`];
+          const fromVal = target.data?.[`camera${i}_from`];
+          const toVal = target.data?.[`camera${i}_to`];
+          if ((typeof val === 'string' && val.trim().length > 0) || (typeof fromVal === 'string' && fromVal.trim().length > 0) || (typeof toVal === 'string' && toVal.trim().length > 0)) {
+            anyCamPresent = true;
+            break;
+          }
+        }
+        return !anyCamPresent;
+      })();
+
+      if (isTargetCameraBlank || isCameraBlank) {
+        const e = target;
+        const classification = e.data?.classification;
+        let loc: string;
+        if (classification === 'SFX') {
+          loc = 'SFX';
+        } else if (classification === 'Ambience') {
+          loc = 'Ambience';
+        } else {
+          loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+        }
+        Alert.alert(
+          'Duplicate Detected',
+          `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Insert Before',
+              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
+            },
+          ]
+        );
+        return;
+      }
+    }
+
     if (soundDup && isCameraBlank) {
       const e = soundDup.existingEntry;
       const classification = e.data?.classification;
@@ -1177,6 +1227,40 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         ]
       );
       return;
+    }
+
+    if (cameraDup) {
+      const target = cameraDup.existingEntry;
+      const isTargetSoundBlank = (() => {
+        const hasSingle = typeof target.data?.soundFile === 'string' && target.data.soundFile.trim().length > 0;
+        const hasRange = typeof target.data?.sound_from === 'string' || typeof target.data?.sound_to === 'string';
+        return !(hasSingle || hasRange);
+      })();
+
+      if (isTargetSoundBlank || isSoundBlank) {
+        const e = target;
+        const classification = e.data?.classification;
+        let loc: string;
+        if (classification === 'SFX') {
+          loc = 'SFX';
+        } else if (classification === 'Ambience') {
+          loc = 'Ambience';
+        } else {
+          loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+        }
+        Alert.alert(
+          'Duplicate Detected',
+          `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Insert Before',
+              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
+            },
+          ]
+        );
+        return;
+      }
     }
 
     if (cameraDup && isSoundBlank) {
