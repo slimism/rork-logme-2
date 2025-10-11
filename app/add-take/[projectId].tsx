@@ -1682,6 +1682,11 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         const n = parseInt(existingEntry.data.soundFile, 10);
         if (!Number.isNaN(n)) soundStart = n;
       }
+      // If target duplicate has blank sound, still shift subsequent sound files starting from the new log's sound number
+      if (soundStart == null) {
+        const candidateFromNew = typeof newLogData.soundFile === 'string' ? parseInt(newLogData.soundFile, 10) : parseInt(String(takeData.soundFile ?? ''), 10);
+        if (!Number.isNaN(candidateFromNew)) soundStart = candidateFromNew;
+      }
       if (soundStart != null) {
         updateFileNumbers(projectId, 'soundFile', soundStart, 1);
       }
