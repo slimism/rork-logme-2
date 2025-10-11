@@ -1609,6 +1609,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
 
         // Shift file numbers starting from target
+        // Shift sound files starting from the correct number
         if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
           let soundStart = targetTakeNumber;
           if (typeof existingEntry.data?.sound_from === 'string') {
@@ -1620,7 +1621,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           }
           updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
         } else {
-          // Even if the duplicate was camera-only, shift sound if present as a sequence in the target take
+          // Target duplicate has blank sound: still shift subsequent sound files.
+          // Fallback to the new log's sound number if available.
           let soundStart: number | null = null;
           if (typeof existingEntry.data?.sound_from === 'string') {
             const n = parseInt(existingEntry.data.sound_from, 10);
@@ -1629,7 +1631,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
           }
-          if (soundStart != null) updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          if (soundStart == null) {
+            const candidate = typeof newLogData.soundFile === 'string'
+              ? parseInt(newLogData.soundFile, 10)
+              : parseInt(String(takeData.soundFile ?? ''), 10);
+            if (!Number.isNaN(candidate)) {
+              soundStart = candidate;
+            }
+          }
+          if (soundStart != null) {
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          }
         }
         if (camCount === 1) {
           let camStart = targetTakeNumber;
@@ -1688,6 +1700,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
 
         // Shift file numbers starting from target
+        // Shift sound files starting from the correct number
         if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
           let soundStart = targetTakeNumber;
           if (typeof existingEntry.data?.sound_from === 'string') {
@@ -1699,7 +1712,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           }
           updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
         } else {
-          // Even if the duplicate was camera-only, shift sound if present as a sequence in the target take
+          // Target duplicate has blank sound: still shift subsequent sound files.
+          // Fallback to the new log's sound number if available.
           let soundStart: number | null = null;
           if (typeof existingEntry.data?.sound_from === 'string') {
             const n = parseInt(existingEntry.data.sound_from, 10);
@@ -1708,7 +1722,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
           }
-          if (soundStart != null) updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          if (soundStart == null) {
+            const candidate = typeof newLogData.soundFile === 'string'
+              ? parseInt(newLogData.soundFile, 10)
+              : parseInt(String(takeData.soundFile ?? ''), 10);
+            if (!Number.isNaN(candidate)) {
+              soundStart = candidate;
+            }
+          }
+          if (soundStart != null) {
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          }
         }
 
         if (camCount === 1) {
