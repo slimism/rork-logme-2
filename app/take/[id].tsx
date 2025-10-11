@@ -27,6 +27,8 @@ export default function EditTakeScreen() {
   const [classification, setClassification] = useState<ClassificationType | null>(null);
   const [shotDetails, setShotDetails] = useState<ShotDetailsType[]>([]);
   const [isGoodTake, setIsGoodTake] = useState(false);
+  const [lastShotDescriptions, setLastShotDescriptions] = useState<Record<string, string>>({});
+  const [lastEpisodeNumbers, setLastEpisodeNumbers] = useState<Record<string, string>>({});
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [wasteOptions, setWasteOptions] = useState({ camera: false, sound: false });
@@ -162,6 +164,26 @@ export default function EditTakeScreen() {
 
     setLogSheet(currentLogSheet);
     setProject(currentProject);
+
+    // Build shot description and episode maps from existing logs
+    if (currentProject) {
+      const projectLogSheets = logSheets.filter(s => s.projectId === currentProject.id);
+      const shotDescMap: Record<string, string> = {};
+      const episodeMap: Record<string, string> = {};
+      projectLogSheets.forEach(sheet => {
+        if (sheet.id === currentLogSheet?.id) return;
+        if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.descriptionOfShot) {
+          const key = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
+          shotDescMap[key] = sheet.data.descriptionOfShot;
+        }
+        if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.episodeNumber) {
+          const key = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
+          episodeMap[key] = sheet.data.episodeNumber;
+        }
+      });
+      setLastShotDescriptions(shotDescMap);
+      setLastEpisodeNumbers(episodeMap);
+    }
 
     if (currentLogSheet?.data) {
       setTakeData(currentLogSheet.data);
@@ -303,7 +325,25 @@ export default function EditTakeScreen() {
   );
 
   const updateTakeData = (fieldId: string, value: string) => {
-    setTakeData(prev => ({ ...prev, [fieldId]: value }));
+    setTakeData(prev => {
+      const next = { ...prev, [fieldId]: value } as Record<string, string>;
+
+      if (fieldId === 'shotNumber') {
+        const scene = next.sceneNumber || '';
+        const shot = typeof value === 'string' ? value : '';
+        const key = `${scene}_${shot}`;
+        const lastDesc = lastShotDescriptions[key];
+        const lastEpisode = lastEpisodeNumbers[key];
+        if (lastDesc != null) {
+          next.descriptionOfShot = lastDesc;
+        }
+        if (lastEpisode != null) {
+          next.episodeNumber = lastEpisode;
+        }
+      }
+
+      return next;
+    });
     if (validationErrors.has(fieldId)) {
       setValidationErrors(prev => {
         const newErrors = new Set(prev);
