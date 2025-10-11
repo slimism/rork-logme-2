@@ -1510,6 +1510,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             if (!Number.isNaN(n)) soundStart = n;
           }
           updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+        } else {
+          // Even if the duplicate was camera-only, shift sound if present as a sequence in the target take
+          let soundStart: number | null = null;
+          if (typeof existingEntry.data?.sound_from === 'string') {
+            const n = parseInt(existingEntry.data.sound_from, 10);
+            if (!Number.isNaN(n)) soundStart = n;
+          } else if (typeof existingEntry.data?.soundFile === 'string') {
+            const n = parseInt(existingEntry.data.soundFile, 10);
+            if (!Number.isNaN(n)) soundStart = n;
+          }
+          if (soundStart != null) updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
         }
         if (camCount === 1) {
           let camStart = targetTakeNumber;
@@ -1578,6 +1589,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             if (!Number.isNaN(n)) soundStart = n;
           }
           updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+        } else {
+          // Even if the duplicate was camera-only, shift sound if present as a sequence in the target take
+          let soundStart: number | null = null;
+          if (typeof existingEntry.data?.sound_from === 'string') {
+            const n = parseInt(existingEntry.data.sound_from, 10);
+            if (!Number.isNaN(n)) soundStart = n;
+          } else if (typeof existingEntry.data?.soundFile === 'string') {
+            const n = parseInt(existingEntry.data.soundFile, 10);
+            if (!Number.isNaN(n)) soundStart = n;
+          }
+          if (soundStart != null) updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
         }
 
         if (camCount === 1) {
