@@ -1120,11 +1120,86 @@ export default function AddTakeScreen() {
       } else {
         const se = soundDup.existingEntry;
         const ce = cameraDup.existingEntry;
+        // Prefer the target whose opposite field is blank
+        const targetSoundBlank = (() => {
+          const hasSingle = typeof ce.data?.soundFile === 'string' && ce.data.soundFile.trim().length > 0;
+          const hasRange = typeof ce.data?.sound_from === 'string' || typeof ce.data?.sound_to === 'string';
+          return !(hasSingle || hasRange);
+        })();
+        const targetCameraBlank = (() => {
+          const camCountPref = project?.settings?.cameraConfiguration || 1;
+          if (camCountPref === 1) {
+            const hasSingle = typeof se.data?.cameraFile === 'string' && se.data.cameraFile.trim().length > 0;
+            const hasRange = typeof se.data?.camera1_from === 'string' || typeof se.data?.camera1_to === 'string';
+            return !(hasSingle || hasRange);
+          }
+          let anyCamPresent = false;
+          for (let i = 1; i <= camCountPref; i++) {
+            const val = se.data?.[`cameraFile${i}`];
+            const fromVal = se.data?.[`camera${i}_from`];
+            const toVal = se.data?.[`camera${i}_to`];
+            if ((typeof val === 'string' && val.trim().length > 0) || (typeof fromVal === 'string' && fromVal.trim().length > 0) || (typeof toVal === 'string' && toVal.trim().length > 0)) {
+              anyCamPresent = true;
+              break;
+            }
+          }
+          return !anyCamPresent;
+        })();
+
+        if (targetSoundBlank || isSoundBlank) {
+          const e = ce;
+          const classification = e.data?.classification;
+          let loc: string;
+          if (classification === 'SFX') {
+            loc = 'SFX';
+          } else if (classification === 'Ambience') {
+            loc = 'Ambience';
+          } else {
+            loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+          }
+          Alert.alert(
+            'Duplicate Detected',
+            `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Insert Before',
+                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
+              },
+            ]
+          );
+          return;
+        }
+
+        if (targetCameraBlank || isCameraBlank) {
+          const e = se;
+          const classification = e.data?.classification;
+          let loc: string;
+          if (classification === 'SFX') {
+            loc = 'SFX';
+          } else if (classification === 'Ambience') {
+            loc = 'Ambience';
+          } else {
+            loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
+          }
+          Alert.alert(
+            'Duplicate Detected',
+            `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Insert Before',
+                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
+              },
+            ]
+          );
+          return;
+        }
+
         const sClassification = se.data?.classification;
         const cClassification = ce.data?.classification;
         let sLoc: string;
         let cLoc: string;
-        
         if (sClassification === 'SFX') {
           sLoc = 'SFX';
         } else if (sClassification === 'Ambience') {
@@ -1132,7 +1207,6 @@ export default function AddTakeScreen() {
         } else {
           sLoc = `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`;
         }
-        
         if (cClassification === 'SFX') {
           cLoc = 'SFX';
         } else if (cClassification === 'Ambience') {
@@ -1140,7 +1214,6 @@ export default function AddTakeScreen() {
         } else {
           cLoc = `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`;
         }
-        
         Alert.alert(
           'Conflict',
           `Camera and sound file are duplicates but belong to different takes.
@@ -1480,19 +1553,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         newLogData.takeNumber = (lastTakeNumber + 1).toString();
       }
     } else if (duplicateInfo.type === 'file') {
-      if (existingEntry.data?.soundFile) {
-        newLogData.soundFile = existingEntry.data.soundFile;
-      }
-      if (camCount === 1 && existingEntry.data?.cameraFile) {
-        newLogData.cameraFile = existingEntry.data.cameraFile;
-      } else if (camCount > 1) {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          if (existingEntry.data?.[fieldId]) {
-            newLogData[fieldId] = existingEntry.data[fieldId];
-          }
-        }
-      }
+      // Preserve user-entered values; do not overwrite unrelated file fields
+      // Only align take number positioning below
 
       const currentSceneNumber = takeData.sceneNumber;
       const currentShotNumber = takeData.shotNumber;
