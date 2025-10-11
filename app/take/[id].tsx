@@ -1286,6 +1286,75 @@ export default function EditTakeScreen() {
       } else {
         const se = soundDup.existingEntry;
         const ce = cameraDup.existingEntry;
+
+        // Prefer allowing insert-before when the target duplicate has the opposite field blank
+        const camCountPref = project?.settings?.cameraConfiguration || 1;
+        const targetSoundBlank = (() => {
+          const hasSingle = typeof ce.data?.soundFile === 'string' && ce.data.soundFile.trim().length > 0;
+          const hasRange = typeof ce.data?.sound_from === 'string' || typeof ce.data?.sound_to === 'string';
+          return !(hasSingle || hasRange);
+        })();
+        const targetCameraBlank = (() => {
+          if (camCountPref === 1) {
+            const hasSingle = typeof se.data?.cameraFile === 'string' && se.data.cameraFile.trim().length > 0;
+            const hasRange = typeof se.data?.camera1_from === 'string' || typeof se.data?.camera1_to === 'string';
+            return !(hasSingle || hasRange);
+          }
+          let anyCamPresent = false;
+          for (let i = 1; i <= camCountPref; i++) {
+            const val = se.data?.[`cameraFile${i}`];
+            const fromVal = se.data?.[`camera${i}_from`];
+            const toVal = se.data?.[`camera${i}_to`];
+            if ((typeof val === 'string' && val.trim().length > 0) || (typeof fromVal === 'string' && fromVal.trim().length > 0) || (typeof toVal === 'string' && toVal.trim().length > 0)) {
+              anyCamPresent = true;
+              break;
+            }
+          }
+          return !anyCamPresent;
+        })();
+
+        const isCameraBlankInput = (() => {
+          if (camCountPref === 1) {
+            return !(takeData.cameraFile?.trim());
+          }
+          for (let i = 1; i <= camCountPref; i++) {
+            const fid = `cameraFile${i}`;
+            if ((cameraRecState[fid] ?? true) && takeData[fid]?.trim()) return false;
+          }
+          return true;
+        })();
+        const isSoundBlankInput = !(takeData.soundFile?.trim());
+
+        if (targetSoundBlank || isSoundBlankInput) {
+          const e = ce;
+          const classification = e.data?.classification;
+          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          Alert.alert(
+            'Duplicate Detected',
+            `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before', onPress: () => handleSaveWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+            ]
+          );
+          return;
+        }
+
+        if (targetCameraBlank || isCameraBlankInput) {
+          const e = se;
+          const classification = e.data?.classification;
+          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          Alert.alert(
+            'Duplicate Detected',
+            `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before', onPress: () => handleSaveWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+            ]
+          );
+          return;
+        }
+
         const sLoc = se.data?.classification === 'SFX' ? 'SFX' : (se.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`);
         const cLoc = ce.data?.classification === 'SFX' ? 'SFX' : (ce.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`);
         Alert.alert(
