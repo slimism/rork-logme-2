@@ -1598,11 +1598,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     if (duplicateInfo.fieldId === 'soundFile') {
       if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
         let soundStart = targetFileNumber;
-        if (typeof existingEntry.data?.sound_from === 'string') {
-          const n = parseInt(existingEntry.data.sound_from, 10);
-          if (!Number.isNaN(n)) soundStart = n;
+        const hasRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+        if (hasRange) {
+          const upper = parseInt(existingEntry.data.sound_to, 10);
+          if (!Number.isNaN(upper)) soundStart = upper + 1;
         } else if (typeof existingEntry.data?.soundFile === 'string') {
           const n = parseInt(existingEntry.data.soundFile, 10);
+          if (!Number.isNaN(n)) soundStart = n;
+        } else if (typeof existingEntry.data?.sound_from === 'string') {
+          const n = parseInt(existingEntry.data.sound_from, 10);
           if (!Number.isNaN(n)) soundStart = n;
         }
         updateFileNumbers(projectId, 'soundFile', soundStart, 1);
@@ -1610,11 +1614,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       // Also shift camera files to keep alignment and avoid duplicates
       if (camCount === 1) {
         let camStart: number | null = null;
-        if (typeof existingEntry.data?.camera1_from === 'string') {
-          const n = parseInt(existingEntry.data.camera1_from, 10);
-          if (!Number.isNaN(n)) camStart = n;
+        const hasRange = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
+        if (hasRange) {
+          const upper = parseInt(existingEntry.data.camera1_to, 10);
+          if (!Number.isNaN(upper)) camStart = upper + 1;
         } else if (typeof existingEntry.data?.cameraFile === 'string') {
           const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
           if (!Number.isNaN(n)) camStart = n;
         }
         if (camStart != null) {
@@ -1624,14 +1632,19 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
           const fromKey = `camera${i}_from` as const;
+          const toKey = `camera${i}_to` as const;
           let camStart: number | null = null;
           const fromVal = existingEntry.data?.[fromKey];
+          const toVal = existingEntry.data?.[toKey];
           const val = existingEntry.data?.[fieldId];
-          if (typeof fromVal === 'string') {
-            const n = parseInt(fromVal, 10);
-            if (!Number.isNaN(n)) camStart = n;
+          if (typeof fromVal === 'string' && typeof toVal === 'string') {
+            const upper = parseInt(toVal, 10);
+            if (!Number.isNaN(upper)) camStart = upper + 1;
           } else if (typeof val === 'string') {
             const n = parseInt(val, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          } else if (typeof fromVal === 'string') {
+            const n = parseInt(fromVal, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
           if (camStart != null) {
@@ -1645,11 +1658,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       if (camCount === 1) {
         if (existingEntry.data?.cameraFile || existingEntry.data?.camera1_from) {
           let camStart = targetFileNumber;
-          if (typeof existingEntry.data?.camera1_from === 'string') {
-            const n = parseInt(existingEntry.data.camera1_from, 10);
-            if (!Number.isNaN(n)) camStart = n;
+          const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
+          if (hasRangeCam) {
+            const upper = parseInt(existingEntry.data.camera1_to, 10);
+            if (!Number.isNaN(upper)) camStart = upper + 1;
           } else if (typeof existingEntry.data?.cameraFile === 'string') {
             const n = parseInt(existingEntry.data.cameraFile, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          } else if (typeof existingEntry.data?.camera1_from === 'string') {
+            const n = parseInt(existingEntry.data.camera1_from, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
           updateFileNumbers(projectId, 'cameraFile', camStart, 1);
@@ -1660,13 +1677,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
             let camStart = targetFileNumber;
             const fromKey = `camera${i}_from` as const;
+            const toKey = `camera${i}_to` as const;
             const val = existingEntry.data?.[fieldId];
             const fromVal = existingEntry.data?.[fromKey];
-            if (typeof fromVal === 'string') {
-              const n = parseInt(fromVal, 10);
-              if (!Number.isNaN(n)) camStart = n;
+            const toVal = existingEntry.data?.[toKey];
+            if (typeof fromVal === 'string' && typeof toVal === 'string') {
+              const upper = parseInt(toVal, 10);
+              if (!Number.isNaN(upper)) camStart = upper + 1;
             } else if (typeof val === 'string') {
               const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
               if (!Number.isNaN(n)) camStart = n;
             }
             updateFileNumbers(projectId, fieldId, camStart, 1);
@@ -1675,11 +1697,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       }
       // Also shift sound files to keep alignment and avoid duplicates
       let soundStart: number | null = null;
-      if (typeof existingEntry.data?.sound_from === 'string') {
-        const n = parseInt(existingEntry.data.sound_from, 10);
-        if (!Number.isNaN(n)) soundStart = n;
+      const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+      if (hasSoundRange) {
+        const upper = parseInt(existingEntry.data.sound_to, 10);
+        if (!Number.isNaN(upper)) soundStart = upper + 1;
       } else if (typeof existingEntry.data?.soundFile === 'string') {
         const n = parseInt(existingEntry.data.soundFile, 10);
+        if (!Number.isNaN(n)) soundStart = n;
+      } else if (typeof existingEntry.data?.sound_from === 'string') {
+        const n = parseInt(existingEntry.data.sound_from, 10);
         if (!Number.isNaN(n)) soundStart = n;
       }
       // If target duplicate has blank sound, still shift subsequent sound files starting from the new log's sound number
@@ -1856,22 +1882,30 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     // Shift subsequent sound and camera files for ALL relevant cameras, not just one
     let soundStart = soundFromNumber;
-    if (typeof existingEntry.data?.sound_from === 'string') {
-      const n = parseInt(existingEntry.data.sound_from, 10);
-      if (!Number.isNaN(n)) soundStart = n;
+    const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+    if (hasSoundRange) {
+      const upper = parseInt(existingEntry.data.sound_to, 10);
+      if (!Number.isNaN(upper)) soundStart = upper + 1;
     } else if (typeof existingEntry.data?.soundFile === 'string') {
       const n = parseInt(existingEntry.data.soundFile, 10);
+      if (!Number.isNaN(n)) soundStart = n;
+    } else if (typeof existingEntry.data?.sound_from === 'string') {
+      const n = parseInt(existingEntry.data.sound_from, 10);
       if (!Number.isNaN(n)) soundStart = n;
     }
     updateFileNumbers(projectId, 'soundFile', soundStart, 1);
 
     if (camCount === 1) {
       let camStart = cameraFromNumber;
-      if (typeof existingEntry.data?.camera1_from === 'string') {
-        const n = parseInt(existingEntry.data.camera1_from, 10);
-        if (!Number.isNaN(n)) camStart = n;
+      const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
+      if (hasRangeCam) {
+        const upper = parseInt(existingEntry.data.camera1_to, 10);
+        if (!Number.isNaN(upper)) camStart = upper + 1;
       } else if (typeof existingEntry.data?.cameraFile === 'string') {
         const n = parseInt(existingEntry.data.cameraFile, 10);
+        if (!Number.isNaN(n)) camStart = n;
+      } else if (typeof existingEntry.data?.camera1_from === 'string') {
+        const n = parseInt(existingEntry.data.camera1_from, 10);
         if (!Number.isNaN(n)) camStart = n;
       }
       updateFileNumbers(projectId, 'cameraFile', camStart, 1);
@@ -1881,13 +1915,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
           let camStart = cameraFromNumber;
           const fromKey = `camera${i}_from` as const;
+          const toKey = `camera${i}_to` as const;
           const fromVal = existingEntry.data?.[fromKey];
+          const toVal = existingEntry.data?.[toKey];
           const val = existingEntry.data?.[fieldId];
-          if (typeof fromVal === 'string') {
-            const n = parseInt(fromVal, 10);
-            if (!Number.isNaN(n)) camStart = n;
+          if (typeof fromVal === 'string' && typeof toVal === 'string') {
+            const upper = parseInt(toVal, 10);
+            if (!Number.isNaN(upper)) camStart = upper + 1;
           } else if (typeof val === 'string') {
             const n = parseInt(val, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          } else if (typeof fromVal === 'string') {
+            const n = parseInt(fromVal, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
           updateFileNumbers(projectId, fieldId, camStart, 1);
