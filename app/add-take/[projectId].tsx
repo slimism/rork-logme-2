@@ -2999,15 +2999,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     .filter(field => !coreFieldOrder.includes(field.id) && field.id !== 'soundFile')
     .forEach(field => allFieldIds.push(field.id));
   
-  // Add custom fields
-  customFields.forEach((_, index) => {
-    allFieldIds.push(`custom_${index}`);
-  });
-  
-  // Add notes field last
+  // Add notes field next
   if (notesField) {
     allFieldIds.push('notesForTake');
   }
+
+  // Add custom fields after notes
+  customFields.forEach((_, index) => {
+    allFieldIds.push(`custom_${index}`);
+  });
 
   const styles = createStyles(colors);
 
@@ -3635,6 +3635,17 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                 textAlignVertical="top"
               />
             </View>
+          )}
+
+          {/* Custom Fields (appear under Notes) */}
+          {customFields.map((fieldName, index) => 
+            renderField(
+              {
+                id: `custom_${index}`,
+                label: fieldName,
+              },
+              allFieldIds
+            )
           )}
         </View>
 

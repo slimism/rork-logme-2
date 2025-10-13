@@ -2316,12 +2316,12 @@ The Log cannot be inserted with the current configuration to maintain the loggin
   if (soundFieldEnabled) {
     allFieldIds.push('soundFile');
   }
-  customFields.forEach((_: string, index: number) => {
-    allFieldIds.push(`custom_${index}`);
-  });
   if (notesField) {
     allFieldIds.push('notesForTake');
   }
+  customFields.forEach((_: string, index: number) => {
+    allFieldIds.push(`custom_${index}`);
+  });
 
   return (
     <KeyboardAvoidingView 
@@ -2537,14 +2537,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             .filter((field: FieldType) => !['sceneNumber', 'shotNumber', 'takeNumber'].includes(field.id))
             .map((field: FieldType) => renderField(field, allFieldIds))}
 
+          {notesField && renderField(notesField, allFieldIds)}
+
+          {/* Custom Fields (appear under Notes) */}
           {customFields.map((fieldName: string, index: number) => 
             renderField({
               id: `custom_${index}`,
               label: fieldName
             }, allFieldIds)
           )}
-
-          {notesField && renderField(notesField, allFieldIds)}
         </View>
 
         <View style={styles.sectionContainer}>
