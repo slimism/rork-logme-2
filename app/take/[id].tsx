@@ -1893,7 +1893,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     }
   };
 
-  const handleSaveWithDuplicatePair = (
+  const handleSaveWithDuplicatePair = async (
     existingEntry: any,
     soundFromNumber: number,
     cameraFieldId: string,
@@ -1933,6 +1933,15 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     }
     updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
 
+    const rSound = getRangeFromData(existingEntry.data, 'soundFile');
+    if (rSound) {
+      const exFrom = parseInt(rSound.from, 10);
+      if (soundFromNumber === exFrom) {
+        const newFrom = String(soundFromNumber).padStart(4, '0');
+        await updateLogSheet(existingEntry.id, { ...existingEntry.data, sound_from: newFrom });
+      }
+    }
+
     if (camCount === 1) {
       let camStart = cameraFromNumber;
       if (typeof existingEntry.data?.camera1_from === 'string') {
@@ -1960,6 +1969,21 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           }
           updateFileNumbers(logSheet.projectId, fieldId, camStart, 1);
         }
+      }
+    }
+
+    const rCam = getRangeFromData(existingEntry.data, cameraFieldId);
+    if (rCam) {
+      const exFrom = parseInt(rCam.from, 10);
+      if (cameraFromNumber === exFrom) {
+        const fromKey =
+          cameraFieldId === 'soundFile'
+            ? 'sound_from'
+            : (cameraFieldId === 'cameraFile'
+                ? 'camera1_from'
+                : `camera${cameraFieldId.replace('cameraFile','')}_from`);
+        const newFrom = String(cameraFromNumber).padStart(4, '0');
+        await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom });
       }
     }
 
