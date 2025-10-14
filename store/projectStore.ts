@@ -272,12 +272,19 @@ export const useProjectStore = create<ProjectState>()(
                     let newStart = startNum;
                     let newEnd = endNum;
 
-                    // Special case: Add Before a range
-                    // If inserting at or before the lower bound, expand range downward
-                    if (increment > 0 && fromNumber <= startNum) {
-                      newStart = startNum - increment;
-                      newEnd = endNum; // keep upper bound unchanged
+                    // Special case: Insert Before a range
+                    // When inserting a file that equals the lower bound, update the lower bound to the inserted file number
+                    if (increment > 0 && fromNumber === startNum) {
+                      // Update lower bound to match the inserted file number
+                      newStart = fromNumber;
+                      // Shift upper bound up
+                      newEnd = endNum + increment;
+                    } else if (increment > 0 && fromNumber < startNum) {
+                      // Inserting before the range: shift entire range up
+                      newStart = startNum + increment;
+                      newEnd = endNum + increment;
                     } else {
+                      // Normal case: shift if >= fromNumber
                       newStart = startNum >= fromNumber ? startNum + increment : startNum;
                       newEnd = endNum >= fromNumber ? endNum + increment : endNum;
                     }
@@ -300,25 +307,29 @@ export const useProjectStore = create<ProjectState>()(
               if (fieldId === 'soundFile') {
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
-                if (soundFrom) {
+                if (soundFrom && soundTo) {
                   const sFromNum = parseInt(soundFrom);
-                  if (!isNaN(sFromNum)) {
-                    if (increment > 0 && fromNumber <= sFromNum) {
-                      newData['sound_from'] = String(sFromNum - increment).padStart(4, '0');
+                  const sToNum = parseInt(soundTo);
+                  if (!isNaN(sFromNum) && !isNaN(sToNum)) {
+                    // Special case: Insert Before a range
+                    // When inserting a file that equals the lower bound, update the lower bound to the inserted file number
+                    if (increment > 0 && fromNumber === sFromNum) {
+                      // Update lower bound to match the inserted file number
+                      newData['sound_from'] = String(fromNumber).padStart(4, '0');
+                      // Shift upper bound up
+                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
+                      updated = true;
+                    } else if (increment > 0 && fromNumber < sFromNum) {
+                      // Inserting before the range: shift entire range up
+                      newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
+                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
                       updated = true;
                     } else if (sFromNum >= fromNumber) {
+                      // Normal case: shift if >= fromNumber
                       newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
-                  }
-                }
-                if (soundTo) {
-                  const sToNum = parseInt(soundTo);
-                  if (!isNaN(sToNum)) {
-                    if (increment > 0 && (data['sound_from'] && fromNumber <= parseInt(data['sound_from']))) {
-                      // When expanding downward, keep upper bound unchanged
-                    } else if (sToNum >= fromNumber) {
-                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
+                      if (sToNum >= fromNumber) {
+                        newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
+                      }
                       updated = true;
                     }
                   }
@@ -328,25 +339,29 @@ export const useProjectStore = create<ProjectState>()(
                 const cameraNum = fieldId === 'cameraFile' ? 1 : parseInt(fieldId.replace('cameraFile', '')) || 1;
                 const cameraFrom = data[`camera${cameraNum}_from`];
                 const cameraTo = data[`camera${cameraNum}_to`];
-                if (cameraFrom) {
+                if (cameraFrom && cameraTo) {
                   const cFromNum = parseInt(cameraFrom);
-                  if (!isNaN(cFromNum)) {
-                    if (increment > 0 && fromNumber <= cFromNum) {
-                      newData[`camera${cameraNum}_from`] = String(cFromNum - increment).padStart(4, '0');
+                  const cToNum = parseInt(cameraTo);
+                  if (!isNaN(cFromNum) && !isNaN(cToNum)) {
+                    // Special case: Insert Before a range
+                    // When inserting a file that equals the lower bound, update the lower bound to the inserted file number
+                    if (increment > 0 && fromNumber === cFromNum) {
+                      // Update lower bound to match the inserted file number
+                      newData[`camera${cameraNum}_from`] = String(fromNumber).padStart(4, '0');
+                      // Shift upper bound up
+                      newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
+                      updated = true;
+                    } else if (increment > 0 && fromNumber < cFromNum) {
+                      // Inserting before the range: shift entire range up
+                      newData[`camera${cameraNum}_from`] = String(cFromNum + increment).padStart(4, '0');
+                      newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
                       updated = true;
                     } else if (cFromNum >= fromNumber) {
+                      // Normal case: shift if >= fromNumber
                       newData[`camera${cameraNum}_from`] = String(cFromNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
-                  }
-                }
-                if (cameraTo) {
-                  const cToNum = parseInt(cameraTo);
-                  if (!isNaN(cToNum)) {
-                    if (increment > 0 && (data[`camera${cameraNum}_from`] && fromNumber <= parseInt(data[`camera${cameraNum}_from`]))) {
-                      // When expanding downward, keep upper bound unchanged
-                    } else if (cToNum >= fromNumber) {
-                      newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
+                      if (cToNum >= fromNumber) {
+                        newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
+                      }
                       updated = true;
                     }
                   }
