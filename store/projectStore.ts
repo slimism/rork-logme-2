@@ -269,8 +269,19 @@ export const useProjectStore = create<ProjectState>()(
                   const startNum = parseInt(startStr);
                   const endNum = parseInt(endStr);
                   if (!isNaN(startNum) && !isNaN(endNum)) {
-                    const newStart = startNum >= fromNumber ? startNum + increment : startNum;
-                    const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
+                    let newStart = startNum;
+                    let newEnd = endNum;
+
+                    // Special case: Add Before a range starting at fromNumber + 1
+                    // Expand range downward instead of shifting it forward
+                    if (increment > 0 && startNum === fromNumber + 1) {
+                      newStart = startNum - increment;
+                      newEnd = endNum; // keep upper bound unchanged
+                    } else {
+                      newStart = startNum >= fromNumber ? startNum + increment : startNum;
+                      newEnd = endNum >= fromNumber ? endNum + increment : endNum;
+                    }
+
                     const formatted = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
                     newData[fieldId] = formatted;
                     updated = true;
@@ -290,17 +301,26 @@ export const useProjectStore = create<ProjectState>()(
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (soundFrom) {
-                  const fromNum = parseInt(soundFrom);
-                  if (!isNaN(fromNum) && fromNum >= fromNumber) {
-                    newData['sound_from'] = String(fromNum + increment).padStart(4, '0');
-                    updated = true;
+                  const sFromNum = parseInt(soundFrom);
+                  if (!isNaN(sFromNum)) {
+                    if (increment > 0 && sFromNum === fromNumber + 1) {
+                      newData['sound_from'] = String(sFromNum - increment).padStart(4, '0');
+                      updated = true;
+                    } else if (sFromNum >= fromNumber) {
+                      newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
+                      updated = true;
+                    }
                   }
                 }
                 if (soundTo) {
-                  const toNum = parseInt(soundTo);
-                  if (!isNaN(toNum) && toNum >= fromNumber) {
-                    newData['sound_to'] = String(toNum + increment).padStart(4, '0');
-                    updated = true;
+                  const sToNum = parseInt(soundTo);
+                  if (!isNaN(sToNum)) {
+                    if (increment > 0 && (data['sound_from'] && parseInt(data['sound_from']) === fromNumber + 1)) {
+                      // When expanding downward, keep upper bound unchanged
+                    } else if (sToNum >= fromNumber) {
+                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
+                      updated = true;
+                    }
                   }
                 }
               } else if (fieldId.startsWith('cameraFile')) {
@@ -309,17 +329,26 @@ export const useProjectStore = create<ProjectState>()(
                 const cameraFrom = data[`camera${cameraNum}_from`];
                 const cameraTo = data[`camera${cameraNum}_to`];
                 if (cameraFrom) {
-                  const fromNum = parseInt(cameraFrom);
-                  if (!isNaN(fromNum) && fromNum >= fromNumber) {
-                    newData[`camera${cameraNum}_from`] = String(fromNum + increment).padStart(4, '0');
-                    updated = true;
+                  const cFromNum = parseInt(cameraFrom);
+                  if (!isNaN(cFromNum)) {
+                    if (increment > 0 && cFromNum === fromNumber + 1) {
+                      newData[`camera${cameraNum}_from`] = String(cFromNum - increment).padStart(4, '0');
+                      updated = true;
+                    } else if (cFromNum >= fromNumber) {
+                      newData[`camera${cameraNum}_from`] = String(cFromNum + increment).padStart(4, '0');
+                      updated = true;
+                    }
                   }
                 }
                 if (cameraTo) {
-                  const toNum = parseInt(cameraTo);
-                  if (!isNaN(toNum) && toNum >= fromNumber) {
-                    newData[`camera${cameraNum}_to`] = String(toNum + increment).padStart(4, '0');
-                    updated = true;
+                  const cToNum = parseInt(cameraTo);
+                  if (!isNaN(cToNum)) {
+                    if (increment > 0 && (data[`camera${cameraNum}_from`] && parseInt(data[`camera${cameraNum}_from`]) === fromNumber + 1)) {
+                      // When expanding downward, keep upper bound unchanged
+                    } else if (cToNum >= fromNumber) {
+                      newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
+                      updated = true;
+                    }
                   }
                 }
               }
