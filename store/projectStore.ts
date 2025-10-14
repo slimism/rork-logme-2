@@ -272,9 +272,9 @@ export const useProjectStore = create<ProjectState>()(
                     let newStart = startNum;
                     let newEnd = endNum;
 
-                    // Special case: Add Before a range starting at fromNumber + 1
-                    // Expand range downward instead of shifting it forward
-                    if (increment > 0 && startNum === fromNumber + 1) {
+                    // Special case: Add Before a range
+                    // If inserting at or before the lower bound, expand range downward
+                    if (increment > 0 && fromNumber <= startNum) {
                       newStart = startNum - increment;
                       newEnd = endNum; // keep upper bound unchanged
                     } else {
@@ -303,7 +303,7 @@ export const useProjectStore = create<ProjectState>()(
                 if (soundFrom) {
                   const sFromNum = parseInt(soundFrom);
                   if (!isNaN(sFromNum)) {
-                    if (increment > 0 && sFromNum === fromNumber + 1) {
+                    if (increment > 0 && fromNumber <= sFromNum) {
                       newData['sound_from'] = String(sFromNum - increment).padStart(4, '0');
                       updated = true;
                     } else if (sFromNum >= fromNumber) {
@@ -315,7 +315,7 @@ export const useProjectStore = create<ProjectState>()(
                 if (soundTo) {
                   const sToNum = parseInt(soundTo);
                   if (!isNaN(sToNum)) {
-                    if (increment > 0 && (data['sound_from'] && parseInt(data['sound_from']) === fromNumber + 1)) {
+                    if (increment > 0 && (data['sound_from'] && fromNumber <= parseInt(data['sound_from']))) {
                       // When expanding downward, keep upper bound unchanged
                     } else if (sToNum >= fromNumber) {
                       newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
@@ -331,7 +331,7 @@ export const useProjectStore = create<ProjectState>()(
                 if (cameraFrom) {
                   const cFromNum = parseInt(cameraFrom);
                   if (!isNaN(cFromNum)) {
-                    if (increment > 0 && cFromNum === fromNumber + 1) {
+                    if (increment > 0 && fromNumber <= cFromNum) {
                       newData[`camera${cameraNum}_from`] = String(cFromNum - increment).padStart(4, '0');
                       updated = true;
                     } else if (cFromNum >= fromNumber) {
@@ -343,7 +343,7 @@ export const useProjectStore = create<ProjectState>()(
                 if (cameraTo) {
                   const cToNum = parseInt(cameraTo);
                   if (!isNaN(cToNum)) {
-                    if (increment > 0 && (data[`camera${cameraNum}_from`] && parseInt(data[`camera${cameraNum}_from`]) === fromNumber + 1)) {
+                    if (increment > 0 && (data[`camera${cameraNum}_from`] && fromNumber <= parseInt(data[`camera${cameraNum}_from`]))) {
                       // When expanding downward, keep upper bound unchanged
                     } else if (cToNum >= fromNumber) {
                       newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
