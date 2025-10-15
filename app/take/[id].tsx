@@ -1939,6 +1939,20 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       if (soundFromNumber === exFrom) {
         const newFrom = String(soundFromNumber).padStart(4, '0');
         await updateLogSheet(existingEntry.id, { ...existingEntry.data, sound_from: newFrom });
+        
+        // Update current take's range data if it has a range for sound file
+        if (showRangeMode['soundFile'] && rangeData['soundFile']) {
+          const currentRangeFrom = parseInt(rangeData['soundFile'].from, 10);
+          if (soundFromNumber === currentRangeFrom) {
+            setRangeData(prev => ({
+              ...prev,
+              soundFile: {
+                from: String(soundFromNumber).padStart(4, '0'),
+                to: prev['soundFile']?.to || ''
+              }
+            }));
+          }
+        }
       }
     }
 
@@ -1984,6 +1998,20 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                 : `camera${cameraFieldId.replace('cameraFile','')}_from`);
         const newFrom = String(cameraFromNumber).padStart(4, '0');
         await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom });
+        
+        // Update current take's range data if it has a range for this camera field
+        if (showRangeMode[cameraFieldId] && rangeData[cameraFieldId]) {
+          const currentRangeFrom = parseInt(rangeData[cameraFieldId].from, 10);
+          if (cameraFromNumber === currentRangeFrom) {
+            setRangeData(prev => ({
+              ...prev,
+              [cameraFieldId]: {
+                from: String(cameraFromNumber).padStart(4, '0'),
+                to: prev[cameraFieldId]?.to || ''
+              }
+            }));
+          }
+        }
       }
     }
 
@@ -1996,9 +2024,48 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     }
 
     newLogData = pruneDisabled(newLogData);
+    
+    // Apply range persistence logic (similar to saveNormally)
+    const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+    const finalData: Record<string, any> = { ...newLogData };
+    
+    // Handle sound file range
+    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      finalData['sound_from'] = pad4(rangeData['soundFile'].from);
+      finalData['sound_to'] = pad4(rangeData['soundFile'].to);
+      delete finalData.soundFile;
+    } else {
+      delete finalData['sound_from'];
+      delete finalData['sound_to'];
+    }
+    
+    // Handle camera file ranges
+    if (camCount === 1) {
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
+        finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
+        delete finalData.cameraFile;
+      } else {
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          finalData[`camera${i}_from`] = pad4(rangeData[fieldId].from);
+          finalData[`camera${i}_to`] = pad4(rangeData[fieldId].to);
+          delete finalData[fieldId];
+        } else {
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
+        }
+      }
+    }
+    
     const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
     const updatedData = {
-      ...newLogData,
+      ...finalData,
       classification,
       shotDetails: filteredShotDetails,
       isGoodTake,
