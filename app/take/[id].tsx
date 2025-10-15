@@ -1628,7 +1628,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             }
             return 1;
           })();
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+          if (!disabledFields.has('soundFile')) {
+            if (!disabledFields.has('soundFile')) {
+              if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      }
+            }
+          }
         } else {
           // Target duplicate has blank sound: still shift subsequent sound files.
           // Fallback to the new log's sound number if available.
@@ -1658,7 +1664,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               }
               return 1;
             })();
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            if (!disabledFields.has('soundFile')) {
+            if (!disabledFields.has('soundFile')) {
+              if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      }
+            }
+          }
           }
         }
         if (camCount === 1) {
@@ -1680,7 +1692,11 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               }
               return 1;
             })();
-            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+            if (!disabledFields.has('cameraFile')) {
+              if (!disabledFields.has('cameraFile')) {
+          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+        }
+            }
           }
         } else {
           for (let i = 1; i <= camCount; i++) {
@@ -1707,7 +1723,11 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   }
                   return 1;
                 })();
-                updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                if (!disabledFields.has(fieldId)) {
+                  if (!disabledFields.has(fieldId)) {
+              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+            }
+                }
               }
             }
           }
@@ -1759,7 +1779,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             }
             return 1;
           })();
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+          if (!disabledFields.has('soundFile')) {
+            if (!disabledFields.has('soundFile')) {
+              if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      }
+            }
+          }
         } else {
           // Target duplicate has blank sound: still shift subsequent sound files.
           // Fallback to the new log's sound number if available.
@@ -1789,7 +1815,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               }
               return 1;
             })();
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            if (!disabledFields.has('soundFile')) {
+            if (!disabledFields.has('soundFile')) {
+              if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      }
+            }
+          }
           }
         }
 
@@ -1812,7 +1844,11 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               }
               return 1;
             })();
-            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+            if (!disabledFields.has('cameraFile')) {
+              if (!disabledFields.has('cameraFile')) {
+          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+        }
+            }
           }
         } else {
           for (let i = 1; i <= camCount; i++) {
@@ -1839,7 +1875,11 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   }
                   return 1;
                 })();
-                updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                if (!disabledFields.has(fieldId)) {
+                  if (!disabledFields.has(fieldId)) {
+              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+            }
+                }
               }
             }
           }
@@ -2021,7 +2061,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
         return 1;
       })();
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      }
     }
 
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2066,7 +2108,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           }
           return 1;
         })();
-        updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+        if (!disabledFields.has('cameraFile')) {
+          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -2093,7 +2137,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               }
               return 1;
             })();
-            updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+            if (!disabledFields.has(fieldId)) {
+              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+            }
           }
         }
       }
