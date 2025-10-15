@@ -1619,7 +1619,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
           }
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          const soundDelta = (() => {
+            const r = rangeData['soundFile'];
+            if (showRangeMode['soundFile'] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return 1;
+          })();
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
         } else {
           // Target duplicate has blank sound: still shift subsequent sound files.
           // Fallback to the new log's sound number if available.
@@ -1640,7 +1649,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             }
           }
           if (soundStart != null) {
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+            const soundDelta = (() => {
+              const r = rangeData['soundFile'];
+              if (showRangeMode['soundFile'] && r?.from && r?.to) {
+                const a = parseInt(r.from, 10) || 0;
+                const b = parseInt(r.to, 10) || 0;
+                return Math.abs(b - a) + 1;
+              }
+              return 1;
+            })();
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
           }
         }
         if (camCount === 1) {
@@ -1652,7 +1670,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.cameraFile, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, 1);
+          {
+            const camDelta = (() => {
+              const r = rangeData['cameraFile'];
+              if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+                const a = parseInt(r.from, 10) || 0;
+                const b = parseInt(r.to, 10) || 0;
+                return Math.abs(b - a) + 1;
+              }
+              return 1;
+            })();
+            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+          }
         } else {
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
@@ -1668,7 +1697,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                 const n = parseInt(val, 10);
                 if (!Number.isNaN(n)) camStart = n;
               }
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, 1);
+              {
+                const camDelta = (() => {
+                  const r = rangeData[fieldId];
+                  if (showRangeMode[fieldId] && r?.from && r?.to) {
+                    const a = parseInt(r.from, 10) || 0;
+                    const b = parseInt(r.to, 10) || 0;
+                    return Math.abs(b - a) + 1;
+                  }
+                  return 1;
+                })();
+                updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+              }
             }
           }
         }
@@ -1710,7 +1750,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
           }
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+          const soundDelta = (() => {
+            const r = rangeData['soundFile'];
+            if (showRangeMode['soundFile'] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return 1;
+          })();
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
         } else {
           // Target duplicate has blank sound: still shift subsequent sound files.
           // Fallback to the new log's sound number if available.
@@ -1731,7 +1780,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             }
           }
           if (soundStart != null) {
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+            const soundDelta = (() => {
+              const r = rangeData['soundFile'];
+              if (showRangeMode['soundFile'] && r?.from && r?.to) {
+                const a = parseInt(r.from, 10) || 0;
+                const b = parseInt(r.to, 10) || 0;
+                return Math.abs(b - a) + 1;
+              }
+              return 1;
+            })();
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
           }
         }
 
@@ -1744,7 +1802,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(existingEntry.data.cameraFile, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, 1);
+          {
+            const camDelta = (() => {
+              const r = rangeData['cameraFile'];
+              if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+                const a = parseInt(r.from, 10) || 0;
+                const b = parseInt(r.to, 10) || 0;
+                return Math.abs(b - a) + 1;
+              }
+              return 1;
+            })();
+            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+          }
         } else {
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
@@ -1760,7 +1829,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                 const n = parseInt(val, 10);
                 if (!Number.isNaN(n)) camStart = n;
               }
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, 1);
+              {
+                const camDelta = (() => {
+                  const r = rangeData[fieldId];
+                  if (showRangeMode[fieldId] && r?.from && r?.to) {
+                    const a = parseInt(r.from, 10) || 0;
+                    const b = parseInt(r.to, 10) || 0;
+                    return Math.abs(b - a) + 1;
+                  }
+                  return 1;
+                })();
+                updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+              }
             }
           }
         }
@@ -1931,7 +2011,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       const n = parseInt(existingEntry.data.soundFile, 10);
       if (!Number.isNaN(n)) soundStart = n;
     }
-    updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, 1);
+    {
+      const soundDelta = (() => {
+        const r = rangeData['soundFile'];
+        if (showRangeMode['soundFile'] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
+        return 1;
+      })();
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+    }
 
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
     if (rSound) {
@@ -1965,7 +2056,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         const n = parseInt(existingEntry.data.cameraFile, 10);
         if (!Number.isNaN(n)) camStart = n;
       }
-      updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, 1);
+      {
+        const camDelta = (() => {
+          const r = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+            const a = parseInt(r.from, 10) || 0;
+            const b = parseInt(r.to, 10) || 0;
+            return Math.abs(b - a) + 1;
+          }
+          return 1;
+        })();
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+      }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
@@ -1981,7 +2083,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const n = parseInt(val, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(logSheet.projectId, fieldId, camStart, 1);
+          {
+            const camDelta = (() => {
+              const r = rangeData[fieldId];
+              if (showRangeMode[fieldId] && r?.from && r?.to) {
+                const a = parseInt(r.from, 10) || 0;
+                const b = parseInt(r.to, 10) || 0;
+                return Math.abs(b - a) + 1;
+              }
+              return 1;
+            })();
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+          }
         }
       }
     }
