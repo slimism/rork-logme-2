@@ -1935,8 +1935,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       const applyRangePersistence = (data: Record<string, any>) => {
         const out: Record<string, any> = { ...data };
         const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
-          const r = rangeData[fieldId];
           const inRange = showRangeMode[fieldId] === true;
+          const r = rangeData[fieldId];
           if (!enabled) {
             if (fieldId === 'soundFile') {
               delete out.soundFile;
