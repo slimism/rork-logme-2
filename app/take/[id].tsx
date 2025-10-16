@@ -2187,63 +2187,54 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     // Apply range persistence logic with current rangeData values
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
     
-    // Create updated rangeData that includes the boundary updates
-    const updatedRangeData = { ...rangeData };
-    
-    // Update sound range if it was a lower bound conflict
-    const existingSoundRange = getRangeFromData(existingEntry.data, 'soundFile');
-    if (existingSoundRange) {
-      const exSoundFrom = parseInt(existingSoundRange.from, 10);
-      if (soundFromNumber === exSoundFrom && showRangeMode['soundFile'] && updatedRangeData['soundFile']) {
-        updatedRangeData['soundFile'] = {
-          from: String(soundFromNumber).padStart(4, '0'),
-          to: updatedRangeData['soundFile'].to
-        };
-      }
-    }
-    
-    // Update camera range if it was a lower bound conflict
-    const existingCamRange = getRangeFromData(existingEntry.data, cameraFieldId);
-    if (existingCamRange) {
-      const exCamFrom = parseInt(existingCamRange.from, 10);
-      if (cameraFromNumber === exCamFrom && showRangeMode[cameraFieldId] && updatedRangeData[cameraFieldId]) {
-        updatedRangeData[cameraFieldId] = {
-          from: String(cameraFromNumber).padStart(4, '0'),
-          to: updatedRangeData[cameraFieldId].to
-        };
-      }
-    }
-    
     const finalData: Record<string, any> = { ...newLogData };
     
-    // Handle sound file range with updated data
-    if (showRangeMode['soundFile'] && updatedRangeData['soundFile']?.from && updatedRangeData['soundFile']?.to) {
-      finalData['sound_from'] = pad4(updatedRangeData['soundFile'].from);
-      finalData['sound_to'] = pad4(updatedRangeData['soundFile'].to);
+    // Handle sound file range - use current rangeData state (user's edited values)
+    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      finalData['sound_from'] = pad4(rangeData['soundFile'].from);
+      finalData['sound_to'] = pad4(rangeData['soundFile'].to);
       delete finalData.soundFile;
+    } else if (!disabledFields.has('soundFile')) {
+      // Single value mode
+      delete finalData['sound_from'];
+      delete finalData['sound_to'];
     } else {
+      // Disabled field - remove all
+      delete finalData.soundFile;
       delete finalData['sound_from'];
       delete finalData['sound_to'];
     }
     
-    // Handle camera file ranges with updated data
+    // Handle camera file ranges - use current rangeData state (user's edited values)
     if (camCount === 1) {
-      if (showRangeMode['cameraFile'] && updatedRangeData['cameraFile']?.from && updatedRangeData['cameraFile']?.to) {
-        finalData['camera1_from'] = pad4(updatedRangeData['cameraFile'].from);
-        finalData['camera1_to'] = pad4(updatedRangeData['cameraFile'].to);
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
+        finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
         delete finalData.cameraFile;
+      } else if (!disabledFields.has('cameraFile')) {
+        // Single value mode
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
       } else {
+        // Disabled field - remove all
+        delete finalData.cameraFile;
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        if (showRangeMode[fieldId] && updatedRangeData[fieldId]?.from && updatedRangeData[fieldId]?.to) {
-          finalData[`camera${i}_from`] = pad4(updatedRangeData[fieldId].from);
-          finalData[`camera${i}_to`] = pad4(updatedRangeData[fieldId].to);
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          finalData[`camera${i}_from`] = pad4(rangeData[fieldId].from);
+          finalData[`camera${i}_to`] = pad4(rangeData[fieldId].to);
           delete finalData[fieldId];
+        } else if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
+          // Single value mode
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
         } else {
+          // Disabled field or REC off - remove all
+          delete finalData[fieldId];
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         }
