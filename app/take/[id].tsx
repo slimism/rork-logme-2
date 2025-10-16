@@ -2184,25 +2184,53 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     newLogData = pruneDisabled(newLogData);
     
-    // Apply range persistence logic (similar to saveNormally)
+    // Apply range persistence logic with current rangeData values
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+    
+    // Create updated rangeData that includes the boundary updates
+    const updatedRangeData = { ...rangeData };
+    
+    // Update sound range if it was a lower bound conflict
+    const existingSoundRange = getRangeFromData(existingEntry.data, 'soundFile');
+    if (existingSoundRange) {
+      const exSoundFrom = parseInt(existingSoundRange.from, 10);
+      if (soundFromNumber === exSoundFrom && showRangeMode['soundFile'] && updatedRangeData['soundFile']) {
+        updatedRangeData['soundFile'] = {
+          from: String(soundFromNumber).padStart(4, '0'),
+          to: updatedRangeData['soundFile'].to
+        };
+      }
+    }
+    
+    // Update camera range if it was a lower bound conflict
+    const existingCamRange = getRangeFromData(existingEntry.data, cameraFieldId);
+    if (existingCamRange) {
+      const exCamFrom = parseInt(existingCamRange.from, 10);
+      if (cameraFromNumber === exCamFrom && showRangeMode[cameraFieldId] && updatedRangeData[cameraFieldId]) {
+        updatedRangeData[cameraFieldId] = {
+          from: String(cameraFromNumber).padStart(4, '0'),
+          to: updatedRangeData[cameraFieldId].to
+        };
+      }
+    }
+    
     const finalData: Record<string, any> = { ...newLogData };
     
-    // Handle sound file range
-    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
-      finalData['sound_from'] = pad4(rangeData['soundFile'].from);
-      finalData['sound_to'] = pad4(rangeData['soundFile'].to);
+    // Handle sound file range with updated data
+    if (showRangeMode['soundFile'] && updatedRangeData['soundFile']?.from && updatedRangeData['soundFile']?.to) {
+      finalData['sound_from'] = pad4(updatedRangeData['soundFile'].from);
+      finalData['sound_to'] = pad4(updatedRangeData['soundFile'].to);
       delete finalData.soundFile;
     } else {
       delete finalData['sound_from'];
       delete finalData['sound_to'];
     }
     
-    // Handle camera file ranges
+    // Handle camera file ranges with updated data
     if (camCount === 1) {
-      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-        finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
-        finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
+      if (showRangeMode['cameraFile'] && updatedRangeData['cameraFile']?.from && updatedRangeData['cameraFile']?.to) {
+        finalData['camera1_from'] = pad4(updatedRangeData['cameraFile'].from);
+        finalData['camera1_to'] = pad4(updatedRangeData['cameraFile'].to);
         delete finalData.cameraFile;
       } else {
         delete finalData['camera1_from'];
@@ -2211,9 +2239,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-          finalData[`camera${i}_from`] = pad4(rangeData[fieldId].from);
-          finalData[`camera${i}_to`] = pad4(rangeData[fieldId].to);
+        if (showRangeMode[fieldId] && updatedRangeData[fieldId]?.from && updatedRangeData[fieldId]?.to) {
+          finalData[`camera${i}_from`] = pad4(updatedRangeData[fieldId].from);
+          finalData[`camera${i}_to`] = pad4(updatedRangeData[fieldId].to);
           delete finalData[fieldId];
         } else {
           delete finalData[`camera${i}_from`];
