@@ -1490,7 +1490,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     return cleaned;
   };
 
-  const handleSaveWithDuplicateHandling = async (position: 'before', duplicateInfo: any) => {
+  const handleSaveWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
@@ -1886,26 +1886,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         }
       }
 
-      // After shifting, if inserting equals the lower bound of a range, update that range's lower bound on the target entry
-      if (duplicateInfo.type === 'file') {
-        const r = getRangeFromData(existingEntry.data, duplicateInfo.fieldId);
-        if (r) {
-          const exFrom = parseInt(r.from, 10);
-          if (duplicateInfo.number === exFrom) {
-            const fromKey =
-              duplicateInfo.fieldId === 'soundFile'
-                ? 'sound_from'
-                : (duplicateInfo.fieldId === 'cameraFile'
-                    ? 'camera1_from'
-                    : `camera${duplicateInfo.fieldId.replace('cameraFile','')}_from`);
-            const newFrom = String(duplicateInfo.number).padStart(4, '0');
-            await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom });
-          }
-        }
-      }
-
-      // Build final data using current rangeData and respecting disabled fields (e.g., Waste sound off)
-      let finalTakeData = { ...newLogData } as Record<string, any>;
+      let finalTakeData = { ...newLogData };
       if (camCount > 1) {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
@@ -1917,44 +1898,6 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       }
 
       finalTakeData = pruneDisabled(finalTakeData);
-
-      const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
-      // Persist ranges from current UI state
-      if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to && !disabledFields.has('soundFile')) {
-        finalTakeData['sound_from'] = pad4(rangeData['soundFile'].from);
-        finalTakeData['sound_to'] = pad4(rangeData['soundFile'].to);
-        delete finalTakeData.soundFile;
-      } else {
-        delete finalTakeData['sound_from'];
-        delete finalTakeData['sound_to'];
-        if (disabledFields.has('soundFile')) delete finalTakeData.soundFile;
-      }
-
-      if (camCount === 1) {
-        if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to && !disabledFields.has('cameraFile')) {
-          finalTakeData['camera1_from'] = pad4(rangeData['cameraFile'].from);
-          finalTakeData['camera1_to'] = pad4(rangeData['cameraFile'].to);
-          delete finalTakeData.cameraFile;
-        } else {
-          delete finalTakeData['camera1_from'];
-          delete finalTakeData['camera1_to'];
-          if (disabledFields.has('cameraFile')) delete finalTakeData.cameraFile;
-        }
-      } else {
-        for (let i = 1; i <= camCount; i++) {
-          const fid = `cameraFile${i}`;
-          if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to && !disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
-            finalTakeData[`camera${i}_from`] = pad4(rangeData[fid].from);
-            finalTakeData[`camera${i}_to`] = pad4(rangeData[fid].to);
-            delete finalTakeData[fid];
-          } else {
-            delete finalTakeData[`camera${i}_from`];
-            delete finalTakeData[`camera${i}_to`];
-            if (disabledFields.has(fid) || !(cameraRecState[fid] ?? true)) delete finalTakeData[fid];
-          }
-        }
-      }
-
       const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
         ? shotDetails.filter(d => d !== 'MOS')
         : shotDetails;
