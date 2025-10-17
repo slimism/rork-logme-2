@@ -1636,11 +1636,12 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             if (targetRange) {
               const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
               const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
-              updateLogSheet(existingEntry.id, {
-                ...existingEntry.data,
-                sound_from: newFrom,
-                sound_to: newTo
-              });
+              const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+              const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+              if (hadInline) {
+                updated.soundFile = `${newFrom}-${newTo}`;
+              }
+              updateLogSheet(existingEntry.id, updated);
             }
           }
         } else {
@@ -1811,11 +1812,12 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             if (targetRange) {
               const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
               const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
-              updateLogSheet(existingEntry.id, {
-                ...existingEntry.data,
-                sound_from: newFrom,
-                sound_to: newTo
-              });
+              const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+              const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+              if (hadInline) {
+                updated.soundFile = `${newFrom}-${newTo}`;
+              }
+              updateLogSheet(existingEntry.id, updated);
             }
           }
         } else {
@@ -2125,7 +2127,12 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       if (!disabledFields.has('soundFile')) {
         const newFrom = String(exFrom + delta).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
-        await updateLogSheet(existingEntry.id, { ...existingEntry.data, sound_from: newFrom, sound_to: newTo });
+        const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+        const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+        if (hadInline) {
+          updated.soundFile = `${newFrom}-${newTo}`;
+        }
+        await updateLogSheet(existingEntry.id, updated);
       }
     }
 
@@ -2201,7 +2208,13 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       } else if (!disabledFields.has(cameraFieldId)) {
         const newFrom = String(exFrom + delta).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
-        await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom, [toKey]: newTo });
+        const updated: Record<string, any> = { ...existingEntry.data, [fromKey]: newFrom, [toKey]: newTo };
+        const inlineField = cameraFieldId;
+        const hadInline = typeof existingEntry.data?.[inlineField] === 'string' && isRangeString(existingEntry.data[inlineField]);
+        if (hadInline) {
+          (updated as any)[inlineField] = `${newFrom}-${newTo}`;
+        }
+        await updateLogSheet(existingEntry.id, updated);
       }
     }
 
