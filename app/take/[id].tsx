@@ -2116,24 +2116,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
     if (rSound) {
-      const exFrom = parseInt(rSound.from, 10);
-      if (soundFromNumber === exFrom) {
-        const newFrom = String(soundFromNumber).padStart(4, '0');
-        await updateLogSheet(existingEntry.id, { ...existingEntry.data, sound_from: newFrom });
-        
-        // Update current take's range data if it has a range for sound file
-        if (showRangeMode['soundFile'] && rangeData['soundFile']) {
-          const currentRangeFrom = parseInt(rangeData['soundFile'].from, 10);
-          if (soundFromNumber === currentRangeFrom) {
-            setRangeData(prev => ({
-              ...prev,
-              soundFile: {
-                from: String(soundFromNumber).padStart(4, '0'),
-                to: prev['soundFile']?.to || ''
-              }
-            }));
-          }
-        }
+      const exFrom = parseInt(rSound.from, 10) || 0;
+      const exTo = parseInt(rSound.to, 10) || 0;
+      const r = rangeData['soundFile'];
+      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
+        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
+        : 1;
+      if (!disabledFields.has('soundFile')) {
+        const newFrom = String(exFrom + delta).padStart(4, '0');
+        const newTo = String(exTo + delta).padStart(4, '0');
+        await updateLogSheet(existingEntry.id, { ...existingEntry.data, sound_from: newFrom, sound_to: newTo });
       }
     }
 
@@ -2195,30 +2187,21 @@ The Log cannot be inserted with the current configuration to maintain the loggin
 
     const rCam = getRangeFromData(existingEntry.data, cameraFieldId);
     if (rCam) {
-      const exFrom = parseInt(rCam.from, 10);
-      if (cameraFromNumber === exFrom) {
-        const fromKey =
-          cameraFieldId === 'soundFile'
-            ? 'sound_from'
-            : (cameraFieldId === 'cameraFile'
-                ? 'camera1_from'
-                : `camera${cameraFieldId.replace('cameraFile','')}_from`);
-        const newFrom = String(cameraFromNumber).padStart(4, '0');
-        await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom });
-        
-        // Update current take's range data if it has a range for this camera field
-        if (showRangeMode[cameraFieldId] && rangeData[cameraFieldId]) {
-          const currentRangeFrom = parseInt(rangeData[cameraFieldId].from, 10);
-          if (cameraFromNumber === currentRangeFrom) {
-            setRangeData(prev => ({
-              ...prev,
-              [cameraFieldId]: {
-                from: String(cameraFromNumber).padStart(4, '0'),
-                to: prev[cameraFieldId]?.to || ''
-              }
-            }));
-          }
-        }
+      const exFrom = parseInt(rCam.from, 10) || 0;
+      const exTo = parseInt(rCam.to, 10) || 0;
+      const r = rangeData[cameraFieldId];
+      const delta = (showRangeMode[cameraFieldId] && r?.from && r?.to)
+        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
+        : 1;
+      const idxKey = cameraFieldId === 'cameraFile' ? '1' : cameraFieldId.replace('cameraFile','');
+      const fromKey = cameraFieldId === 'soundFile' ? 'sound_from' : `camera${idxKey}_from`;
+      const toKey = cameraFieldId === 'soundFile' ? 'sound_to' : `camera${idxKey}_to`;
+      if (cameraFieldId === 'soundFile') {
+        // sound handled above
+      } else if (!disabledFields.has(cameraFieldId)) {
+        const newFrom = String(exFrom + delta).padStart(4, '0');
+        const newTo = String(exTo + delta).padStart(4, '0');
+        await updateLogSheet(existingEntry.id, { ...existingEntry.data, [fromKey]: newFrom, [toKey]: newTo });
       }
     }
 
