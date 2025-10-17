@@ -1629,10 +1629,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             return 1;
           })();
           if (!disabledFields.has('soundFile')) {
-            if (!disabledFields.has('soundFile')) {
-              if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-      }
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            
+            // If target has a range, increment both boundaries
+            const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+            if (targetRange) {
+              const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
+              const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+              updateLogSheet(existingEntry.id, {
+                ...existingEntry.data,
+                sound_from: newFrom,
+                sound_to: newTo
+              });
             }
           }
         } else {
@@ -1665,12 +1673,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-            if (!disabledFields.has('soundFile')) {
-              if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-      }
+              updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
             }
-          }
           }
         }
         if (camCount === 1) {
@@ -1693,9 +1697,19 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              if (!disabledFields.has('cameraFile')) {
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
-        }
+              updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+              
+              // If target has a range, increment both boundaries
+              const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+              if (targetRange) {
+                const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
+                const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                updateLogSheet(existingEntry.id, {
+                  ...existingEntry.data,
+                  camera1_from: newFrom,
+                  camera1_to: newTo
+                });
+              }
             }
           }
         } else {
@@ -1724,9 +1738,19 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  if (!disabledFields.has(fieldId)) {
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
-            }
+                  updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                  
+                  // If target has a range, increment both boundaries
+                  const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                  if (targetRange) {
+                    const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
+                    const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                    updateLogSheet(existingEntry.id, {
+                      ...existingEntry.data,
+                      [`camera${i}_from`]: newFrom,
+                      [`camera${i}_to`]: newTo
+                    });
+                  }
                 }
               }
             }
@@ -1780,10 +1804,18 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             return 1;
           })();
           if (!disabledFields.has('soundFile')) {
-            if (!disabledFields.has('soundFile')) {
-              if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-      }
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            
+            // If target has a range, increment both boundaries
+            const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+            if (targetRange) {
+              const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
+              const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+              updateLogSheet(existingEntry.id, {
+                ...existingEntry.data,
+                sound_from: newFrom,
+                sound_to: newTo
+              });
             }
           }
         } else {
@@ -1816,12 +1848,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-            if (!disabledFields.has('soundFile')) {
-              if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-      }
+              updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
             }
-          }
           }
         }
 
@@ -1845,9 +1873,19 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              if (!disabledFields.has('cameraFile')) {
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
-        }
+              updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+              
+              // If target has a range, increment both boundaries
+              const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+              if (targetRange) {
+                const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
+                const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                updateLogSheet(existingEntry.id, {
+                  ...existingEntry.data,
+                  camera1_from: newFrom,
+                  camera1_to: newTo
+                });
+              }
             }
           }
         } else {
@@ -1876,9 +1914,19 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  if (!disabledFields.has(fieldId)) {
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
-            }
+                  updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                  
+                  // If target has a range, increment both boundaries
+                  const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                  if (targetRange) {
+                    const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
+                    const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                    updateLogSheet(existingEntry.id, {
+                      ...existingEntry.data,
+                      [`camera${i}_from`]: newFrom,
+                      [`camera${i}_to`]: newTo
+                    });
+                  }
                 }
               }
             }
