@@ -1705,11 +1705,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               if (targetRange) {
                 const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
                 const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
-                updateLogSheet(existingEntry.id, {
+                const updated: Record<string, any> = {
                   ...existingEntry.data,
                   camera1_from: newFrom,
                   camera1_to: newTo
-                });
+                };
+                const hadInline = typeof existingEntry.data?.cameraFile === 'string' && isRangeString(existingEntry.data.cameraFile);
+                if (hadInline) {
+                  updated.cameraFile = `${newFrom}-${newTo}`;
+                }
+                updateLogSheet(existingEntry.id, updated);
               }
             }
           }
@@ -1746,11 +1751,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   if (targetRange) {
                     const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
                     const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
-                    updateLogSheet(existingEntry.id, {
+                    const updated: Record<string, any> = {
                       ...existingEntry.data,
                       [`camera${i}_from`]: newFrom,
                       [`camera${i}_to`]: newTo
-                    });
+                    };
+                    const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+                    if (hadInline) {
+                      updated[fieldId] = `${newFrom}-${newTo}`;
+                    }
+                    updateLogSheet(existingEntry.id, updated);
                   }
                 }
               }
@@ -1882,11 +1892,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
               if (targetRange) {
                 const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
                 const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
-                updateLogSheet(existingEntry.id, {
+                const updated: Record<string, any> = {
                   ...existingEntry.data,
                   camera1_from: newFrom,
                   camera1_to: newTo
-                });
+                };
+                const hadInline = typeof existingEntry.data?.cameraFile === 'string' && isRangeString(existingEntry.data.cameraFile);
+                if (hadInline) {
+                  updated.cameraFile = `${newFrom}-${newTo}`;
+                }
+                updateLogSheet(existingEntry.id, updated);
               }
             }
           }
@@ -1923,11 +1938,16 @@ The Log cannot be inserted with the current configuration to maintain the loggin
                   if (targetRange) {
                     const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
                     const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
-                    updateLogSheet(existingEntry.id, {
+                    const updated: Record<string, any> = {
                       ...existingEntry.data,
                       [`camera${i}_from`]: newFrom,
                       [`camera${i}_to`]: newTo
-                    });
+                    };
+                    const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+                    if (hadInline) {
+                      updated[fieldId] = `${newFrom}-${newTo}`;
+                    }
+                    updateLogSheet(existingEntry.id, updated);
                   }
                 }
               }
