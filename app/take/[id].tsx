@@ -1895,11 +1895,14 @@ This would break the logging logic and create inconsistencies in the file number
           if (!disabledFields.has('soundFile')) {
             { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             
-            // If target has a range, increment both boundaries
+            // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
             if (targetRange) {
-              const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
-              const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+              const bounds = getInsertedBounds('soundFile');
+              const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+              const oldToNum = parseInt(targetRange.to, 10) || 0;
+              const newFrom = String(insertedUpper + 1).padStart(4, '0');
+              const newTo = String(oldToNum + soundDelta).padStart(4, '0');
               const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
               const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
               if (hadInline) {
@@ -2104,11 +2107,14 @@ This would break the logging logic and create inconsistencies in the file number
           if (!disabledFields.has('soundFile')) {
             { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             
-            // If target has a range, increment both boundaries
+            // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
             if (targetRange) {
-              const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
-              const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+              const bounds = getInsertedBounds('soundFile');
+              const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+              const oldToNum = parseInt(targetRange.to, 10) || 0;
+              const newFrom = String(insertedUpper + 1).padStart(4, '0');
+              const newTo = String(oldToNum + soundDelta).padStart(4, '0');
               const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
               const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
               if (hadInline) {
