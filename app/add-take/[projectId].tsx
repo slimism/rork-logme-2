@@ -1600,8 +1600,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         let soundStart = targetFileNumber;
         const hasRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
         if (hasRange) {
-          const upper = parseInt(existingEntry.data.sound_to, 10);
-          if (!Number.isNaN(upper)) soundStart = upper + 1;
+          const lower = parseInt(existingEntry.data.sound_from, 10);
+          if (!Number.isNaN(lower)) soundStart = lower;
         } else if (typeof existingEntry.data?.soundFile === 'string') {
           const n = parseInt(existingEntry.data.soundFile, 10);
           if (!Number.isNaN(n)) soundStart = n;
@@ -1616,8 +1616,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
         let camStart: number | null = null;
         const hasRange = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
         if (hasRange) {
-          const upper = parseInt(existingEntry.data.camera1_to, 10);
-          if (!Number.isNaN(upper)) camStart = upper + 1;
+          const lower = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(lower)) camStart = lower;
         } else if (typeof existingEntry.data?.cameraFile === 'string') {
           const n = parseInt(existingEntry.data.cameraFile, 10);
           if (!Number.isNaN(n)) camStart = n;
@@ -1682,8 +1682,8 @@ The Log cannot be inserted with the current configuration to maintain the loggin
             const fromVal = existingEntry.data?.[fromKey];
             const toVal = existingEntry.data?.[toKey];
             if (typeof fromVal === 'string' && typeof toVal === 'string') {
-              const upper = parseInt(toVal, 10);
-              if (!Number.isNaN(upper)) camStart = upper + 1;
+              const lower = parseInt(fromVal, 10);
+              if (!Number.isNaN(lower)) camStart = lower;
             } else if (typeof val === 'string') {
               const n = parseInt(val, 10);
               if (!Number.isNaN(n)) camStart = n;
