@@ -1637,7 +1637,7 @@ This would break the logging logic and create inconsistencies in the file number
         return 1;
       })();
       if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+        { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -1893,7 +1893,7 @@ This would break the logging logic and create inconsistencies in the file number
             return 1;
           })();
           if (!disabledFields.has('soundFile')) {
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             
             // If target has a range, increment both boundaries
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -1943,7 +1943,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             }
           }
         }
@@ -1971,7 +1971,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -2024,7 +2024,7 @@ This would break the logging logic and create inconsistencies in the file number
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
@@ -2102,7 +2102,7 @@ This would break the logging logic and create inconsistencies in the file number
             return 1;
           })();
           if (!disabledFields.has('soundFile')) {
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+            { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             
             // If target has a range, increment both boundaries
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2152,7 +2152,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             }
           }
         }
@@ -2181,7 +2181,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -2234,7 +2234,7 @@ This would break the logging logic and create inconsistencies in the file number
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
@@ -2438,7 +2438,7 @@ This would break the logging logic and create inconsistencies in the file number
         return 1;
       })();
       if (!disabledFields.has('soundFile')) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+        { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
       }
     }
 
@@ -2496,7 +2496,7 @@ This would break the logging logic and create inconsistencies in the file number
           return 1;
         })();
         if (!disabledFields.has('cameraFile')) {
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+          { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
         }
       }
     } else {
@@ -2529,7 +2529,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has(fieldId)) {
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+              { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
             }
           }
         }
