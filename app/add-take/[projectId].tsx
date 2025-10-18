@@ -2113,6 +2113,14 @@ This would break the logging logic and create inconsistencies in the file number
         }
         updatedData.takeNumber = String(tTake + 1);
         updateLogSheet(existingEntry.id, updatedData);
+      } else if (!targetRange) {
+        const targetSingle = typeof existingEntry.data?.soundFile === 'string' && !existingEntry.data.soundFile.includes('-');
+        if (targetSingle && soundDelta > 0) {
+          const current = parseInt(existingEntry.data.soundFile as string, 10) || 0;
+          const newVal = String(current + soundDelta).padStart(4, '0');
+          const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
+          updateLogSheet(existingEntry.id, updatedData);
+        }
       }
     }
 
