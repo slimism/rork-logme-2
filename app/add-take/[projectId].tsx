@@ -1864,7 +1864,6 @@ This would break the logging logic and create inconsistencies in the file number
       const newEntrySoundBlank = disabledFields.has('soundFile') || !(takeData.soundFile?.trim());
       
       if (!newEntrySoundBlank) {
-        // Check if target duplicate has sound file (not blank)
         const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || 
                                    !!(typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim());
         
@@ -1882,7 +1881,6 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) soundStart = n;
           }
           if (soundStart != null) {
-            // Calculate increment based on new log's range size
             let soundIncrement = 1;
             const newLogRange = rangeData['soundFile'];
             if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
@@ -1891,6 +1889,29 @@ This would break the logging logic and create inconsistencies in the file number
               soundIncrement = Math.abs(newTo - newFrom) + 1;
             }
             updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
+            const targetRangeLocal = getRangeFromData(existingEntry.data, 'soundFile');
+            if (!targetRangeLocal) {
+              const targetSingleStr = existingEntry.data?.soundFile as string | undefined;
+              if (typeof targetSingleStr === 'string') {
+                const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+                  const insFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+                  const insTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+                  const min = Math.min(insFrom, insTo);
+                  const max = Math.max(insFrom, insTo);
+                  if (targetSingleNum >= min && targetSingleNum <= max) {
+                    const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0') };
+                    updateLogSheet(existingEntry.id, updatedData);
+                  }
+                } else if (takeData.soundFile) {
+                  const newSingle = parseInt(String(takeData.soundFile), 10) || 0;
+                  if (newSingle === targetSingleNum) {
+                    const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0') };
+                    updateLogSheet(existingEntry.id, updatedData);
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2177,6 +2198,31 @@ This would break the logging logic and create inconsistencies in the file number
           }
           updatedData.takeNumber = String(tTake + 1);
           updateLogSheet(existingEntry.id, updatedData);
+        }
+        // Ensure target single sound is bumped when inserting before a camera-range conflict
+        const newEntryHasSound = !!takeData.soundFile && String(takeData.soundFile).trim().length > 0;
+        const targetHasSingleSound = typeof existingEntry.data?.soundFile === 'string' && !String(existingEntry.data.soundFile).includes('-');
+        if (newEntryHasSound && targetHasSingleSound) {
+          const insRange = showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to ? { ...rangeData['soundFile'] } : null;
+          const targetValNum = parseInt(existingEntry.data.soundFile as string, 10) || 0;
+          let shouldBump = false;
+          let bumpBy = 1;
+          if (insRange) {
+            const a = parseInt(insRange.from, 10) || 0;
+            const b = parseInt(insRange.to, 10) || 0;
+            const min = Math.min(a, b);
+            const max = Math.max(a, b);
+            bumpBy = Math.abs(b - a) + 1;
+            shouldBump = targetValNum >= min && targetValNum <= max;
+          } else {
+            const newValNum = parseInt(String(takeData.soundFile), 10) || 0;
+            shouldBump = newValNum === targetValNum;
+            bumpBy = 1;
+          }
+          if (shouldBump && bumpBy > 0) {
+            const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: String(targetValNum + bumpBy).padStart(4, '0') };
+            updateLogSheet(existingEntry.id, updatedData);
+          }
         }
       }
     } else {
