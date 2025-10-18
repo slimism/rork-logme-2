@@ -1652,6 +1652,7 @@ This would break the logging logic and create inconsistencies in the file number
           if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
             updatedData.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
           }
+          updatedData.takeNumber = String(tTake + 1);
           updateLogSheet(existingEntry.id, updatedData);
         }
       }
@@ -1792,6 +1793,7 @@ This would break the logging logic and create inconsistencies in the file number
             if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')) {
               updatedData['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
             }
+            updatedData.takeNumber = String(tTake + 1);
             updateLogSheet(existingEntry.id, updatedData);
           }
         }
@@ -1852,6 +1854,7 @@ This would break the logging logic and create inconsistencies in the file number
               if (typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-')) {
                 updatedData[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
               }
+              updatedData.takeNumber = String(tTake + 1);
               updateLogSheet(existingEntry.id, updatedData);
             }
           }
@@ -2108,6 +2111,7 @@ This would break the logging logic and create inconsistencies in the file number
         if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
           updatedData.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
         }
+        updatedData.takeNumber = String(tTake + 1);
         updateLogSheet(existingEntry.id, updatedData);
       }
     }
@@ -2163,6 +2167,7 @@ This would break the logging logic and create inconsistencies in the file number
           if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')) {
             updatedData['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
           }
+          updatedData.takeNumber = String(tTake + 1);
           updateLogSheet(existingEntry.id, updatedData);
         }
       }
