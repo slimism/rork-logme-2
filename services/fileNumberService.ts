@@ -115,24 +115,43 @@ export class FileNumberService {
   ): void {
     if (disabledFields.has(fieldId)) return;
 
-    const fileStart = this.getFileStartNumber(existingEntry, fieldId, targetTakeNumber);
     const delta = this.calculateRangeDelta(rangeData, fieldId, showRangeMode);
 
-    this.updateFileNumbers(projectId, fieldId, fileStart, delta);
+    const insertedRange = showRangeMode[fieldId] && rangeData[fieldId]
+      ? {
+          from: parseInt(rangeData[fieldId].from, 10) || 0,
+          to: parseInt(rangeData[fieldId].to, 10) || 0,
+        }
+      : null;
 
-    // If target has a range, increment both boundaries
+    const insertedMin = insertedRange ? Math.min(insertedRange.from, insertedRange.to) : undefined;
+    const insertedMax = insertedRange ? Math.max(insertedRange.from, insertedRange.to) : undefined;
+
     const targetRange = this.getRangeFromData(existingEntry.data, fieldId);
+
+    // Determine where to start shifting subsequent logs to avoid double-shifting the target
+    const subsequentStart = targetRange
+      ? (parseInt(targetRange.to, 10) + 1)
+      : this.getFileStartNumber(existingEntry, fieldId, targetTakeNumber);
+
+    this.updateFileNumbers(projectId, fieldId, subsequentStart, delta);
+
+    // If target has a range, adjust it hugging the inserted range: 
+    // new lower = insertedUpper + 1, new upper = oldUpper + delta
     if (targetRange) {
-      const newFrom = String(parseInt(targetRange.from, 10) + delta).padStart(4, '0');
-      const newTo = String(parseInt(targetRange.to, 10) + delta).padStart(4, '0');
-      
-      let updated: Record<string, any> = { ...existingEntry.data };
+      const oldToNum = parseInt(targetRange.to, 10) || 0;
+      const newFromNum = (insertedMax ?? (parseInt(targetRange.from, 10) || 0)) + 1;
+      const newToNum = oldToNum + delta;
+
+      const newFrom = String(newFromNum).padStart(4, '0');
+      const newTo = String(newToNum).padStart(4, '0');
+
+      const updated: Record<string, any> = { ...existingEntry.data };
 
       if (fieldId === 'soundFile') {
         updated.sound_from = newFrom;
         updated.sound_to = newTo;
-        const hadInline = typeof existingEntry.data?.soundFile === 'string' && 
-                         this.isRangeString(existingEntry.data.soundFile);
+        const hadInline = typeof existingEntry.data?.soundFile === 'string' && this.isRangeString(existingEntry.data.soundFile);
         if (hadInline) {
           updated.soundFile = `${newFrom}-${newTo}`;
         }
@@ -140,8 +159,7 @@ export class FileNumberService {
         const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', '')) || 1);
         updated[`camera${cameraNum}_from`] = newFrom;
         updated[`camera${cameraNum}_to`] = newTo;
-        const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && 
-                         this.isRangeString(existingEntry.data[fieldId]);
+        const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && this.isRangeString(existingEntry.data[fieldId]);
         if (hadInline) {
           updated[fieldId] = `${newFrom}-${newTo}`;
         }
