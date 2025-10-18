@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import { FileText, ShoppingBag, Clock } from "lucide-react-native";
