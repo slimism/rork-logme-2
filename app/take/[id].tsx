@@ -653,6 +653,22 @@ export default function EditTakeScreen() {
     return numbers;
   };
 
+  // Helper to get inserted bounds (min/max) for a given field from current input
+  const getInsertedBounds = (fieldId: string): { min: number; max: number } | null => {
+    const r = rangeData[fieldId];
+    if (showRangeMode[fieldId] && r?.from && r?.to) {
+      const a = parseInt(r.from, 10) || 0;
+      const b = parseInt(r.to, 10) || 0;
+      return { min: Math.min(a, b), max: Math.max(a, b) };
+    }
+    const v = takeData[fieldId] as string | undefined;
+    if (v && v.trim()) {
+      const n = parseInt(v, 10) || 0;
+      return { min: n, max: n };
+    }
+    return null;
+  };
+
   // Helper regex to match both hyphen and en-dash
   const RANGE_SEP = /[-–]/;
 
@@ -1623,11 +1639,14 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has('soundFile')) {
         updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
         
-        // If target has a range, increment both boundaries
+        // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
         if (targetRange) {
-          const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
-          const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+          const bounds = getInsertedBounds('soundFile');
+          const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+          const oldToNum = parseInt(targetRange.to, 10) || 0;
+          const newFrom = String(insertedUpper + 1).padStart(4, '0');
+          const newTo = String(oldToNum + soundDelta).padStart(4, '0');
           const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
           const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
           if (hadInline) {
@@ -1678,11 +1697,14 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has(targetFieldId)) {
         updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
         
-        // If target has a range, increment both boundaries
+        // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
         if (targetRange) {
-          const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
-          const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+          const bounds = getInsertedBounds(targetFieldId);
+          const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+          const oldToNum = parseInt(targetRange.to, 10) || 0;
+          const newFrom = String(insertedUpper + 1).padStart(4, '0');
+          const newTo = String(oldToNum + camDelta).padStart(4, '0');
           const cameraNum = targetFieldId === 'cameraFile' ? 1 : (parseInt(targetFieldId.replace('cameraFile', '')) || 1);
           const updated: Record<string, any> = {
             ...existingEntry.data,
@@ -1941,11 +1963,14 @@ This would break the logging logic and create inconsistencies in the file number
             if (!disabledFields.has('cameraFile')) {
               updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
               
-              // If target has a range, increment both boundaries
+              // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
               if (targetRange) {
-                const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
-                const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                const bounds = getInsertedBounds('cameraFile');
+                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                const oldToNum = parseInt(targetRange.to, 10) || 0;
+                const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                const newTo = String(oldToNum + camDelta).padStart(4, '0');
                 const updated: Record<string, any> = {
                   ...existingEntry.data,
                   camera1_from: newFrom,
@@ -1991,11 +2016,14 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!disabledFields.has(fieldId)) {
                   updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
                   
-                  // If target has a range, increment both boundaries
+                  // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
                   if (targetRange) {
-                    const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
-                    const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                    const bounds = getInsertedBounds(fieldId);
+                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
                     const updated: Record<string, any> = {
                       ...existingEntry.data,
                       [`camera${i}_from`]: newFrom,
@@ -2140,11 +2168,14 @@ This would break the logging logic and create inconsistencies in the file number
             if (!disabledFields.has('cameraFile')) {
               updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
               
-              // If target has a range, increment both boundaries
+              // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
               if (targetRange) {
-                const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
-                const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                const bounds = getInsertedBounds('cameraFile');
+                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                const oldToNum = parseInt(targetRange.to, 10) || 0;
+                const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                const newTo = String(oldToNum + camDelta).padStart(4, '0');
                 const updated: Record<string, any> = {
                   ...existingEntry.data,
                   camera1_from: newFrom,
@@ -2190,11 +2221,14 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!disabledFields.has(fieldId)) {
                   updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
                   
-                  // If target has a range, increment both boundaries
+                  // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
                   if (targetRange) {
-                    const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
-                    const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+                    const bounds = getInsertedBounds(fieldId);
+                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
                     const updated: Record<string, any> = {
                       ...existingEntry.data,
                       [`camera${i}_from`]: newFrom,
@@ -2395,14 +2429,15 @@ This would break the logging logic and create inconsistencies in the file number
 
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
     if (rSound) {
-      const exFrom = parseInt(rSound.from, 10) || 0;
       const exTo = parseInt(rSound.to, 10) || 0;
       const r = rangeData['soundFile'];
       const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
         ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
         : 1;
       if (!disabledFields.has('soundFile')) {
-        const newFrom = String(exFrom + delta).padStart(4, '0');
+        const bounds = getInsertedBounds('soundFile');
+        const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
+        const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
         const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
         const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
@@ -2479,7 +2514,6 @@ This would break the logging logic and create inconsistencies in the file number
 
     const rCam = getRangeFromData(existingEntry.data, cameraFieldId);
     if (rCam) {
-      const exFrom = parseInt(rCam.from, 10) || 0;
       const exTo = parseInt(rCam.to, 10) || 0;
       const r = rangeData[cameraFieldId];
       const delta = (showRangeMode[cameraFieldId] && r?.from && r?.to)
@@ -2491,7 +2525,9 @@ This would break the logging logic and create inconsistencies in the file number
       if (cameraFieldId === 'soundFile') {
         // sound handled above
       } else if (!disabledFields.has(cameraFieldId)) {
-        const newFrom = String(exFrom + delta).padStart(4, '0');
+        const bounds = getInsertedBounds(cameraFieldId);
+        const insertedUpper = bounds?.max ?? (parseInt(rCam.from, 10) || 0);
+        const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
         const updated: Record<string, any> = { ...existingEntry.data, [fromKey]: newFrom, [toKey]: newTo };
         const inlineField = cameraFieldId;
