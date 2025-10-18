@@ -302,34 +302,76 @@ export default function EditTakeScreen() {
         if (camCount === 1) {
           const fieldId = 'cameraFile';
           newDisabledFields.add(fieldId);
-          // Save current value before blanking
-          if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
-            savedFieldValues.current[fieldId] = takeData[fieldId];
-          }
-          // Blank the field
-          setTakeData(prev => ({ ...prev, [fieldId]: '' }));
+          // Save current value before blanking only if not already saved
+          setTakeData(prev => {
+            if (prev[fieldId] && !savedFieldValues.current[fieldId]) {
+              savedFieldValues.current[fieldId] = prev[fieldId];
+            }
+            // Blank only the camera field if it's not already blank
+            if (prev[fieldId]) {
+              return { ...prev, [fieldId]: '' };
+            }
+            return prev;
+          });
         } else {
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
             newDisabledFields.add(fieldId);
-            // Save current value before blanking
-            if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
-              savedFieldValues.current[fieldId] = takeData[fieldId];
+            // Save current value before blanking only if not already saved
+            setTakeData(prev => {
+              if (prev[fieldId] && !savedFieldValues.current[fieldId]) {
+                savedFieldValues.current[fieldId] = prev[fieldId];
+              }
+              // Blank only the camera field if it's not already blank
+              if (prev[fieldId]) {
+                return { ...prev, [fieldId]: '' };
+              }
+              return prev;
+            });
+          }
+        }
+      } else {
+        // Camera is enabled, restore if needed
+        if (camCount === 1) {
+          const fieldId = 'cameraFile';
+          if (savedFieldValues.current[fieldId]) {
+            const savedValue = savedFieldValues.current[fieldId];
+            delete savedFieldValues.current[fieldId];
+            setTakeData(prev => ({ ...prev, [fieldId]: savedValue }));
+          }
+        } else {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (savedFieldValues.current[fieldId]) {
+              const savedValue = savedFieldValues.current[fieldId];
+              delete savedFieldValues.current[fieldId];
+              setTakeData(prev => ({ ...prev, [fieldId]: savedValue }));
             }
-            // Blank the field
-            setTakeData(prev => ({ ...prev, [fieldId]: '' }));
           }
         }
       }
       if (!wasteOptions.sound) {
         const fieldId = 'soundFile';
         newDisabledFields.add(fieldId);
-        // Save current value before blanking
-        if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
-          savedFieldValues.current[fieldId] = takeData[fieldId];
+        // Save current value before blanking only if not already saved
+        setTakeData(prev => {
+          if (prev[fieldId] && !savedFieldValues.current[fieldId]) {
+            savedFieldValues.current[fieldId] = prev[fieldId];
+          }
+          // Blank only the sound field if it's not already blank
+          if (prev[fieldId]) {
+            return { ...prev, [fieldId]: '' };
+          }
+          return prev;
+        });
+      } else {
+        // Sound is enabled, restore if needed
+        const fieldId = 'soundFile';
+        if (savedFieldValues.current[fieldId]) {
+          const savedValue = savedFieldValues.current[fieldId];
+          delete savedFieldValues.current[fieldId];
+          setTakeData(prev => ({ ...prev, [fieldId]: savedValue }));
         }
-        // Blank the field
-        setTakeData(prev => ({ ...prev, [fieldId]: '' }));
       }
     }
 
