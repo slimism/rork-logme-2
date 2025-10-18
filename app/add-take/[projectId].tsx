@@ -1620,44 +1620,61 @@ This would break the logging logic and create inconsistencies in the file number
         }
         updateFileNumbers(projectId, 'soundFile', soundStart, 1);
       }
-      // Also shift camera files to keep alignment and avoid duplicates
-      if (camCount === 1) {
-        let camStart: number | null = null;
-        const hasRange = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
-        if (hasRange) {
-          const lower = parseInt(existingEntry.data.camera1_from, 10);
-          if (!Number.isNaN(lower)) camStart = lower;
-        } else if (typeof existingEntry.data?.cameraFile === 'string') {
-          const n = parseInt(existingEntry.data.cameraFile, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        } else if (typeof existingEntry.data?.camera1_from === 'string') {
-          const n = parseInt(existingEntry.data.camera1_from, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        }
-        if (camStart != null) {
-          updateFileNumbers(projectId, 'cameraFile', camStart, 1);
-        }
-      } else {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          const fromKey = `camera${i}_from` as const;
-          const toKey = `camera${i}_to` as const;
+      // Only shift camera files if the new entry has a camera file (not blank)
+      const newEntryCameraBlank = camCount === 1 
+        ? (disabledFields.has('cameraFile') || !(takeData.cameraFile?.trim()))
+        : (() => {
+            let anyActiveProvided = false;
+            for (let i = 1; i <= camCount; i++) {
+              const fid = `cameraFile${i}`;
+              const isRecActive = cameraRecState[fid] ?? true;
+              if (isRecActive && !disabledFields.has(fid) && (takeData[fid]?.trim())) {
+                anyActiveProvided = true;
+                break;
+              }
+            }
+            return !anyActiveProvided;
+          })();
+      
+      if (!newEntryCameraBlank) {
+        if (camCount === 1) {
           let camStart: number | null = null;
-          const fromVal = existingEntry.data?.[fromKey];
-          const toVal = existingEntry.data?.[toKey];
-          const val = existingEntry.data?.[fieldId];
-          if (typeof fromVal === 'string' && typeof toVal === 'string') {
-            const upper = parseInt(toVal, 10);
-            if (!Number.isNaN(upper)) camStart = upper + 1;
-          } else if (typeof val === 'string') {
-            const n = parseInt(val, 10);
+          const hasRange = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
+          if (hasRange) {
+            const lower = parseInt(existingEntry.data.camera1_from, 10);
+            if (!Number.isNaN(lower)) camStart = lower;
+          } else if (typeof existingEntry.data?.cameraFile === 'string') {
+            const n = parseInt(existingEntry.data.cameraFile, 10);
             if (!Number.isNaN(n)) camStart = n;
-          } else if (typeof fromVal === 'string') {
-            const n = parseInt(fromVal, 10);
+          } else if (typeof existingEntry.data?.camera1_from === 'string') {
+            const n = parseInt(existingEntry.data.camera1_from, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
           if (camStart != null) {
-            updateFileNumbers(projectId, fieldId, camStart, 1);
+            updateFileNumbers(projectId, 'cameraFile', camStart, 1);
+          }
+        } else {
+          for (let i = 1; i <= camCount; i++) {
+            const fieldId = `cameraFile${i}`;
+            const fromKey = `camera${i}_from` as const;
+            const toKey = `camera${i}_to` as const;
+            let camStart: number | null = null;
+            const fromVal = existingEntry.data?.[fromKey];
+            const toVal = existingEntry.data?.[toKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string' && typeof toVal === 'string') {
+              const upper = parseInt(toVal, 10);
+              if (!Number.isNaN(upper)) camStart = upper + 1;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            }
+            if (camStart != null) {
+              updateFileNumbers(projectId, fieldId, camStart, 1);
+            }
           }
         }
       }
@@ -1704,26 +1721,25 @@ This would break the logging logic and create inconsistencies in the file number
           }
         }
       }
-      // Also shift sound files to keep alignment and avoid duplicates
-      let soundStart: number | null = null;
-      const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
-      if (hasSoundRange) {
-        const upper = parseInt(existingEntry.data.sound_to, 10);
-        if (!Number.isNaN(upper)) soundStart = upper + 1;
-      } else if (typeof existingEntry.data?.soundFile === 'string') {
-        const n = parseInt(existingEntry.data.soundFile, 10);
-        if (!Number.isNaN(n)) soundStart = n;
-      } else if (typeof existingEntry.data?.sound_from === 'string') {
-        const n = parseInt(existingEntry.data.sound_from, 10);
-        if (!Number.isNaN(n)) soundStart = n;
-      }
-      // If target duplicate has blank sound, still shift subsequent sound files starting from the new log's sound number
-      if (soundStart == null) {
-        const candidateFromNew = typeof newLogData.soundFile === 'string' ? parseInt(newLogData.soundFile, 10) : parseInt(String(takeData.soundFile ?? ''), 10);
-        if (!Number.isNaN(candidateFromNew)) soundStart = candidateFromNew;
-      }
-      if (soundStart != null) {
-        updateFileNumbers(projectId, 'soundFile', soundStart, 1);
+      // Only shift sound files if the new entry has a sound file (not blank)
+      const newEntrySoundBlank = disabledFields.has('soundFile') || !(takeData.soundFile?.trim());
+      
+      if (!newEntrySoundBlank) {
+        let soundStart: number | null = null;
+        const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+        if (hasSoundRange) {
+          const upper = parseInt(existingEntry.data.sound_to, 10);
+          if (!Number.isNaN(upper)) soundStart = upper + 1;
+        } else if (typeof existingEntry.data?.soundFile === 'string') {
+          const n = parseInt(existingEntry.data.soundFile, 10);
+          if (!Number.isNaN(n)) soundStart = n;
+        } else if (typeof existingEntry.data?.sound_from === 'string') {
+          const n = parseInt(existingEntry.data.sound_from, 10);
+          if (!Number.isNaN(n)) soundStart = n;
+        }
+        if (soundStart != null) {
+          updateFileNumbers(projectId, 'soundFile', soundStart, 1);
+        }
       }
     }
 
