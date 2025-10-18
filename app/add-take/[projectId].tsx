@@ -1903,7 +1903,9 @@ This would break the logging logic and create inconsistencies in the file number
       const n = parseInt(existingEntry.data.sound_from, 10);
       if (!Number.isNaN(n)) soundStart = n;
     }
-    updateFileNumbers(projectId, 'soundFile', soundStart, 1);
+    // Only shift sound files if the input sound field is not blank
+    const soundDelta = (!takeData.soundFile || !takeData.soundFile.trim()) ? 0 : 1;
+    updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
 
     if (camCount === 1) {
       let camStart = cameraFromNumber;
@@ -1919,7 +1921,9 @@ This would break the logging logic and create inconsistencies in the file number
         const n = parseInt(existingEntry.data.camera1_from, 10);
         if (!Number.isNaN(n)) camStart = n;
       }
-      updateFileNumbers(projectId, 'cameraFile', camStart, 1);
+      // Only shift camera files if the input camera field is not blank
+      const cameraDelta = (!takeData.cameraFile || !takeData.cameraFile.trim()) ? 0 : 1;
+      updateFileNumbers(projectId, 'cameraFile', camStart, cameraDelta);
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
@@ -1941,7 +1945,9 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(fromVal, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(projectId, fieldId, camStart, 1);
+          // Only shift camera files if the input camera field is not blank
+          const cameraDelta = (!takeData[fieldId] || !takeData[fieldId].trim()) ? 0 : 1;
+          updateFileNumbers(projectId, fieldId, camStart, cameraDelta);
         }
       }
     }

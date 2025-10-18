@@ -1574,6 +1574,11 @@ This would break the logging logic and create inconsistencies in the file number
         if (!Number.isNaN(n)) soundStart = n;
       }
       const soundDelta = (() => {
+        // For selective shifting, use the input field's delta, not the existing field's
+        if (!takeData.soundFile || !takeData.soundFile.trim()) {
+          // Input sound is blank, so delta is 0 (don't shift sound files)
+          return 0;
+        }
         const r = rangeData['soundFile'];
         if (showRangeMode['soundFile'] && r?.from && r?.to) {
           const a = parseInt(r.from, 10) || 0;
@@ -1622,6 +1627,12 @@ This would break the logging logic and create inconsistencies in the file number
       }
       
       const camDelta = (() => {
+        // For selective shifting, use the input field's delta, not the existing field's
+        const inputCameraField = targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId];
+        if (!inputCameraField || !inputCameraField.trim()) {
+          // Input camera is blank, so delta is 0 (don't shift camera files)
+          return 0;
+        }
         const r = rangeData[targetFieldId];
         if (showRangeMode[targetFieldId] && r?.from && r?.to) {
           const a = parseInt(r.from, 10) || 0;
@@ -1809,6 +1820,10 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) soundStart = n;
           }
           const soundDelta = (() => {
+            // If input sound field is blank, don't shift sound files
+            if (!takeData.soundFile || !takeData.soundFile.trim()) {
+              return 0;
+            }
             const r = rangeData['soundFile'];
             if (showRangeMode['soundFile'] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
@@ -1878,6 +1893,10 @@ This would break the logging logic and create inconsistencies in the file number
           }
           {
             const camDelta = (() => {
+              // If input camera field is blank, don't shift camera files
+              if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
+                return 0;
+              }
               const r = rangeData['cameraFile'];
               if (showRangeMode['cameraFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
@@ -1924,6 +1943,10 @@ This would break the logging logic and create inconsistencies in the file number
               }
               {
                 const camDelta = (() => {
+                  // If input camera field is blank, don't shift camera files
+                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+                    return 0;
+                  }
                   const r = rangeData[fieldId];
                   if (showRangeMode[fieldId] && r?.from && r?.to) {
                     const a = parseInt(r.from, 10) || 0;
@@ -1995,6 +2018,10 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) soundStart = n;
           }
           const soundDelta = (() => {
+            // If input sound field is blank, don't shift sound files
+            if (!takeData.soundFile || !takeData.soundFile.trim()) {
+              return 0;
+            }
             const r = rangeData['soundFile'];
             if (showRangeMode['soundFile'] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
@@ -2065,6 +2092,10 @@ This would break the logging logic and create inconsistencies in the file number
           }
           {
             const camDelta = (() => {
+              // If input camera field is blank, don't shift camera files
+              if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
+                return 0;
+              }
               const r = rangeData['cameraFile'];
               if (showRangeMode['cameraFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
@@ -2111,6 +2142,10 @@ This would break the logging logic and create inconsistencies in the file number
               }
               {
                 const camDelta = (() => {
+                  // If input camera field is blank, don't shift camera files
+                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+                    return 0;
+                  }
                   const r = rangeData[fieldId];
                   if (showRangeMode[fieldId] && r?.from && r?.to) {
                     const a = parseInt(r.from, 10) || 0;
@@ -2356,6 +2391,10 @@ This would break the logging logic and create inconsistencies in the file number
       }
       {
         const camDelta = (() => {
+          // If input camera field is blank, don't shift camera files
+          if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
+            return 0;
+          }
           const r = rangeData['cameraFile'];
           if (showRangeMode['cameraFile'] && r?.from && r?.to) {
             const a = parseInt(r.from, 10) || 0;
@@ -2385,6 +2424,10 @@ This would break the logging logic and create inconsistencies in the file number
           }
           {
             const camDelta = (() => {
+              // If input camera field is blank, don't shift camera files
+              if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+                return 0;
+              }
               const r = rangeData[fieldId];
               if (showRangeMode[fieldId] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
