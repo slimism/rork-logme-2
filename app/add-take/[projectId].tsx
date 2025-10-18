@@ -1214,12 +1214,21 @@ export default function AddTakeScreen() {
         } else {
           cLoc = `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`;
         }
+        
+        // Get the actual file numbers for better user understanding
+        const soundFileNumber = takeData.soundFile || 'Unknown';
+        const cameraFileNumber = cameraDup.fieldId === 'cameraFile' ? 
+          (takeData.cameraFile || 'Unknown') : 
+          (takeData[cameraDup.fieldId] || 'Unknown');
+        
         Alert.alert(
-          'Conflict',
-          `Camera and sound file are duplicates but belong to different takes.
-Sound: ${sLoc}
-Camera: ${cLoc}
-The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
+          'Cross-Log Conflict Detected',
+          `Cannot add log because the sound file and camera file already exist in different logs:
+
+Sound File ${soundFileNumber} → Found in: ${sLoc}
+Camera File ${cameraFileNumber} → Found in: ${cLoc}
+
+This would break the logging logic and create inconsistencies in the file numbering system. Please adjust your file numbers to avoid conflicts.`,
           [{ text: 'OK', style: 'default' }]
         );
         return;
@@ -1884,8 +1893,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     let soundStart = soundFromNumber;
     const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
     if (hasSoundRange) {
-      const upper = parseInt(existingEntry.data.sound_to, 10);
-      if (!Number.isNaN(upper)) soundStart = upper + 1;
+      // When inserting before a range, use the lower bound (from value) as the starting point
+      const lower = parseInt(existingEntry.data.sound_from, 10);
+      if (!Number.isNaN(lower)) soundStart = lower;
     } else if (typeof existingEntry.data?.soundFile === 'string') {
       const n = parseInt(existingEntry.data.soundFile, 10);
       if (!Number.isNaN(n)) soundStart = n;
@@ -1899,8 +1909,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
       let camStart = cameraFromNumber;
       const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
       if (hasRangeCam) {
-        const upper = parseInt(existingEntry.data.camera1_to, 10);
-        if (!Number.isNaN(upper)) camStart = upper + 1;
+        // When inserting before a range, use the lower bound (from value) as the starting point
+        const lower = parseInt(existingEntry.data.camera1_from, 10);
+        if (!Number.isNaN(lower)) camStart = lower;
       } else if (typeof existingEntry.data?.cameraFile === 'string') {
         const n = parseInt(existingEntry.data.cameraFile, 10);
         if (!Number.isNaN(n)) camStart = n;
@@ -1920,8 +1931,9 @@ The Log cannot be inserted with the current configuration to maintain the loggin
           const toVal = existingEntry.data?.[toKey];
           const val = existingEntry.data?.[fieldId];
           if (typeof fromVal === 'string' && typeof toVal === 'string') {
-            const upper = parseInt(toVal, 10);
-            if (!Number.isNaN(upper)) camStart = upper + 1;
+            // When inserting before a range, use the lower bound (from value) as the starting point
+            const lower = parseInt(fromVal, 10);
+            if (!Number.isNaN(lower)) camStart = lower;
           } else if (typeof val === 'string') {
             const n = parseInt(val, 10);
             if (!Number.isNaN(n)) camStart = n;

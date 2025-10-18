@@ -1325,6 +1325,39 @@ export default function EditTakeScreen() {
         })();
         const isSoundBlankInput = !(takeData.soundFile?.trim());
 
+        // Check if one field is blank in input - if so, allow selective insertion
+        if (isCameraBlankInput && !isSoundBlankInput) {
+          // Camera is blank, sound has duplicate - allow selective insertion for sound only
+          const e = soundDup.existingEntry;
+          const classification = e.data?.classification;
+          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          Alert.alert(
+            'Duplicate Detected',
+            `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before (Sound Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+            ]
+          );
+          return;
+        }
+
+        if (!isCameraBlankInput && isSoundBlankInput) {
+          // Sound is blank, camera has duplicate - allow selective insertion for camera only
+          const e = cameraDup.existingEntry;
+          const classification = e.data?.classification;
+          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          Alert.alert(
+            'Duplicate Detected',
+            `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before (Camera Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+            ]
+          );
+          return;
+        }
+
         if (targetSoundBlank || isSoundBlankInput) {
           const e = ce;
           const classification = e.data?.classification;
@@ -1357,12 +1390,21 @@ export default function EditTakeScreen() {
 
         const sLoc = se.data?.classification === 'SFX' ? 'SFX' : (se.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`);
         const cLoc = ce.data?.classification === 'SFX' ? 'SFX' : (ce.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`);
+        
+        // Get the actual file numbers for better user understanding
+        const soundFileNumber = takeData.soundFile || 'Unknown';
+        const cameraFileNumber = cameraDup.fieldId === 'cameraFile' ? 
+          (takeData.cameraFile || 'Unknown') : 
+          (takeData[cameraDup.fieldId] || 'Unknown');
+        
         Alert.alert(
-          'Conflict',
-          `Camera and sound file are duplicates but belong to different takes.
-Sound: ${sLoc}
-Camera: ${cLoc}
-The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
+          'Cross-Log Conflict Detected',
+          `Cannot insert log because the sound file and camera file already exist in different logs:
+
+Sound File ${soundFileNumber} → Found in: ${sLoc}
+Camera File ${cameraFileNumber} → Found in: ${cLoc}
+
+This would break the logging logic and create inconsistencies in the file numbering system. Please adjust your file numbers to avoid conflicts.`,
           [{ text: 'OK', style: 'default' }]
         );
         return;
@@ -1482,6 +1524,152 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     saveNormally();
   };
 
+  const handleSaveWithSelectiveDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+    if (!logSheet || !project) return;
+    const camCount = project?.settings?.cameraConfiguration || 1;
+    const existingEntry = duplicateInfo.existingEntry;
+    const targetFieldId = duplicateInfo.fieldId;
+
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
+
+    const excludeIds = new Set<string>();
+    if (existingEntry?.id) excludeIds.add(existingEntry.id as string);
+    if (logSheet?.id) excludeIds.add(logSheet.id as string);
+
+    let newLogData = { ...takeData };
+
+    if (existingEntry.data?.soundFile && targetFieldId === 'soundFile') {
+      newLogData.soundFile = existingEntry.data.soundFile;
+    }
+    if (camCount === 1 && existingEntry.data?.cameraFile && targetFieldId === 'cameraFile') {
+      newLogData.cameraFile = existingEntry.data.cameraFile;
+    } else if (camCount > 1 && targetFieldId.startsWith('cameraFile')) {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (existingEntry.data?.[fieldId] && targetFieldId === fieldId) {
+          newLogData[fieldId] = existingEntry.data[fieldId];
+        }
+      }
+    }
+
+    // Force insert into target scene/shot
+    const targetSceneNumber = existingEntry.data?.sceneNumber;
+    const targetShotNumber = existingEntry.data?.shotNumber;
+    const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
+    newLogData.sceneNumber = targetSceneNumber;
+    newLogData.shotNumber = targetShotNumber;
+    if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
+      newLogData.takeNumber = existingEntry.data.takeNumber;
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+    }
+
+    // Only shift the target field
+    if (targetFieldId === 'soundFile') {
+      let soundStart = targetTakeNumber;
+      if (typeof existingEntry.data?.sound_from === 'string') {
+        const n = parseInt(existingEntry.data.sound_from, 10);
+        if (!Number.isNaN(n)) soundStart = n;
+      } else if (typeof existingEntry.data?.soundFile === 'string') {
+        const n = parseInt(existingEntry.data.soundFile, 10);
+        if (!Number.isNaN(n)) soundStart = n;
+      }
+      const soundDelta = (() => {
+        const r = rangeData['soundFile'];
+        if (showRangeMode['soundFile'] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
+        return 1;
+      })();
+      if (!disabledFields.has('soundFile')) {
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+        
+        // If target has a range, increment both boundaries
+        const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+        if (targetRange) {
+          const newFrom = String(parseInt(targetRange.from, 10) + soundDelta).padStart(4, '0');
+          const newTo = String(parseInt(targetRange.to, 10) + soundDelta).padStart(4, '0');
+          const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+          const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+          if (hadInline) {
+            updated.soundFile = `${newFrom}-${newTo}`;
+          }
+          updateLogSheet(existingEntry.id, updated);
+        }
+      }
+    } else if (targetFieldId.startsWith('cameraFile')) {
+      let camStart = targetTakeNumber;
+      if (targetFieldId === 'cameraFile') {
+        if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.cameraFile === 'string') {
+          const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
+      } else {
+        const cameraNum = parseInt(targetFieldId.replace('cameraFile', '')) || 1;
+        const fromKey = `camera${cameraNum}_from`;
+        const toKey = `camera${cameraNum}_to`;
+        if (typeof existingEntry.data?.[fromKey] === 'string') {
+          const n = parseInt(existingEntry.data[fromKey], 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.[targetFieldId] === 'string') {
+          const n = parseInt(existingEntry.data[targetFieldId], 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
+      }
+      
+      const camDelta = (() => {
+        const r = rangeData[targetFieldId];
+        if (showRangeMode[targetFieldId] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
+        return 1;
+      })();
+      
+      if (!disabledFields.has(targetFieldId)) {
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+        
+        // If target has a range, increment both boundaries
+        const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
+        if (targetRange) {
+          const newFrom = String(parseInt(targetRange.from, 10) + camDelta).padStart(4, '0');
+          const newTo = String(parseInt(targetRange.to, 10) + camDelta).padStart(4, '0');
+          const cameraNum = targetFieldId === 'cameraFile' ? 1 : (parseInt(targetFieldId.replace('cameraFile', '')) || 1);
+          const updated: Record<string, any> = {
+            ...existingEntry.data,
+            [`camera${cameraNum}_from`]: newFrom,
+            [`camera${cameraNum}_to`]: newTo
+          };
+          const hadInline = typeof existingEntry.data?.[targetFieldId] === 'string' && isRangeString(existingEntry.data[targetFieldId]);
+          if (hadInline) {
+            updated[targetFieldId] = `${newFrom}-${newTo}`;
+          }
+          updateLogSheet(existingEntry.id, updated);
+        }
+      }
+    }
+
+    // Apply range persistence
+    newLogData = applyRangePersistence(newLogData);
+
+    logSheet.data = {
+      ...newLogData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: camCount > 1 ? cameraRecState : undefined
+    };
+
+    router.back();
+  };
+
   const pruneDisabled = (data: Record<string, any>) => {
     const cleaned: Record<string, any> = { ...data };
     disabledFields.forEach((f) => {
@@ -1494,6 +1682,7 @@ The Log cannot be inserted with the current configuration to maintain the loggin
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
+    const selectiveShifting = duplicateInfo.selectiveShifting || false;
 
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
 

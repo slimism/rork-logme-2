@@ -1,2 +1,0 @@
-# LOGME
-Created by Rork
