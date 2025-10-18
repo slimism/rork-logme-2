@@ -2064,7 +2064,6 @@ This would break the logging logic and create inconsistencies in the file number
       let soundStart = soundFromNumber;
       const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
       if (hasSoundRange) {
-        // When inserting before a range, use the lower bound (from value) as the starting point
         const lower = parseInt(existingEntry.data.sound_from, 10);
         if (!Number.isNaN(lower)) soundStart = lower;
       } else if (typeof existingEntry.data?.soundFile === 'string') {
@@ -2074,9 +2073,43 @@ This would break the logging logic and create inconsistencies in the file number
         const n = parseInt(existingEntry.data.sound_from, 10);
         if (!Number.isNaN(n)) soundStart = n;
       }
-      // Only shift sound files if the input sound field is not blank
-      const soundDelta = (!takeData.soundFile || !takeData.soundFile.trim()) ? 0 : 1;
+
+      // Compute delta based on inserted range size
+      let soundDelta = 1;
+      const newLogRange = rangeData['soundFile'];
+      if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+        const newFrom = parseInt(newLogRange.from, 10) || 0;
+        const newTo = parseInt(newLogRange.to, 10) || 0;
+        soundDelta = Math.abs(newTo - newFrom) + 1;
+      } else if (!takeData.soundFile || !String(takeData.soundFile).trim()) {
+        soundDelta = 0;
+      }
+
       updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
+
+      const targetRange = (() => {
+        const from = existingEntry.data?.sound_from;
+        const to = existingEntry.data?.sound_to;
+        return from && to ? { from, to } : null;
+      })();
+      if (targetRange && showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+        const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+        const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+        const insertedMax = Math.max(insertedFrom, insertedTo);
+        const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+        const oldToNum = parseInt(targetRange.to, 10) || 0;
+        const newFromNum = insertedMax + 1;
+        const newToNum = oldToNum + deltaLocal;
+
+        const updatedData: Record<string, any> = { ...existingEntry.data };
+        updatedData.sound_from = String(newFromNum).padStart(4, '0');
+        updatedData.sound_to = String(newToNum).padStart(4, '0');
+        if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
+          updatedData.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+        }
+        updateLogSheet(existingEntry.id, updatedData);
+      }
     }
 
     if (camCount === 1) {
@@ -2088,7 +2121,6 @@ This would break the logging logic and create inconsistencies in the file number
         let camStart = cameraFromNumber;
         const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
         if (hasRangeCam) {
-          // When inserting before a range, use the lower bound (from value) as the starting point
           const lower = parseInt(existingEntry.data.camera1_from, 10);
           if (!Number.isNaN(lower)) camStart = lower;
         } else if (typeof existingEntry.data?.cameraFile === 'string') {
@@ -2098,9 +2130,41 @@ This would break the logging logic and create inconsistencies in the file number
           const n = parseInt(existingEntry.data.camera1_from, 10);
           if (!Number.isNaN(n)) camStart = n;
         }
-        // Only shift camera files if the input camera field is not blank
-        const cameraDelta = (!takeData.cameraFile || !takeData.cameraFile.trim()) ? 0 : 1;
-        updateFileNumbers(projectId, 'cameraFile', camStart, cameraDelta);
+
+        let camDelta = 1;
+        const newLogRange = rangeData['cameraFile'];
+        if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+          const newFrom = parseInt(newLogRange.from, 10) || 0;
+          const newTo = parseInt(newLogRange.to, 10) || 0;
+          camDelta = Math.abs(newTo - newFrom) + 1;
+        } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
+          camDelta = 0;
+        }
+        updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
+
+        const targetRange = (() => {
+          const from = existingEntry.data?.camera1_from;
+          const to = existingEntry.data?.camera1_to;
+          return from && to ? { from, to } : null;
+        })();
+        if (targetRange && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+          const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+          const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+          const insertedMax = Math.max(insertedFrom, insertedTo);
+          const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+          const oldToNum = parseInt(targetRange.to, 10) || 0;
+          const newFromNum = insertedMax + 1;
+          const newToNum = oldToNum + deltaLocal;
+
+          const updatedData: Record<string, any> = { ...existingEntry.data };
+          updatedData['camera1_from'] = String(newFromNum).padStart(4, '0');
+          updatedData['camera1_to'] = String(newToNum).padStart(4, '0');
+          if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')) {
+            updatedData['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+          }
+          updateLogSheet(existingEntry.id, updatedData);
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -2117,7 +2181,6 @@ This would break the logging logic and create inconsistencies in the file number
           const toVal = existingEntry.data?.[toKey];
           const val = existingEntry.data?.[fieldId];
           if (typeof fromVal === 'string' && typeof toVal === 'string') {
-            // When inserting before a range, use the lower bound (from value) as the starting point
             const lower = parseInt(fromVal, 10);
             if (!Number.isNaN(lower)) camStart = lower;
           } else if (typeof val === 'string') {
@@ -2127,8 +2190,15 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(fromVal, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          // Only shift camera files if the input camera field is not blank
-          const cameraDelta = (!takeData[fieldId] || !takeData[fieldId].trim()) ? 0 : 1;
+          let cameraDelta = 1;
+          const newLogRange = rangeData[fieldId];
+          if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+            const newFrom = parseInt(newLogRange.from, 10) || 0;
+            const newTo = parseInt(newLogRange.to, 10) || 0;
+            cameraDelta = Math.abs(newTo - newFrom) + 1;
+          } else if (!takeData[fieldId] || !String(takeData[fieldId]).trim()) {
+            cameraDelta = 0;
+          }
           updateFileNumbers(projectId, fieldId, camStart, cameraDelta);
         }
       }

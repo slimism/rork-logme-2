@@ -68,17 +68,28 @@ export class DuplicateService {
         const exMin = Math.min(exFrom, exTo);
         const exMax = Math.max(exFrom, exTo);
         if (this.checkRangeOverlap(curMin, curMax, exMin, exMax)) {
-          if (currentNum === exMin) {
-            return { fieldId, number: currentNum, existingEntry: sheet };
-          }
+          const anchor = exFrom; // use target's lower bound as anchor
+          return { fieldId, number: anchor, existingEntry: sheet };
         }
       }
 
       const existingVal = sheet.data[fieldId] as string | undefined;
-      if (existingVal && typeof existingVal === 'string' && !this.isRangeString(existingVal)) {
-        const exNum = parseInt(existingVal, 10) || 0;
-        if (exNum >= curMin && exNum <= curMax) {
-          return { fieldId, number: exNum, existingEntry: sheet };
+      if (existingVal && typeof existingVal === 'string') {
+        if (!this.isRangeString(existingVal)) {
+          const exNum = parseInt(existingVal, 10) || 0;
+          if (exNum >= curMin && exNum <= curMax) {
+            return { fieldId, number: exNum, existingEntry: sheet };
+          }
+        } else {
+          const [a, b] = existingVal.split('-');
+          const exA = parseInt(a, 10) || 0;
+          const exB = parseInt(b, 10) || 0;
+          const exMin = Math.min(exA, exB);
+          const exMax = Math.max(exA, exB);
+          if (this.checkRangeOverlap(curMin, curMax, exMin, exMax)) {
+            const anchor = exMin;
+            return { fieldId, number: anchor, existingEntry: sheet };
+          }
         }
       }
     }
