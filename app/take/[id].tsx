@@ -45,6 +45,7 @@ export default function EditTakeScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const writingProgrammaticallyRef = useRef(false);
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
+  const savedFieldValues = useRef<Record<string, string>>({});
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
@@ -299,15 +300,36 @@ export default function EditTakeScreen() {
     if (classification === 'Waste') {
       if (!wasteOptions.camera) {
         if (camCount === 1) {
-          newDisabledFields.add('cameraFile');
+          const fieldId = 'cameraFile';
+          newDisabledFields.add(fieldId);
+          // Save current value before blanking
+          if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
+            savedFieldValues.current[fieldId] = takeData[fieldId];
+          }
+          // Blank the field
+          setTakeData(prev => ({ ...prev, [fieldId]: '' }));
         } else {
           for (let i = 1; i <= camCount; i++) {
-            newDisabledFields.add(`cameraFile${i}`);
+            const fieldId = `cameraFile${i}`;
+            newDisabledFields.add(fieldId);
+            // Save current value before blanking
+            if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
+              savedFieldValues.current[fieldId] = takeData[fieldId];
+            }
+            // Blank the field
+            setTakeData(prev => ({ ...prev, [fieldId]: '' }));
           }
         }
       }
       if (!wasteOptions.sound) {
-        newDisabledFields.add('soundFile');
+        const fieldId = 'soundFile';
+        newDisabledFields.add(fieldId);
+        // Save current value before blanking
+        if (takeData[fieldId] && !savedFieldValues.current[fieldId]) {
+          savedFieldValues.current[fieldId] = takeData[fieldId];
+        }
+        // Blank the field
+        setTakeData(prev => ({ ...prev, [fieldId]: '' }));
       }
     }
 
@@ -424,39 +446,28 @@ export default function EditTakeScreen() {
         setInsertSoundSpeed(null);
       }
     } else {
-      // Toggling Waste OFF - re-enable fields and auto-fill
+      // Toggling Waste OFF - re-enable fields and restore saved values
       if (classification === 'Waste' && newClassification === null && logSheet) {
-        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
-        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
         const camCount = project?.settings?.cameraConfiguration || 1;
         
-        // Re-enable and auto-fill Camera Files
+        // Re-enable and restore Camera Files
         if (wasteOptions.camera) {
           if (camCount === 1) {
-            if (prevDisabled.has('cameraFile')) {
+            const fieldId = 'cameraFile';
+            if (prevDisabled.has(fieldId)) {
               setTimeout(() => {
-                const nextCameraNum = nextNumbers['cameraFile'];
-                if (lastAutoIncrementRef.current['cameraFile'] === nextCameraNum) return;
-                lastAutoIncrementRef.current['cameraFile'] = nextCameraNum;
-                
-                // Use stored value if exists, otherwise use next number
-                const storedValue = logSheet.data?.cameraFile;
-                const formattedCamera = storedValue || String(nextCameraNum).padStart(4, '0');
-                
-                writingProgrammaticallyRef.current = true;
-                setTakeData(prev => {
-                  const updated = { ...prev };
-                  if (showRangeMode['cameraFile']) {
-                    setRangeData(prevRange => ({
-                      ...prevRange,
-                      cameraFile: { from: formattedCamera, to: prevRange['cameraFile']?.to || '' }
-                    }));
-                  } else {
-                    updated.cameraFile = formattedCamera;
-                  }
-                  return updated;
-                });
-                setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+                // Restore saved value
+                const savedValue = savedFieldValues.current[fieldId];
+                if (savedValue) {
+                  writingProgrammaticallyRef.current = true;
+                  setTakeData(prev => ({
+                    ...prev,
+                    [fieldId]: savedValue
+                  }));
+                  // Clear saved value after restoring
+                  delete savedFieldValues.current[fieldId];
+                  setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+                }
               }, 100);
             }
           } else {
@@ -464,59 +475,39 @@ export default function EditTakeScreen() {
               const fieldId = `cameraFile${i}`;
               if (prevDisabled.has(fieldId)) {
                 setTimeout(() => {
-                  const nextCameraNum = nextNumbers[fieldId];
-                  if (lastAutoIncrementRef.current[fieldId] === nextCameraNum) return;
-                  lastAutoIncrementRef.current[fieldId] = nextCameraNum;
-                  
-                  // Use stored value if exists, otherwise use next number
-                  const storedValue = logSheet.data?.[fieldId];
-                  const formattedCamera = storedValue || String(nextCameraNum).padStart(4, '0');
-                  
-                  writingProgrammaticallyRef.current = true;
-                  setTakeData(prev => {
-                    const updated = { ...prev };
-                    if (showRangeMode[fieldId]) {
-                      setRangeData(prevRange => ({
-                        ...prevRange,
-                        [fieldId]: { from: formattedCamera, to: prevRange[fieldId]?.to || '' }
-                      }));
-                    } else {
-                      updated[fieldId] = formattedCamera;
-                    }
-                    return updated;
-                  });
-                  setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+                  // Restore saved value
+                  const savedValue = savedFieldValues.current[fieldId];
+                  if (savedValue) {
+                    writingProgrammaticallyRef.current = true;
+                    setTakeData(prev => ({
+                      ...prev,
+                      [fieldId]: savedValue
+                    }));
+                    // Clear saved value after restoring
+                    delete savedFieldValues.current[fieldId];
+                    setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+                  }
                 }, 100);
               }
             }
           }
         }
         
-        // Re-enable and auto-fill Sound File
+        // Re-enable and restore Sound File
         if (wasteOptions.sound && prevDisabled.has('soundFile')) {
           setTimeout(() => {
-            const nextSoundNum = nextNumbers['soundFile'];
-            if (lastAutoIncrementRef.current['soundFile'] === nextSoundNum) return;
-            lastAutoIncrementRef.current['soundFile'] = nextSoundNum;
-            
-            // Use stored value if exists, otherwise use next number
-            const storedValue = logSheet.data?.soundFile;
-            const formattedSound = storedValue || String(nextSoundNum).padStart(4, '0');
-            
-            writingProgrammaticallyRef.current = true;
-            setTakeData(prev => {
-              const updated = { ...prev };
-              if (showRangeMode['soundFile']) {
-                setRangeData(prevRange => ({
-                  ...prevRange,
-                  soundFile: { from: formattedSound, to: prevRange['soundFile']?.to || '' }
-                }));
-              } else {
-                updated.soundFile = formattedSound;
-              }
-              return updated;
-            });
-            setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+            // Restore saved value
+            const savedValue = savedFieldValues.current['soundFile'];
+            if (savedValue) {
+              writingProgrammaticallyRef.current = true;
+              setTakeData(prev => ({
+                ...prev,
+                soundFile: savedValue
+              }));
+              // Clear saved value after restoring
+              delete savedFieldValues.current['soundFile'];
+              setTimeout(() => { writingProgrammaticallyRef.current = false; }, 100);
+            }
           }, 100);
         }
       }
