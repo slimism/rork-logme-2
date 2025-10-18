@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
+  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -1633,6 +1633,27 @@ This would break the logging logic and create inconsistencies in the file number
         }
         
         updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
+
+        const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+        if (targetRange && showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+          const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+          const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+          const insertedMax = Math.max(insertedFrom, insertedTo);
+          const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+          const oldToNum = parseInt(targetRange.to, 10) || 0;
+          const newFromNum = insertedMax + 1;
+          const newToNum = oldToNum + deltaLocal;
+
+          const updatedData: Record<string, any> = { ...existingEntry.data };
+          updatedData.sound_from = String(newFromNum).padStart(4, '0');
+          updatedData.sound_to = String(newToNum).padStart(4, '0');
+
+          if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
+            updatedData.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+          }
+          updateLogSheet(existingEntry.id, updatedData);
+        }
       }
       // Only shift camera files if the new entry has a camera file (not blank)
       const newEntryCameraBlank = camCount === 1 
@@ -1752,6 +1773,27 @@ This would break the logging logic and create inconsistencies in the file number
           }
           
           updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+
+          const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+          if (targetRange && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+            const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+            const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+            const insertedMax = Math.max(insertedFrom, insertedTo);
+            const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+            const oldToNum = parseInt(targetRange.to, 10) || 0;
+            const newFromNum = insertedMax + 1;
+            const newToNum = oldToNum + deltaLocal;
+
+            const updatedData: Record<string, any> = { ...existingEntry.data };
+            updatedData['camera1_from'] = String(newFromNum).padStart(4, '0');
+            updatedData['camera1_to'] = String(newToNum).padStart(4, '0');
+
+            if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')) {
+              updatedData['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+            }
+            updateLogSheet(existingEntry.id, updatedData);
+          }
         }
       } else {
         for (let i = 1; i <= camCount; i++) {
@@ -1788,6 +1830,30 @@ This would break the logging logic and create inconsistencies in the file number
             }
             
             updateFileNumbers(projectId, fieldId, camStart, camIncrement);
+
+            const targetRange = getRangeFromData(existingEntry.data, fieldId);
+            if (targetRange && showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+              const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+              const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+              const insertedMax = Math.max(insertedFrom, insertedTo);
+              const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+              const oldToNum = parseInt(targetRange.to, 10) || 0;
+              const newFromNum = insertedMax + 1;
+              const newToNum = oldToNum + deltaLocal;
+
+              const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+              const fromKey = `camera${cameraNum}_from` as const;
+              const toKey = `camera${cameraNum}_to` as const;
+              const updatedData: Record<string, any> = { ...existingEntry.data };
+              updatedData[fromKey] = String(newFromNum).padStart(4, '0');
+              updatedData[toKey] = String(newToNum).padStart(4, '0');
+
+              if (typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-')) {
+                updatedData[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+              }
+              updateLogSheet(existingEntry.id, updatedData);
+            }
           }
         }
       }
