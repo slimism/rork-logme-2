@@ -1622,7 +1622,17 @@ This would break the logging logic and create inconsistencies in the file number
           const n = parseInt(existingEntry.data.sound_from, 10);
           if (!Number.isNaN(n)) soundStart = n;
         }
-        updateFileNumbers(projectId, 'soundFile', soundStart, 1);
+        
+        // Calculate increment based on new log's range size
+        let soundIncrement = 1;
+        const newLogRange = rangeData['soundFile'];
+        if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+          const newFrom = parseInt(newLogRange.from, 10) || 0;
+          const newTo = parseInt(newLogRange.to, 10) || 0;
+          soundIncrement = Math.abs(newTo - newFrom) + 1;
+        }
+        
+        updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
       }
       // Only shift camera files if the new entry has a camera file (not blank)
       const newEntryCameraBlank = camCount === 1 
@@ -1660,7 +1670,15 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStart = n;
             }
             if (camStart != null) {
-              updateFileNumbers(projectId, 'cameraFile', camStart, 1);
+              // Calculate increment based on new log's range size
+              let camIncrement = 1;
+              const newLogRange = rangeData['cameraFile'];
+              if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+                const newFrom = parseInt(newLogRange.from, 10) || 0;
+                const newTo = parseInt(newLogRange.to, 10) || 0;
+                camIncrement = Math.abs(newTo - newFrom) + 1;
+              }
+              updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
             }
           }
         } else {
@@ -1688,7 +1706,15 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) camStart = n;
               }
               if (camStart != null) {
-                updateFileNumbers(projectId, fieldId, camStart, 1);
+                // Calculate increment based on new log's range size
+                let camIncrement = 1;
+                const newLogRange = rangeData[fieldId];
+                if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+                  const newFrom = parseInt(newLogRange.from, 10) || 0;
+                  const newTo = parseInt(newLogRange.to, 10) || 0;
+                  camIncrement = Math.abs(newTo - newFrom) + 1;
+                }
+                updateFileNumbers(projectId, fieldId, camStart, camIncrement);
               }
             }
           }
@@ -1715,7 +1741,17 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(existingEntry.data.camera1_from, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          updateFileNumbers(projectId, 'cameraFile', camStart, 1);
+          
+          // Calculate increment based on new log's range size
+          let camIncrement = 1;
+          const newLogRange = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+            const newFrom = parseInt(newLogRange.from, 10) || 0;
+            const newTo = parseInt(newLogRange.to, 10) || 0;
+            camIncrement = Math.abs(newTo - newFrom) + 1;
+          }
+          
+          updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
         }
       } else {
         for (let i = 1; i <= camCount; i++) {
@@ -1741,7 +1777,17 @@ This would break the logging logic and create inconsistencies in the file number
               const n = parseInt(fromVal, 10);
               if (!Number.isNaN(n)) camStart = n;
             }
-            updateFileNumbers(projectId, fieldId, camStart, 1);
+            
+            // Calculate increment based on new log's range size
+            let camIncrement = 1;
+            const newLogRange = rangeData[fieldId];
+            if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+              const newFrom = parseInt(newLogRange.from, 10) || 0;
+              const newTo = parseInt(newLogRange.to, 10) || 0;
+              camIncrement = Math.abs(newTo - newFrom) + 1;
+            }
+            
+            updateFileNumbers(projectId, fieldId, camStart, camIncrement);
           }
         }
       }
@@ -1767,7 +1813,15 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) soundStart = n;
           }
           if (soundStart != null) {
-            updateFileNumbers(projectId, 'soundFile', soundStart, 1);
+            // Calculate increment based on new log's range size
+            let soundIncrement = 1;
+            const newLogRange = rangeData['soundFile'];
+            if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+              const newFrom = parseInt(newLogRange.from, 10) || 0;
+              const newTo = parseInt(newLogRange.to, 10) || 0;
+              soundIncrement = Math.abs(newTo - newFrom) + 1;
+            }
+            updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
           }
         }
       }
