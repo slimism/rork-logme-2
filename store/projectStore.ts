@@ -272,19 +272,13 @@ export const useProjectStore = create<ProjectState>()(
                     let newStart = startNum;
                     let newEnd = endNum;
 
-                    // Special case: Insert Before a range
-                    // When inserting a file that equals the lower bound, update the lower bound to the inserted file number
                     if (increment > 0 && fromNumber === startNum) {
-                      // Update lower bound to match the inserted file number
-                      newStart = fromNumber;
-                      // Shift upper bound up
+                      newStart = startNum + increment;
                       newEnd = endNum + increment;
                     } else if (increment > 0 && fromNumber < startNum) {
-                      // Inserting before the range: shift entire range up
                       newStart = startNum + increment;
                       newEnd = endNum + increment;
                     } else {
-                      // Normal case: shift if >= fromNumber
                       newStart = startNum >= fromNumber ? startNum + increment : startNum;
                       newEnd = endNum >= fromNumber ? endNum + increment : endNum;
                     }
