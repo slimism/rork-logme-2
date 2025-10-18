@@ -34,7 +34,7 @@ export default function TabLayout() {
           options={{
             headerShown: false,
             tabBarLabel: "Projects",
-            tabBarIcon: ({ color, size }) => (
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <FileText size={size} color={color} />
             ),
           }}
@@ -45,7 +45,7 @@ export default function TabLayout() {
           options={{
             headerShown: false,
             tabBarLabel: "Store",
-            tabBarIcon: ({ color, size }) => (
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <ShoppingBag size={size} color={color} />
             ),
           }}
@@ -56,7 +56,7 @@ export default function TabLayout() {
           options={{
             headerShown: false,
             tabBarLabel: "About",
-            tabBarIcon: ({ color, size }) => (
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <Clock size={size} color={color} />
             ),
           }}
