@@ -1890,44 +1890,60 @@ This would break the logging logic and create inconsistencies in the file number
     }
 
     // Shift subsequent sound and camera files for ALL relevant cameras, not just one
-    let soundStart = soundFromNumber;
-    const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
-    if (hasSoundRange) {
-      // When inserting before a range, use the lower bound (from value) as the starting point
-      const lower = parseInt(existingEntry.data.sound_from, 10);
-      if (!Number.isNaN(lower)) soundStart = lower;
-    } else if (typeof existingEntry.data?.soundFile === 'string') {
-      const n = parseInt(existingEntry.data.soundFile, 10);
-      if (!Number.isNaN(n)) soundStart = n;
-    } else if (typeof existingEntry.data?.sound_from === 'string') {
-      const n = parseInt(existingEntry.data.sound_from, 10);
-      if (!Number.isNaN(n)) soundStart = n;
+    // Only shift if the target duplicate has that file (not blank)
+    const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || 
+                               !!(typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim());
+    
+    if (targetSoundExists) {
+      let soundStart = soundFromNumber;
+      const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+      if (hasSoundRange) {
+        // When inserting before a range, use the lower bound (from value) as the starting point
+        const lower = parseInt(existingEntry.data.sound_from, 10);
+        if (!Number.isNaN(lower)) soundStart = lower;
+      } else if (typeof existingEntry.data?.soundFile === 'string') {
+        const n = parseInt(existingEntry.data.soundFile, 10);
+        if (!Number.isNaN(n)) soundStart = n;
+      } else if (typeof existingEntry.data?.sound_from === 'string') {
+        const n = parseInt(existingEntry.data.sound_from, 10);
+        if (!Number.isNaN(n)) soundStart = n;
+      }
+      // Only shift sound files if the input sound field is not blank
+      const soundDelta = (!takeData.soundFile || !takeData.soundFile.trim()) ? 0 : 1;
+      updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
     }
-    // Only shift sound files if the input sound field is not blank
-    const soundDelta = (!takeData.soundFile || !takeData.soundFile.trim()) ? 0 : 1;
-    updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
 
     if (camCount === 1) {
-      let camStart = cameraFromNumber;
-      const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
-      if (hasRangeCam) {
-        // When inserting before a range, use the lower bound (from value) as the starting point
-        const lower = parseInt(existingEntry.data.camera1_from, 10);
-        if (!Number.isNaN(lower)) camStart = lower;
-      } else if (typeof existingEntry.data?.cameraFile === 'string') {
-        const n = parseInt(existingEntry.data.cameraFile, 10);
-        if (!Number.isNaN(n)) camStart = n;
-      } else if (typeof existingEntry.data?.camera1_from === 'string') {
-        const n = parseInt(existingEntry.data.camera1_from, 10);
-        if (!Number.isNaN(n)) camStart = n;
+      // Check if target duplicate has camera file (not blank)
+      const targetCameraExists = !!(typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.trim()) ||
+                                  !!(typeof existingEntry.data?.camera1_from === 'string' && existingEntry.data.camera1_from.trim());
+      
+      if (targetCameraExists) {
+        let camStart = cameraFromNumber;
+        const hasRangeCam = typeof existingEntry.data?.camera1_from === 'string' && typeof existingEntry.data?.camera1_to === 'string';
+        if (hasRangeCam) {
+          // When inserting before a range, use the lower bound (from value) as the starting point
+          const lower = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(lower)) camStart = lower;
+        } else if (typeof existingEntry.data?.cameraFile === 'string') {
+          const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
+        // Only shift camera files if the input camera field is not blank
+        const cameraDelta = (!takeData.cameraFile || !takeData.cameraFile.trim()) ? 0 : 1;
+        updateFileNumbers(projectId, 'cameraFile', camStart, cameraDelta);
       }
-      // Only shift camera files if the input camera field is not blank
-      const cameraDelta = (!takeData.cameraFile || !takeData.cameraFile.trim()) ? 0 : 1;
-      updateFileNumbers(projectId, 'cameraFile', camStart, cameraDelta);
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+        // Check if target duplicate has this camera file (not blank)
+        const targetCameraExists = !!(typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].trim()) ||
+                                    !!(typeof existingEntry.data?.[`camera${i}_from`] === 'string' && existingEntry.data[`camera${i}_from`].trim());
+        
+        if (targetCameraExists) {
           let camStart = cameraFromNumber;
           const fromKey = `camera${i}_from` as const;
           const toKey = `camera${i}_to` as const;
