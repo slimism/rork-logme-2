@@ -1653,6 +1653,11 @@ This would break the logging logic and create inconsistencies in the file number
             updated.soundFile = `${newFrom}-${newTo}`;
           }
           updateLogSheet(existingEntry.id, updated);
+        } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
+          const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+          const newVal = String(exNum + soundDelta).padStart(4, '0');
+          const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
+          updateLogSheet(existingEntry.id, updated);
         }
       }
     } else if (targetFieldId.startsWith('cameraFile')) {
@@ -1901,6 +1906,11 @@ This would break the logging logic and create inconsistencies in the file number
                 updated.soundFile = `${newFrom}-${newTo}`;
               }
               updateLogSheet(existingEntry.id, updated);
+            } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
+              const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+              const newVal = String(exNum + soundDelta).padStart(4, '0');
+              const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
+              updateLogSheet(existingEntry.id, updated);
             }
           }
         } else {
@@ -2104,6 +2114,11 @@ This would break the logging logic and create inconsistencies in the file number
               if (hadInline) {
                 updated.soundFile = `${newFrom}-${newTo}`;
               }
+              updateLogSheet(existingEntry.id, updated);
+            } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
+              const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+              const newVal = String(exNum + soundDelta).padStart(4, '0');
+              const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
               updateLogSheet(existingEntry.id, updated);
             }
           }
@@ -2446,6 +2461,15 @@ This would break the logging logic and create inconsistencies in the file number
         }
         await updateLogSheet(existingEntry.id, updated);
       }
+    } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0 && !disabledFields.has('soundFile')) {
+      const r = rangeData['soundFile'];
+      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
+        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
+        : 1;
+      const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+      const newVal = String(exNum + delta).padStart(4, '0');
+      const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
+      await updateLogSheet(existingEntry.id, updated);
     }
 
     if (camCount === 1) {
