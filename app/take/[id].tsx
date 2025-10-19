@@ -1637,8 +1637,9 @@ This would break the logging logic and create inconsistencies in the file number
       }
       const soundDelta = (() => {
         // For selective shifting, use the input field's delta, not the existing field's
-        if (!takeData.soundFile || !takeData.soundFile.trim()) {
-          // Input sound is blank, so delta is 0 (don't shift sound files)
+        // Check if sound is disabled (waste scenario) or blank
+        if (disabledFields.has('soundFile') || !takeData.soundFile || !takeData.soundFile.trim()) {
+          // Input sound is blank or disabled, so delta is 0 (don't shift sound files)
           return 0;
         }
         const r = rangeData['soundFile'];
@@ -1698,6 +1699,12 @@ This would break the logging logic and create inconsistencies in the file number
       
       // Calculate delta based on range size being inserted
       camDelta = (() => {
+        // Check if camera field is disabled (waste scenario)
+        if (disabledFields.has(targetFieldId)) {
+          // Camera field is disabled (waste), so delta is 0 (don't shift camera files)
+          return 0;
+        }
+        
         // Check rangeData FIRST (for range mode), then fallback to takeData (for single value mode)
         const r = rangeData[targetFieldId];
         if (showRangeMode[targetFieldId] && r?.from && r?.to) {
