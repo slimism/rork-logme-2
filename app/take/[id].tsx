@@ -1868,6 +1868,10 @@ This would break the logging logic and create inconsistencies in the file number
           updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
         }
 
+        // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
+        const existingEntryUpdates: Record<string, any> = { ...existingEntry.data };
+        let hasUpdates = false;
+
         // Shift file numbers starting from target
         // Shift sound files starting from the correct number
         if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
@@ -1903,17 +1907,18 @@ This would break the logging logic and create inconsistencies in the file number
               const oldToNum = parseInt(targetRange.to, 10) || 0;
               const newFrom = String(insertedUpper + 1).padStart(4, '0');
               const newTo = String(oldToNum + soundDelta).padStart(4, '0');
-              const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+              existingEntryUpdates.sound_from = newFrom;
+              existingEntryUpdates.sound_to = newTo;
               const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
               if (hadInline) {
-                updated.soundFile = `${newFrom}-${newTo}`;
+                existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
               }
-              updateLogSheet(existingEntry.id, updated);
+              hasUpdates = true;
             } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
               const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
               const newVal = String(exNum + soundDelta).padStart(4, '0');
-              const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-              updateLogSheet(existingEntry.id, updated);
+              existingEntryUpdates.soundFile = newVal;
+              hasUpdates = true;
             }
           }
         } else {
@@ -2052,6 +2057,11 @@ This would break the logging logic and create inconsistencies in the file number
               }
             }
           }
+        }
+
+        // Apply all accumulated updates to the existing entry in a single call
+        if (hasUpdates) {
+          updateLogSheet(existingEntry.id, existingEntryUpdates);
         }
 
       } else if (duplicateInfo.type === 'file') {
@@ -2425,6 +2435,10 @@ This would break the logging logic and create inconsistencies in the file number
       updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1);
     }
 
+    // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
+    const existingEntryUpdates: Record<string, any> = { ...existingEntry.data };
+    let hasUpdates = false;
+
     let soundStart = soundFromNumber;
     if (typeof existingEntry.data?.sound_from === 'string') {
       const n = parseInt(existingEntry.data.sound_from, 10);
@@ -2460,12 +2474,13 @@ This would break the logging logic and create inconsistencies in the file number
         const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
         const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
-        const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+        existingEntryUpdates.sound_from = newFrom;
+        existingEntryUpdates.sound_to = newTo;
         const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
         if (hadInline) {
-          updated.soundFile = `${newFrom}-${newTo}`;
+          existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
         }
-        await updateLogSheet(existingEntry.id, updated);
+        hasUpdates = true;
       }
     } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0 && !disabledFields.has('soundFile')) {
       const r = rangeData['soundFile'];
@@ -2474,8 +2489,8 @@ This would break the logging logic and create inconsistencies in the file number
         : 1;
       const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
       const newVal = String(exNum + delta).padStart(4, '0');
-      const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-      await updateLogSheet(existingEntry.id, updated);
+      existingEntryUpdates.soundFile = newVal;
+      hasUpdates = true;
     }
 
     if (camCount === 1) {
@@ -2559,14 +2574,20 @@ This would break the logging logic and create inconsistencies in the file number
         const insertedUpper = bounds?.max ?? (parseInt(rCam.from, 10) || 0);
         const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
-        const updated: Record<string, any> = { ...existingEntry.data, [fromKey]: newFrom, [toKey]: newTo };
+        existingEntryUpdates[fromKey] = newFrom;
+        existingEntryUpdates[toKey] = newTo;
         const inlineField = cameraFieldId;
         const hadInline = typeof existingEntry.data?.[inlineField] === 'string' && isRangeString(existingEntry.data[inlineField]);
         if (hadInline) {
-          (updated as any)[inlineField] = `${newFrom}-${newTo}`;
+          existingEntryUpdates[inlineField] = `${newFrom}-${newTo}`;
         }
-        await updateLogSheet(existingEntry.id, updated);
+        hasUpdates = true;
       }
+    }
+
+    // Apply all accumulated updates to the existing entry in a single call
+    if (hasUpdates) {
+      await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
     if (camCount > 1) {
