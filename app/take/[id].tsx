@@ -1846,37 +1846,49 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
-    // Debug logging
-    console.log('[handleSaveWithSelectiveDuplicateHandling] Saving current logSheet:');
-    console.log('  targetFieldId:', targetFieldId);
-    console.log('  camDelta:', camDelta);
-    console.log('  camStart:', camStart);
-    console.log('  rangeData[' + targetFieldId + ']:', rangeData[targetFieldId]);
-    console.log('  showRangeMode[' + targetFieldId + ']:', showRangeMode[targetFieldId]);
-    console.log('  finalData.camera1_from:', updatedData.camera1_from);
-    console.log('  finalData.camera1_to:', updatedData.camera1_to);
-    console.log('  finalData.cameraFile:', updatedData.cameraFile);
-    console.log('  existingEntryUpdates:', existingEntryUpdates);
-    
-    await updateLogSheet(logSheet.id, updatedData);
-    
-    // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
-    // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
-    // This ensures the current logSheet (with edited values) gets skipped
-    if (targetFieldId.startsWith('cameraFile')) {
-      if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
-      }
-    }
-    
-    // Update existingEntry after shifting
-    if (existingEntryUpdates) {
-      await updateLogSheet(existingEntry.id, existingEntryUpdates);
-    }
+    // Visual debug alert to show on screen
+    Alert.alert(
+      'Debug Info - Selective Duplicate Handling',
+      `targetFieldId: ${targetFieldId}
+camDelta: ${camDelta}
+camStart: ${camStart}
+rangeData[${targetFieldId}]: ${JSON.stringify(rangeData[targetFieldId])}
+showRangeMode[${targetFieldId}]: ${showRangeMode[targetFieldId]}
+camera1_from: ${updatedData.camera1_from}
+camera1_to: ${updatedData.camera1_to}
+cameraFile: ${updatedData.cameraFile}
+existingEntryUpdates: ${existingEntryUpdates ? JSON.stringify({
+  camera: existingEntryUpdates.cameraFile || existingEntryUpdates.camera1_from + '-' + existingEntryUpdates.camera1_to,
+  takeNumber: existingEntryUpdates.takeNumber
+}) : 'null'}`,
+      [
+        { 
+          text: 'Continue', 
+          onPress: async () => {
+            // Proceed with save logic
+            await updateLogSheet(logSheet.id, updatedData);
+            
+            // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
+            // This ensures the current logSheet (with edited values) gets skipped
+            if (targetFieldId.startsWith('cameraFile')) {
+              if (!disabledFields.has(targetFieldId) && camDelta > 0) {
+                updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+              }
+            }
+            
+            // Update existingEntry after shifting
+            if (existingEntryUpdates) {
+              await updateLogSheet(existingEntry.id, existingEntryUpdates);
+            }
 
-    router.back();
+            router.back();
+          }
+        }
+      ]
+    );
   };
 
   const pruneDisabled = (data: Record<string, any>) => {
