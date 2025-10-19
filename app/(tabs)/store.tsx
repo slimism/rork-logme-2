@@ -180,9 +180,9 @@ export default function Store() {
           <Text style={[styles.statusValue, darkMode && styles.statusValueDark]}>{getRemainingTrialLogs()}</Text>
         </View>
 
-        {/* How Credits Work */}
+        {/* How Tokens Work */}
         <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>How Credits Work</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>How Tokens Work</Text>
           
           <View style={styles.infoItem}>
             <Calendar size={20} color={colors.primary} style={styles.infoIcon} />
