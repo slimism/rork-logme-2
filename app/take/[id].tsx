@@ -1858,7 +1858,12 @@ This would break the logging logic and create inconsistencies in the file number
     // This ensures the current logSheet (with edited values) gets skipped
     if (targetFieldId.startsWith('cameraFile')) {
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+        const targetRangeForStart = getRangeFromData(existingEntry.data, targetFieldId);
+        const insertedBounds = getInsertedBounds(targetFieldId);
+        const safeStart = targetRangeForStart
+          ? ((parseInt(targetRangeForStart.to, 10) || 0) + 1)
+          : (insertedBounds ? (insertedBounds.max + 1) : camStart);
+        updateFileNumbers(logSheet.projectId, targetFieldId, safeStart, camDelta);
       }
     }
     
