@@ -1767,11 +1767,13 @@ This would break the logging logic and create inconsistencies in the file number
               newCamMax = 0;
             }
             
-            const shouldBump = targetCamNum >= newCamMin && targetCamNum <= newCamMax;
+            // Only bump if target camera number equals the min of the new range (insert before scenario)
+            const shouldBump = targetCamNum === newCamMin;
             if (shouldBump && camDelta > 0) {
+              // Shift target to the end of the inserted range + 1
               existingEntryUpdates = {
                 ...existingEntry.data,
-                [targetFieldId]: String(targetCamNum + camDelta).padStart(4, '0'),
+                [targetFieldId]: String(newCamMax + 1).padStart(4, '0'),
                 takeNumber: String(targetTakeNumber + 1)
               };
             }
