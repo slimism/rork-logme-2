@@ -2438,6 +2438,12 @@ This would break the logging logic and create inconsistencies in the file number
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
     const existingEntryUpdates: Record<string, any> = { ...existingEntry.data };
     let hasUpdates = false;
+    
+    // Update the take number for the existing entry (it's being shifted by 1)
+    if (!Number.isNaN(targetTake)) {
+      existingEntryUpdates.takeNumber = String(targetTake + 1);
+      hasUpdates = true;
+    }
 
     let soundStart = soundFromNumber;
     if (typeof existingEntry.data?.sound_from === 'string') {
@@ -2458,7 +2464,13 @@ This would break the logging logic and create inconsistencies in the file number
         return 1;
       })();
       if (!disabledFields.has('soundFile')) {
-        { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
+        // Use the inserted range's upper bound as the starting point for shifting subsequent entries
+        const bounds = getInsertedBounds('soundFile');
+        const insertedMax = bounds?.max ?? 0;
+        const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+        // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
+        const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart);
+        updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
       }
     }
 
@@ -2517,7 +2529,13 @@ This would break the logging logic and create inconsistencies in the file number
           return 1;
         })();
         if (!disabledFields.has('cameraFile')) {
-          { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
+          // Use the inserted range's upper bound as the starting point for shifting subsequent entries
+          const bounds = getInsertedBounds('cameraFile');
+          const insertedMax = bounds?.max ?? 0;
+          const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+          // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
+          const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart);
+          updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta);
         }
       }
     } else {
@@ -2550,7 +2568,13 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has(fieldId)) {
-              { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
+              // Use the inserted range's upper bound as the starting point for shifting subsequent entries
+              const bounds = getInsertedBounds(fieldId);
+              const insertedMax = bounds?.max ?? 0;
+              const targetRange = getRangeFromData(existingEntry.data, fieldId);
+              // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
+              const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart);
+              updateFileNumbers(logSheet.projectId, fieldId, start, camDelta);
             }
           }
         }
