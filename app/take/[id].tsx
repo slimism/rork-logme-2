@@ -2499,13 +2499,6 @@ This would break the logging logic and create inconsistencies in the file number
       hasUpdates = true;
     }
 
-    // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
-    if (!disabledFields.has('soundFile') && soundDelta > 0) {
-      // Start shifting from AFTER the existingEntry's NEW upper bound
-      const start = newSoundToNum > 0 ? newSoundToNum + 1 : soundStart;
-      updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
-    }
-
     if (camCount === 1) {
       let camStart = cameraFromNumber;
       if (typeof existingEntry.data?.camera1_from === 'string') {
@@ -2549,12 +2542,6 @@ This would break the logging logic and create inconsistencies in the file number
         hasUpdates = true;
       }
 
-      // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
-      if (!disabledFields.has('cameraFile') && camDelta > 0) {
-        // Start shifting from AFTER the existingEntry's NEW upper bound
-        const start = newCamToNum > 0 ? newCamToNum + 1 : camStart;
-        updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta);
-      }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
@@ -2604,19 +2591,65 @@ This would break the logging logic and create inconsistencies in the file number
             hasUpdates = true;
           }
 
-          // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
-          if (!disabledFields.has(fieldId) && camDelta > 0) {
-            // Start shifting from AFTER the existingEntry's NEW upper bound
-            const start = newCamToNum > 0 ? newCamToNum + 1 : camStart;
-            updateFileNumbers(logSheet.projectId, fieldId, start, camDelta);
-          }
         }
       }
     }
 
-    // Apply all accumulated updates to the existing entry in a single call
+    // Apply all accumulated updates to the existing entry in a single call BEFORE shifting subsequent entries
+    // This ensures the store sees the updated values when updateFileNumbers runs
     if (hasUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    }
+
+    // Now shift all subsequent entries AFTER the existingEntry has been updated
+    // Use the NEW upper bound of existingEntry as the starting point
+    if (!disabledFields.has('soundFile') && soundDelta > 0 && newSoundToNum > 0) {
+      updateFileNumbers(logSheet.projectId, 'soundFile', newSoundToNum + 1, soundDelta);
+    }
+
+    if (camCount === 1) {
+      if (!disabledFields.has('cameraFile') && newCamToNum > 0) {
+        const camDelta = (() => {
+          if (!takeData.cameraFile || !takeData.cameraFile.trim()) return 0;
+          const r = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+            const a = parseInt(r.from, 10) || 0;
+            const b = parseInt(r.to, 10) || 0;
+            return Math.abs(b - a) + 1;
+          }
+          return 1;
+        })();
+        if (camDelta > 0) {
+          updateFileNumbers(logSheet.projectId, 'cameraFile', newCamToNum + 1, camDelta);
+        }
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        // Find the corresponding newCamToNum for this camera - need to recalculate
+        const targetRange = getRangeFromData(existingEntry.data, fieldId);
+        if (targetRange && !disabledFields.has(fieldId)) {
+          const camDelta = (() => {
+            if (!takeData[fieldId] || !takeData[fieldId].trim()) return 0;
+            const r = rangeData[fieldId];
+            if (showRangeMode[fieldId] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return 1;
+          })();
+          if (camDelta > 0) {
+            // Get the NEW upper bound from existingEntryUpdates
+            const newToKey = `camera${i}_to`;
+            const newUpperBound = existingEntryUpdates[newToKey];
+            if (newUpperBound) {
+              const newToNum = parseInt(newUpperBound, 10) || 0;
+              updateFileNumbers(logSheet.projectId, fieldId, newToNum + 1, camDelta);
+            }
+          }
+        }
+      }
     }
 
     if (camCount > 1) {
