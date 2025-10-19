@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
@@ -22,7 +21,7 @@ export default function EditTakeScreen() {
   const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
   const colors = useColors();
 
-  const [logSheet, setLogSheet] = useState(logSheets.find((l: any) => l.id === id));
+  const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
   const [project, setProject] = useState<any>(null);
   const [takeData, setTakeData] = useState<Record<string, string>>({});
   const [classification, setClassification] = useState<ClassificationType | null>(null);
@@ -132,7 +131,7 @@ export default function EditTakeScreen() {
   }, [getHighestFileNumber]);
 
   useEffect(() => {
-  const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e: any) => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardHeight(e.endCoordinates.height);
     });
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
@@ -147,8 +146,8 @@ export default function EditTakeScreen() {
 
   // Initialize REC state separately to avoid infinite loops
   useEffect(() => {
-    const currentLogSheet = logSheets.find((l: any) => l.id === id);
-    const currentProject = projects.find((p: any) => p.id === currentLogSheet?.projectId);
+    const currentLogSheet = logSheets.find(l => l.id === id);
+    const currentProject = projects.find(p => p.id === currentLogSheet?.projectId);
     if (currentProject) {
       const initialRecState: { [key: string]: boolean } = {};
       if ((currentProject.settings?.cameraConfiguration || 1) > 1) {
@@ -161,18 +160,18 @@ export default function EditTakeScreen() {
   }, [id, projects, logSheets]);
 
   useEffect(() => {
-    const currentLogSheet = logSheets.find((l: any) => l.id === id);
-    const currentProject = projects.find((p: any) => p.id === currentLogSheet?.projectId);
+    const currentLogSheet = logSheets.find(l => l.id === id);
+    const currentProject = projects.find(p => p.id === currentLogSheet?.projectId);
 
     setLogSheet(currentLogSheet);
     setProject(currentProject);
 
     // Build shot description and episode maps from existing logs
     if (currentProject) {
-      const projectLogSheets = logSheets.filter((s: any) => s.projectId === currentProject.id);
+      const projectLogSheets = logSheets.filter(s => s.projectId === currentProject.id);
       const shotDescMap: Record<string, string> = {};
       const episodeMap: Record<string, string> = {};
-      projectLogSheets.forEach((sheet: any) => {
+      projectLogSheets.forEach(sheet => {
         if (sheet.id === currentLogSheet?.id) return;
         if (sheet.data?.sceneNumber && sheet.data?.shotNumber && sheet.data?.descriptionOfShot) {
           const key = `${sheet.data.sceneNumber}_${sheet.data.shotNumber}`;
@@ -202,43 +201,79 @@ export default function EditTakeScreen() {
       } else {
         setShotDetails([]);
       }
+      setIsGoodTake(currentLogSheet.data.isGoodTake === true || currentLogSheet.data.isGoodTake === 'true');
 
-      const savedWasteOptions = currentLogSheet.data.wasteOptions;
-      if (savedWasteOptions) {
+      if (currentLogSheet.data.wasteOptions) {
         try {
-          const parsedWasteOptions = typeof savedWasteOptions === 'string' ? JSON.parse(savedWasteOptions as any) : savedWasteOptions;
-          setWasteOptions({ camera: !!parsedWasteOptions.camera, sound: !!parsedWasteOptions.sound });
-        } catch (e: any) {
+          const parsedWasteOptions = typeof currentLogSheet.data.wasteOptions === 'string' 
+            ? JSON.parse(currentLogSheet.data.wasteOptions) 
+            : currentLogSheet.data.wasteOptions;
+          setWasteOptions(parsedWasteOptions || { camera: false, sound: false });
+        } catch (e) {
           console.log('Error parsing waste options:', e);
           setWasteOptions({ camera: false, sound: false });
         }
-      } else {
-        setWasteOptions({ camera: false, sound: false });
       }
 
-      const savedInsertSoundSpeed = currentLogSheet.data.insertSoundSpeed;
-      if (savedInsertSoundSpeed != null) {
-        const parsed = typeof savedInsertSoundSpeed === 'string' ? (savedInsertSoundSpeed === 'true') : !!savedInsertSoundSpeed;
-        setInsertSoundSpeed(parsed);
-      } else {
-        setInsertSoundSpeed(null);
+      if (currentLogSheet.data.insertSoundSpeed !== undefined) {
+        const soundSpeed = currentLogSheet.data.insertSoundSpeed === 'true' || currentLogSheet.data.insertSoundSpeed === true;
+        setInsertSoundSpeed(soundSpeed);
       }
 
-      const savedCamRecState = currentLogSheet.data.cameraRecState;
-      if (savedCamRecState && typeof savedCamRecState === 'object') {
-        const camCount = currentProject?.settings?.cameraConfiguration || 1;
-        const initialRecState: { [key: string]: boolean } = {};
-        if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fid = `cameraFile${i}`;
-            initialRecState[fid] = (savedCamRecState as any)[fid] ?? true;
-          }
-          setCameraRecState(initialRecState);
+      if (currentLogSheet.data.cameraRecState) {
+        try {
+          const parsedRecState = typeof currentLogSheet.data.cameraRecState === 'string' 
+            ? JSON.parse(currentLogSheet.data.cameraRecState) 
+            : currentLogSheet.data.cameraRecState;
+          setCameraRecState(parsedRecState || {});
+        } catch (e) {
+          console.log('Error parsing camera REC state:', e);
+          setCameraRecState({});
         }
       }
-    }
 
-    // Update disabled fields is handled by the existing effect that depends on classification/settings
+      const newRangeData: { [key: string]: { from: string; to: string } } = {};
+      const newShowRangeMode: { [key: string]: boolean } = {};
+
+      const trySetRangeFromStableKeys = (sheetData: Record<string, any>) => {
+        const soundFrom = sheetData['sound_from'];
+        const soundTo = sheetData['sound_to'];
+        if (soundFrom && soundTo) {
+          newRangeData['soundFile'] = { from: soundFrom, to: soundTo };
+          newShowRangeMode['soundFile'] = true;
+        }
+        // camera 1..N
+        for (let i = 1; i <= (currentProject?.settings?.cameraConfiguration || 1); i++) {
+          const fromKey = `camera${i}_from`;
+          const toKey = `camera${i}_to`;
+          if (sheetData[fromKey] && sheetData[toKey]) {
+            const fieldId = i === 1 && (currentProject?.settings?.cameraConfiguration || 1) === 1 ? 'cameraFile' : `cameraFile${i}`;
+            newRangeData[fieldId] = { from: sheetData[fromKey], to: sheetData[toKey] };
+            newShowRangeMode[fieldId] = true;
+          }
+        }
+      };
+
+      trySetRangeFromStableKeys(currentLogSheet.data as any);
+
+      Object.keys(currentLogSheet.data).forEach(key => {
+        const value = currentLogSheet.data[key];
+        if (typeof value === 'string' && value.includes('-') && (key.includes('File') || key === 'soundFile')) {
+          const [from, to] = value.split('-');
+          if (from && to) {
+            newRangeData[key] = { from, to };
+            newShowRangeMode[key] = true;
+          }
+        }
+      });
+      setRangeData(newRangeData);
+      setShowRangeMode(newShowRangeMode);
+
+      if (newRangeData['cameraFile']) {
+        setCameraRange(newRangeData['cameraFile']);
+        setCameraRangeEnabled(true);
+      }
+    }
   }, [id, projects, logSheets]);
 
   useEffect(() => {
@@ -561,12 +596,12 @@ export default function EditTakeScreen() {
 
   const findDuplicateTake = () => {
     if (!logSheet) return null;
-    const projectLogSheets = logSheets.filter((sheet: any) => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
     const sceneNumber = takeData.sceneNumber;
     const shotNumber = takeData.shotNumber;
     const takeNumber = takeData.takeNumber;
     if (sceneNumber && shotNumber && takeNumber) {
-      const existingTake = projectLogSheets.find((sheet: any) => 
+      const existingTake = projectLogSheets.find(sheet => 
         sheet.data?.sceneNumber === sceneNumber &&
         sheet.data?.shotNumber === shotNumber &&
         sheet.data?.takeNumber === takeNumber
@@ -641,8 +676,8 @@ export default function EditTakeScreen() {
   const isRangeString = (s?: string) => !!s && RANGE_SEP.test(s);
 
   // Helper function to get range values from stored data
-  const getRangeFromData = (data: Record<string, any>, fieldId: string): { from: string; to: string } | null => {
-    if (!data) return null;
+  const getRangeFromData = (data: any, fieldId: string): { from: string; to: string } | null => {
+    // First, check stable keys
     if (fieldId === 'soundFile') {
       const from = data['sound_from'];
       const to = data['sound_to'];
@@ -653,19 +688,22 @@ export default function EditTakeScreen() {
       const to = data[`camera${cameraNum}_to`];
       if (from && to) return { from, to };
     }
+    
+    // Fallback: parse display field if it contains a range separator
     const raw = data[fieldId];
     if (typeof raw === 'string' && isRangeString(raw)) {
-      const parts = raw.split(RANGE_SEP).map((s: any) => s.replace(/\D/g, '')).filter(Boolean);
+      const parts = raw.split(RANGE_SEP).map(s => s.replace(/\D/g, '')).filter(Boolean);
       if (parts.length === 2 && parts[0] && parts[1]) {
         return { from: parts[0], to: parts[1] };
       }
     }
+    
     return null;
   };
 
   const findFirstDuplicateFile = () => {
     if (!logSheet) return null;
-    const projectLogSheets = logSheets.filter((sheet: any) => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
     type DuplicateInfo = { 
       type: string; 
       label: string; 
@@ -691,7 +729,7 @@ export default function EditTakeScreen() {
         const currentMax = Math.max(currentFrom, currentTo);
         const currentNumbers = expandRange(currentFrom, currentTo);
         
-        for (const sheet of projectLogSheets as any[]) {
+        for (const sheet of projectLogSheets) {
           const data = sheet.data;
           if (!data) continue;
           
@@ -757,7 +795,7 @@ export default function EditTakeScreen() {
         const val = takeData.soundFile as string;
         const currentNum = parseInt(val) || 0;
         
-        for (const sheet of projectLogSheets as any[]) {
+        for (const sheet of projectLogSheets) {
           const data = sheet.data;
           if (!data) continue;
           
@@ -822,7 +860,7 @@ export default function EditTakeScreen() {
           const currentMax = Math.max(currentFrom, currentTo);
           const currentNumbers = expandRange(currentFrom, currentTo);
           
-          for (const sheet of projectLogSheets as any[]) {
+          for (const sheet of projectLogSheets) {
             const data = sheet.data;
             if (!data) continue;
             
@@ -888,7 +926,7 @@ export default function EditTakeScreen() {
           const val = takeData.cameraFile as string;
           const currentNum = parseInt(val) || 0;
           
-          for (const sheet of projectLogSheets as any[]) {
+          for (const sheet of projectLogSheets) {
             const data = sheet.data;
             if (!data) continue;
             
@@ -954,7 +992,7 @@ export default function EditTakeScreen() {
             const currentMax = Math.max(currentFrom, currentTo);
             const currentNumbers = expandRange(currentFrom, currentTo);
             
-            for (const sheet of projectLogSheets as any[]) {
+            for (const sheet of projectLogSheets) {
               const data = sheet.data;
               if (!data) continue;
               
@@ -1019,7 +1057,7 @@ export default function EditTakeScreen() {
             // Current input is a single value - check for conflicts
             const currentNum = parseInt(val) || 0;
             
-            for (const sheet of projectLogSheets as any[]) {
+            for (const sheet of projectLogSheets) {
               const data = sheet.data;
               if (!data) continue;
               
@@ -1190,14 +1228,14 @@ export default function EditTakeScreen() {
 
     const getEligibleDuplicateForField = (fieldId: string) => {
       if (!logSheet) return null as any;
-      const projectLogSheets = logSheets.filter((sheet: any) => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
+      const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
       const currentVal = takeData[fieldId] as string | undefined;
       if (!currentVal || disabledFields.has(fieldId)) return null as any;
       const currentRange = rangeData[fieldId];
       const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
       const parseNum = (s?: string) => (s ? (parseInt(s, 10) || 0) : 0);
       const valNum = parseNum(currentVal);
-      for (const sheet of projectLogSheets as any[]) {
+      for (const sheet of projectLogSheets) {
         const data = sheet.data;
         if (!data) continue;
         const existingRange = getRangeFromData(data, fieldId);
@@ -1217,11 +1255,14 @@ export default function EditTakeScreen() {
                 return { fieldId, number: curFrom, existingEntry: sheet };
               }
             }
-          } else {
-            const exVal = parseNum(data[fieldId]);
-            if (exVal >= curMin && exVal <= curMax) {
-              if (exVal === curMin) {
-                return { fieldId, number: exVal, existingEntry: sheet };
+          }
+          const existingVal = data[fieldId] as string | undefined;
+          if (existingVal && typeof existingVal === 'string' && !isRangeString(existingVal)) {
+            const exNum = parseNum(existingVal);
+            if (exNum >= curMin && exNum <= curMax) {
+              // Only allow insert before if existing value is at the lower bound of current range
+              if (exNum === curMin) {
+                return { fieldId, number: curMin, existingEntry: sheet };
               }
             }
           }
@@ -1232,13 +1273,14 @@ export default function EditTakeScreen() {
             const exMin = Math.min(exFrom, exTo);
             const exMax = Math.max(exFrom, exTo);
             if (valNum >= exMin && valNum <= exMax) {
+              // Only allow insert before if current value is at the lower bound of existing range
               if (valNum === exMin) {
                 return { fieldId, number: valNum, existingEntry: sheet };
               }
             }
-          } else {
-            const exVal = parseNum(data[fieldId]);
-            if (exVal === valNum) return { fieldId, number: exVal, existingEntry: sheet };
+          }
+          if (data[fieldId] === currentVal) {
+            return { fieldId, number: valNum, existingEntry: sheet };
           }
         }
       }
@@ -1537,7 +1579,7 @@ This would break the logging logic and create inconsistencies in the file number
     const existingEntry = duplicateInfo.existingEntry;
     const targetFieldId = duplicateInfo.fieldId;
 
-    const projectLogSheets = logSheets.filter((sheet: any) => sheet.projectId === logSheet.projectId);
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
 
     const excludeIds = new Set<string>();
     if (existingEntry?.id) excludeIds.add(existingEntry.id as string);
@@ -1699,7 +1741,7 @@ This would break the logging logic and create inconsistencies in the file number
             takeNumber: String(targetTakeNumber + 1)
           };
           const hadInline = typeof existingEntry.data?.[targetFieldId] === 'string' && isRangeString(existingEntry.data[targetFieldId]);
-          if (hadInline && existingEntryUpdates) {
+          if (hadInline) {
             existingEntryUpdates[targetFieldId] = `${newFrom}-${newTo}`;
           }
         } else {
@@ -1781,13 +1823,9 @@ This would break the logging logic and create inconsistencies in the file number
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
-        // For disabled fields, only delete if it's not a waste take with preserved range data
-        // Waste takes should preserve their range data even when disabled
-        if (classification !== 'Waste' || !wasteOptions.camera) {
-          delete finalData.cameraFile;
-          delete finalData['camera1_from'];
-          delete finalData['camera1_to'];
-        }
+        delete finalData.cameraFile;
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -1800,13 +1838,9 @@ This would break the logging logic and create inconsistencies in the file number
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
-          // For disabled fields, only delete if it's not a waste take with preserved range data
-          // Waste takes should preserve their range data even when disabled
-          if (classification !== 'Waste' || !wasteOptions.camera) {
-            delete finalData[fid];
-            delete finalData[`camera${i}_from`];
-            delete finalData[`camera${i}_to`];
-          }
+          delete finalData[fid];
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
         }
       }
     }
@@ -1878,7 +1912,7 @@ This would break the logging logic and create inconsistencies in the file number
       const curMin = Math.min(curFrom, curTo);
       const curMax = Math.max(curFrom, curTo);
 
-      for (const sheet of projectLogSheets as any[]) {
+      for (const sheet of projectLogSheets) {
         if (!sheet.data || excludeIds.has(sheet.id)) continue;
         const getExistingRange = (): { from?: string; to?: string } => {
           if (fieldId === 'soundFile') {
@@ -2274,13 +2308,9 @@ This would break the logging logic and create inconsistencies in the file number
               delete finalData['camera1_from'];
               delete finalData['camera1_to'];
             } else {
-              // For disabled fields, only delete if it's not a waste take with preserved range data
-              // Waste takes should preserve their range data even when disabled
-              if (classification !== 'Waste' || !wasteOptions.camera) {
-                delete finalData.cameraFile;
-                delete finalData['camera1_from'];
-                delete finalData['camera1_to'];
-              }
+              delete finalData.cameraFile;
+              delete finalData['camera1_from'];
+              delete finalData['camera1_to'];
             }
           } else {
             for (let i = 1; i <= camCount; i++) {
@@ -2293,13 +2323,9 @@ This would break the logging logic and create inconsistencies in the file number
                 delete finalData[`camera${i}_from`];
                 delete finalData[`camera${i}_to`];
               } else {
-                // For disabled fields, only delete if it's not a waste take with preserved range data
-                // Waste takes should preserve their range data even when disabled
-                if (classification !== 'Waste' || !wasteOptions.camera) {
-                  delete finalData[fid];
-                  delete finalData[`camera${i}_from`];
-                  delete finalData[`camera${i}_to`];
-                }
+                delete finalData[fid];
+                delete finalData[`camera${i}_from`];
+                delete finalData[`camera${i}_to`];
               }
             }
           }
@@ -2443,34 +2469,6 @@ This would break the logging logic and create inconsistencies in the file number
                   updated.cameraFile = `${newFrom}-${newTo}`;
                 }
                 updateLogSheet(existingEntry.id, updated);
-              } else {
-                // Handle single camera value (not range) in type=file scenario
-                const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
-                if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
-                  const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
-                  if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-                    const insFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-                    const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-                    const min = Math.min(insFrom, insTo);
-                    const max = Math.max(insFrom, insTo);
-                    if (targetSingleNum >= min && targetSingleNum <= max) {
-                      const updated: Record<string, any> = { 
-                        ...existingEntry.data, 
-                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0')
-                      };
-                      updateLogSheet(existingEntry.id, updated);
-                    }
-                  } else if (takeData.cameraFile) {
-                    const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
-                    if (newSingle === targetSingleNum) {
-                      const updated: Record<string, any> = { 
-                        ...existingEntry.data, 
-                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0')
-                      };
-                      updateLogSheet(existingEntry.id, updated);
-                    }
-                  }
-                }
               }
             }
           }
@@ -2524,34 +2522,6 @@ This would break the logging logic and create inconsistencies in the file number
                       updated[fieldId] = `${newFrom}-${newTo}`;
                     }
                     updateLogSheet(existingEntry.id, updated);
-                  } else {
-                    // Handle single camera value (not range) in type=file multi-camera scenario
-                    const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
-                    if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
-                      const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
-                      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                        const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-                        const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
-                        const min = Math.min(insFrom, insTo);
-                        const max = Math.max(insFrom, insTo);
-                        if (targetSingleNum >= min && targetSingleNum <= max) {
-                          const updated: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
-                          };
-                          updateLogSheet(existingEntry.id, updated);
-                        }
-                      } else if (takeData[fieldId]) {
-                        const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-                        if (newSingle === targetSingleNum) {
-                          const updated: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
-                          };
-                          updateLogSheet(existingEntry.id, updated);
-                        }
-                      }
-                    }
                   }
                 }
               }
@@ -2976,13 +2946,10 @@ This would break the logging logic and create inconsistencies in the file number
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
-        // For disabled fields, only delete if it's not a waste take with preserved range data
-        // Waste takes should preserve their range data even when disabled
-        if (classification !== 'Waste' || !wasteOptions.camera) {
-          delete finalData.cameraFile;
-          delete finalData['camera1_from'];
-          delete finalData['camera1_to'];
-        }
+        // Disabled field - remove all
+        delete finalData.cameraFile;
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -2996,13 +2963,10 @@ This would break the logging logic and create inconsistencies in the file number
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
-          // For disabled fields, only delete if it's not a waste take with preserved range data
-          // Waste takes should preserve their range data even when disabled
-          if (classification !== 'Waste' || !wasteOptions.camera) {
-            delete finalData[fieldId];
-            delete finalData[`camera${i}_from`];
-            delete finalData[`camera${i}_to`];
-          }
+          // Disabled field or REC off - remove all
+          delete finalData[fieldId];
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
         }
       }
     }
@@ -3076,7 +3040,7 @@ This would break the logging logic and create inconsistencies in the file number
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
                 value={rangeData['soundFile']?.from || ''}
-                onChangeText={(text: any) => updateRangeData('soundFile', 'from', text)}
+                onChangeText={(text) => updateRangeData('soundFile', 'from', text)}
                 onBlur={() => {
                   const currentRange = rangeData['soundFile'];
                   if (currentRange?.from) {
@@ -3094,7 +3058,7 @@ This would break the logging logic and create inconsistencies in the file number
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
                 value={rangeData['soundFile']?.to || ''}
-                onChangeText={(text: any) => updateRangeData('soundFile', 'to', text)}
+                onChangeText={(text) => updateRangeData('soundFile', 'to', text)}
                 onBlur={() => {
                   const currentRange = rangeData['soundFile'];
                   if (currentRange?.to) {
@@ -3111,14 +3075,14 @@ This would break the logging logic and create inconsistencies in the file number
             </View>
           ) : (
             <TextInput
-              ref={(ref: any) => { inputRefs.current[field.id] = ref; }}
+              ref={(ref) => { inputRefs.current[field.id] = ref; }}
               style={[
                 styles.fieldInput,
                 isDisabled && styles.disabledInput,
                 hasError && styles.errorInput,
               ]}
               value={value}
-              onChangeText={(text: any) => updateTakeData(field.id, text)}
+              onChangeText={(text) => updateTakeData(field.id, text)}
               onBlur={() => {
                 if (value && !isDisabled) {
                   updateTakeData(field.id, formatFileNumber(value));
@@ -3145,7 +3109,7 @@ This would break the logging logic and create inconsistencies in the file number
           {field.label}{isMandatory && !isDisabled && <Text style={styles.asterisk}> *</Text>}
         </Text>
         <TextInput
-          ref={(ref: any) => { inputRefs.current[field.id] = ref; }}
+          ref={(ref) => { inputRefs.current[field.id] = ref; }}
           style={[
             styles.fieldInput,
             isMultiline && styles.multilineInput,
@@ -3153,7 +3117,7 @@ This would break the logging logic and create inconsistencies in the file number
             hasError && styles.errorInput,
           ]}
           value={isDisabled ? '' : value}
-          onChangeText={(text: any) => updateTakeData(field.id, text)}
+          onChangeText={(text) => updateTakeData(field.id, text)}
           placeholder={isDisabled ? '' : `Enter ${field.label.toLowerCase()}`}
           placeholderTextColor={colors.subtext}
           multiline={isMultiline}
@@ -3168,7 +3132,7 @@ This would break the logging logic and create inconsistencies in the file number
               }
             }
           }}
-          onFocus={(event: any) => {
+          onFocus={(event) => {
             if (!isDisabled) {
               const target = event.target as any;
               setTimeout(() => {
@@ -3235,7 +3199,7 @@ This would break the logging logic and create inconsistencies in the file number
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
                 value={rangeData[fieldId]?.from || ''}
-                onChangeText={(text: any) => updateRangeData(fieldId, 'from', text)}
+                onChangeText={(text) => updateRangeData(fieldId, 'from', text)}
                 onBlur={() => {
                   const currentRange = rangeData[fieldId];
                   if (currentRange?.from) {
@@ -3253,7 +3217,7 @@ This would break the logging logic and create inconsistencies in the file number
               <TextInput
                 style={[styles.fieldInput, styles.rangeInput, isDisabled && styles.disabledInput]}
                 value={rangeData[fieldId]?.to || ''}
-                onChangeText={(text: any) => updateRangeData(fieldId, 'to', text)}
+                onChangeText={(text) => updateRangeData(fieldId, 'to', text)}
                 onBlur={() => {
                   const currentRange = rangeData[fieldId];
                   if (currentRange?.to) {
@@ -3270,14 +3234,14 @@ This would break the logging logic and create inconsistencies in the file number
             </View>
           ) : (
             <TextInput
-              ref={(ref: any) => { inputRefs.current[fieldId] = ref; }}
+              ref={(ref) => { inputRefs.current[fieldId] = ref; }}
               style={[
                 styles.fieldInput, 
                 isDisabled && styles.disabledInput,
                 validationErrors.has(fieldId) && styles.errorInput,
               ]}
               value={isDisabled ? '' : (takeData[fieldId] || '')}
-              onChangeText={(text: any) => updateTakeData(fieldId, text)}
+              onChangeText={(text) => updateTakeData(fieldId, text)}
               onBlur={() => {
                 const value = takeData[fieldId];
                 if (value && !isDisabled) {
@@ -3295,7 +3259,7 @@ This would break the logging logic and create inconsistencies in the file number
                   inputRefs.current[nextFieldId]?.focus();
                 }
               }}
-              onFocus={(event: any) => {
+              onFocus={(event) => {
                 if (!isDisabled) {
                   const target = event.target as any;
                   setTimeout(() => {
@@ -3420,11 +3384,11 @@ This would break the logging logic and create inconsistencies in the file number
                     validationErrors.has('sceneNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('sceneNumber') ? '' : (takeData.sceneNumber || '')}
-                  onChangeText={(text: any) => updateTakeData('sceneNumber', text)}
+                  onChangeText={(text) => updateTakeData('sceneNumber', text)}
                   placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
-                  onFocus={(event: any) => {
+                  onFocus={(event) => {
                     if (!disabledFields.has('sceneNumber')) {
                       const target = event.target as any;
                       setTimeout(() => {
@@ -3454,11 +3418,11 @@ This would break the logging logic and create inconsistencies in the file number
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
-                  onChangeText={(text: any) => updateTakeData('shotNumber', text)}
+                  onChangeText={(text) => updateTakeData('shotNumber', text)}
                   placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
-                  onFocus={(event: any) => {
+                  onFocus={(event) => {
                     if (!disabledFields.has('shotNumber')) {
                       const target = event.target as any;
                       setTimeout(() => {
@@ -3486,12 +3450,12 @@ This would break the logging logic and create inconsistencies in the file number
                     validationErrors.has('takeNumber') && styles.errorInput
                   ]}
                   value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
-                  onChangeText={(text: any) => updateTakeData('takeNumber', text)}
+                  onChangeText={(text) => updateTakeData('takeNumber', text)}
                   placeholder={disabledFields.has('takeNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
-                  onFocus={(event: any) => {
+                  onFocus={(event) => {
                     if (!disabledFields.has('takeNumber')) {
                       const target = event.target as any;
                       setTimeout(() => {
@@ -3514,10 +3478,10 @@ This would break the logging logic and create inconsistencies in the file number
               <View style={styles.fieldContainer}>
                 <Text style={styles.fieldLabel}>Card Number</Text>
                 <TextInput
-                  ref={(ref: any) => { inputRefs.current['cardNumber'] = ref; }}
+                  ref={(ref) => { inputRefs.current['cardNumber'] = ref; }}
                   style={styles.fieldInput}
                   value={takeData.cardNumber || ''}
-                  onChangeText={(text: any) => updateTakeData('cardNumber', text)}
+                  onChangeText={(text) => updateTakeData('cardNumber', text)}
                   placeholder={'Enter card number'}
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
@@ -3532,10 +3496,10 @@ This would break the logging logic and create inconsistencies in the file number
                     <View key={fieldId} style={styles.fieldContainer}>
                       <Text style={styles.fieldLabel}>{label}</Text>
                       <TextInput
-                        ref={(ref: any) => { inputRefs.current[fieldId] = ref; }}
+                        ref={(ref) => { inputRefs.current[fieldId] = ref; }}
                         style={styles.fieldInput}
                         value={takeData[fieldId] || ''}
-                        onChangeText={(text: any) => updateTakeData(fieldId, text)}
+                        onChangeText={(text) => updateTakeData(fieldId, text)}
                         placeholder={`Enter ${label}`}
                         placeholderTextColor={colors.subtext}
                         returnKeyType="next"
@@ -3560,14 +3524,14 @@ This would break the logging logic and create inconsistencies in the file number
                 Episode
               </Text>
               <TextInput
-                ref={(ref: any) => { inputRefs.current['episodeNumber'] = ref; }}
+                ref={(ref) => { inputRefs.current['episodeNumber'] = ref; }}
                 style={[
                   styles.fieldInput,
                   disabledFields.has('episodeNumber') && styles.disabledInput,
                   validationErrors.has('episodeNumber') && styles.errorInput
                 ]}
                 value={disabledFields.has('episodeNumber') ? '' : (takeData.episodeNumber || '')}
-                onChangeText={(text: any) => updateTakeData('episodeNumber', text)}
+                onChangeText={(text) => updateTakeData('episodeNumber', text)}
                 placeholder="Enter episode number"
                 placeholderTextColor={colors.subtext}
                 returnKeyType="next"
