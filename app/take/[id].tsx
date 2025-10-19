@@ -239,7 +239,7 @@ export default function EditTakeScreen() {
     }
 
     // Update disabled fields is handled by the existing effect that depends on classification/settings
-  }, [id, projects, logSheets, classification, shotDetails, isGoodTake, wasteOptions, insertSoundSpeed]);
+  }, [id, projects, logSheets]);
 
   useEffect(() => {
     const newDisabledFields = new Set<string>();
