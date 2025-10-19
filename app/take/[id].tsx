@@ -2687,7 +2687,7 @@ This would break the logging logic and create inconsistencies in the file number
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
 
-    // In edit mode, preserve the user's edited values in takeData, don't overwrite with existingEntry
+    // In edit mode, preserve the user's edited values from rangeData and takeData
     let newLogData = { ...takeData } as Record<string, any>;
     
     // Update scene/shot/take to match the target position
@@ -2823,11 +2823,11 @@ This would break the logging logic and create inconsistencies in the file number
         if (targetHasSingleCamera) {
           const targetCamNum = parseInt(existingEntry.data.cameraFile as string, 10) || 0;
           
-          // Check if new entry has range or single value
+          // Check if new entry has range or single value - use edited values
           let newCamMin: number;
           let newCamMax: number;
           if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-            // New entry has range
+            // New entry has range - use edited range values
             const a = parseInt(rangeData['cameraFile'].from, 10) || 0;
             const b = parseInt(rangeData['cameraFile'].to, 10) || 0;
             newCamMin = Math.min(a, b);
@@ -2845,7 +2845,7 @@ This would break the logging logic and create inconsistencies in the file number
           // Only bump if target camera number equals the min of the new range (insert before scenario)
           const shouldBump = targetCamNum === newCamMin;
           if (shouldBump) {
-            // Use newCamMax + 1 for range insertions
+            // Use edited range's max + 1 for calculating bump position
             existingEntryUpdates.cameraFile = String(newCamMax + 1).padStart(4, '0');
             existingEntryUpdates.takeNumber = String(targetTake + 1);
             hasUpdates = true;
@@ -2909,11 +2909,11 @@ This would break the logging logic and create inconsistencies in the file number
             if (targetHasSingleCamera) {
               const targetCamNum = parseInt(existingEntry.data[fieldId] as string, 10) || 0;
               
-              // Check if new entry has range or single value
+              // Check if new entry has range or single value - use edited values
               let newCamMin: number;
               let newCamMax: number;
               if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                // New entry has range
+                // New entry has range - use edited range values
                 const a = parseInt(rangeData[fieldId].from, 10) || 0;
                 const b = parseInt(rangeData[fieldId].to, 10) || 0;
                 newCamMin = Math.min(a, b);
@@ -2931,7 +2931,7 @@ This would break the logging logic and create inconsistencies in the file number
               // Only bump if target camera number equals the min of the new range (insert before scenario)
               const shouldBump = targetCamNum === newCamMin;
               if (shouldBump) {
-                // Use newCamMax + 1 for range insertions
+                // Use edited range's max + 1 for calculating bump position
                 existingEntryUpdates[fieldId] = String(newCamMax + 1).padStart(4, '0');
                 existingEntryUpdates.takeNumber = String(targetTake + 1);
                 hasUpdates = true;
@@ -2959,13 +2959,14 @@ This would break the logging logic and create inconsistencies in the file number
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
     const finalData: Record<string, any> = { ...newLogData };
     
-    // Handle sound file range - use current rangeData state (user's edited values)
+    // Handle sound file range - use edited values from rangeData when in range mode
     if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      // Keep the edited range values
       finalData['sound_from'] = pad4(rangeData['soundFile'].from);
       finalData['sound_to'] = pad4(rangeData['soundFile'].to);
       delete finalData.soundFile;
     } else if (!disabledFields.has('soundFile')) {
-      // Single value mode
+      // Single value mode - use value from takeData
       delete finalData['sound_from'];
       delete finalData['sound_to'];
     } else {
@@ -2975,14 +2976,15 @@ This would break the logging logic and create inconsistencies in the file number
       delete finalData['sound_to'];
     }
     
-    // Handle camera file ranges - use current rangeData state (user's edited values)
+    // Handle camera file ranges - use edited values from rangeData when in range mode
     if (camCount === 1) {
       if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        // Keep edited range, not original
         finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
         finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
         delete finalData.cameraFile;
       } else if (!disabledFields.has('cameraFile')) {
-        // Single value mode
+        // Single value mode - use value from takeData
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
@@ -2995,11 +2997,12 @@ This would break the logging logic and create inconsistencies in the file number
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          // Keep edited range, not original
           finalData[`camera${i}_from`] = pad4(rangeData[fieldId].from);
           finalData[`camera${i}_to`] = pad4(rangeData[fieldId].to);
           delete finalData[fieldId];
         } else if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
-          // Single value mode
+          // Single value mode - use value from takeData
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
