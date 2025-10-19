@@ -1649,7 +1649,7 @@ This would break the logging logic and create inconsistencies in the file number
         }
         return 1;
       })();
-      if (!disabledFields.has('soundFile')) {
+      if (!disabledFields.has('soundFile') && soundDelta > 0) {
         { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
@@ -1660,17 +1660,17 @@ This would break the logging logic and create inconsistencies in the file number
           const oldToNum = parseInt(targetRange.to, 10) || 0;
           const newFrom = String(insertedUpper + 1).padStart(4, '0');
           const newTo = String(oldToNum + soundDelta).padStart(4, '0');
-          const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
+          const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo, takeNumber: String(targetTakeNumber + 1) };
           const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
           if (hadInline) {
             updated.soundFile = `${newFrom}-${newTo}`;
           }
-          updateLogSheet(existingEntry.id, updated);
+          existingEntryUpdates = updated;
         } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
           const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
           const newVal = String(exNum + soundDelta).padStart(4, '0');
-          const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-          updateLogSheet(existingEntry.id, updated);
+          const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal, takeNumber: String(targetTakeNumber + 1) };
+          existingEntryUpdates = updated;
         }
       }
     } else if (targetFieldId.startsWith('cameraFile')) {
@@ -1846,49 +1846,26 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
-    // Visual debug alert to show on screen
-    Alert.alert(
-      'Debug Info - Selective Duplicate Handling',
-      `targetFieldId: ${targetFieldId}
-camDelta: ${camDelta}
-camStart: ${camStart}
-rangeData[${targetFieldId}]: ${JSON.stringify(rangeData[targetFieldId])}
-showRangeMode[${targetFieldId}]: ${showRangeMode[targetFieldId]}
-camera1_from: ${updatedData.camera1_from}
-camera1_to: ${updatedData.camera1_to}
-cameraFile: ${updatedData.cameraFile}
-existingEntryUpdates: ${existingEntryUpdates ? JSON.stringify({
-  camera: existingEntryUpdates.cameraFile || existingEntryUpdates.camera1_from + '-' + existingEntryUpdates.camera1_to,
-  takeNumber: existingEntryUpdates.takeNumber
-}) : 'null'}`,
-      [
-        { 
-          text: 'Continue', 
-          onPress: async () => {
-            // Proceed with save logic
-            await updateLogSheet(logSheet.id, updatedData);
-            
-            // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
-            await new Promise(resolve => setTimeout(resolve, 0));
-            
-            // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
-            // This ensures the current logSheet (with edited values) gets skipped
-            if (targetFieldId.startsWith('cameraFile')) {
-              if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-                updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
-              }
-            }
-            
-            // Update existingEntry after shifting
-            if (existingEntryUpdates) {
-              await updateLogSheet(existingEntry.id, existingEntryUpdates);
-            }
+    // Save the current logSheet with edited values FIRST
+    await updateLogSheet(logSheet.id, updatedData);
+    
+    // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
+    // This ensures the current logSheet (with edited values) gets skipped
+    if (targetFieldId.startsWith('cameraFile')) {
+      if (!disabledFields.has(targetFieldId) && camDelta > 0) {
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+      }
+    }
+    
+    // Update existingEntry after shifting
+    if (existingEntryUpdates) {
+      await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    }
 
-            router.back();
-          }
-        }
-      ]
-    );
+    router.back();
   };
 
   const pruneDisabled = (data: Record<string, any>) => {
