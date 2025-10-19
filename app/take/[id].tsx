@@ -1782,9 +1782,7 @@ This would break the logging logic and create inconsistencies in the file number
                 [targetFieldId]: String(newCamMax + 1).padStart(4, '0'),
                 takeNumber: String(targetTakeNumber + 1)
               };
-              // Update camStart to point to the NEW position of existingEntry for updateFileNumbers
-              // This ensures updateFileNumbers shifts entries starting AFTER the updated existingEntry
-              camStart = newCamMax + 1;
+              // Keep camStart at the original target value to mirror Add screen behavior
             }
           }
         }
@@ -1862,15 +1860,10 @@ This would break the logging logic and create inconsistencies in the file number
     await new Promise(resolve => setTimeout(resolve, 0));
     
     // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
-    // This ensures the current logSheet (with edited values) gets skipped
+    // Mirror Add screen behavior: start shifting from the target's original lower bound/single value
     if (targetFieldId.startsWith('cameraFile')) {
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-        const targetRangeForStart = getRangeFromData(existingEntry.data, targetFieldId);
-        const insertedBounds = getInsertedBounds(targetFieldId);
-        const safeStart = targetRangeForStart
-          ? ((parseInt(targetRangeForStart.to, 10) || 0) + 1)
-          : (insertedBounds ? (insertedBounds.max + 1) : camStart);
-        updateFileNumbers(logSheet.projectId, targetFieldId, safeStart, camDelta);
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
       }
     }
     
