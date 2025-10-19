@@ -1840,6 +1840,15 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
+    
+    // Debug logging
+    console.log('[handleSaveWithSelectiveDuplicateHandling] Saving current logSheet:');
+    console.log('  rangeData[cameraFile]:', rangeData['cameraFile']);
+    console.log('  finalData.camera1_from:', updatedData.camera1_from);
+    console.log('  finalData.camera1_to:', updatedData.camera1_to);
+    console.log('  finalData.cameraFile:', updatedData.cameraFile);
+    console.log('  showRangeMode[cameraFile]:', showRangeMode['cameraFile']);
+    
     await updateLogSheet(logSheet.id, updatedData);
     
     // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
