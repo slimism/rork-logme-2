@@ -2723,12 +2723,19 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Calculate sound file delta and new ranges for existingEntry FIRST
     const soundDelta = (() => {
+      // Check if sound field is actually disabled
+      if (disabledFields.has('soundFile')) return 0;
+      
+      // For range mode, check rangeData
       const r = rangeData['soundFile'];
       if (showRangeMode['soundFile'] && r?.from && r?.to) {
         const a = parseInt(r.from, 10) || 0;
         const b = parseInt(r.to, 10) || 0;
         return Math.abs(b - a) + 1;
       }
+      
+      // For single mode, check takeData
+      if (!takeData.soundFile?.trim()) return 0;
       return 1;
     })();
 
@@ -2777,16 +2784,19 @@ This would break the logging logic and create inconsistencies in the file number
       }
       // Calculate camera file delta and new ranges for existingEntry FIRST
       const camDelta = (() => {
-        // If input camera field is blank, don't shift camera files
-        if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
-          return 0;
-        }
+        // Check if camera field is actually disabled
+        if (disabledFields.has('cameraFile')) return 0;
+        
+        // For range mode, check rangeData
         const r = rangeData['cameraFile'];
         if (showRangeMode['cameraFile'] && r?.from && r?.to) {
           const a = parseInt(r.from, 10) || 0;
           const b = parseInt(r.to, 10) || 0;
           return Math.abs(b - a) + 1;
         }
+        
+        // For single mode, check takeData
+        if (!takeData.cameraFile?.trim()) return 0;
         return 1;
       })();
 
@@ -2832,9 +2842,12 @@ This would break the logging logic and create inconsistencies in the file number
             newCamMax = 0;
           }
           
-          const shouldBump = targetCamNum >= newCamMin && targetCamNum <= newCamMax;
-          if (shouldBump && camDelta > 0) {
-            existingEntryUpdates.cameraFile = String(targetCamNum + camDelta).padStart(4, '0');
+          // Only bump if target camera number equals the min of the new range (insert before scenario)
+          const shouldBump = targetCamNum === newCamMin;
+          if (shouldBump) {
+            // Use newCamMax + 1 for range insertions
+            existingEntryUpdates.cameraFile = String(newCamMax + 1).padStart(4, '0');
+            existingEntryUpdates.takeNumber = String(targetTake + 1);
             hasUpdates = true;
           }
         }
@@ -2857,16 +2870,19 @@ This would break the logging logic and create inconsistencies in the file number
           }
           // Calculate camera file delta and new ranges for existingEntry FIRST
           const camDelta = (() => {
-            // If input camera field is blank, don't shift camera files
-            if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-              return 0;
-            }
+            // Check if camera field is actually disabled
+            if (disabledFields.has(fieldId)) return 0;
+            
+            // For range mode, check rangeData
             const r = rangeData[fieldId];
             if (showRangeMode[fieldId] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
               const b = parseInt(r.to, 10) || 0;
               return Math.abs(b - a) + 1;
             }
+            
+            // For single mode, check takeData
+            if (!takeData[fieldId]?.trim()) return 0;
             return 1;
           })();
 
@@ -2912,9 +2928,12 @@ This would break the logging logic and create inconsistencies in the file number
                 newCamMax = 0;
               }
               
-              const shouldBump = targetCamNum >= newCamMin && targetCamNum <= newCamMax;
-              if (shouldBump && camDelta > 0) {
-                existingEntryUpdates[fieldId] = String(targetCamNum + camDelta).padStart(4, '0');
+              // Only bump if target camera number equals the min of the new range (insert before scenario)
+              const shouldBump = targetCamNum === newCamMin;
+              if (shouldBump) {
+                // Use newCamMax + 1 for range insertions
+                existingEntryUpdates[fieldId] = String(newCamMax + 1).padStart(4, '0');
+                existingEntryUpdates.takeNumber = String(targetTake + 1);
                 hasUpdates = true;
               }
             }
@@ -3009,6 +3028,58 @@ This would break the logging logic and create inconsistencies in the file number
     // Update the existingEntry with calculated shifts
     if (hasUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    }
+    
+    // Use Promise to ensure Zustand state has propagated
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // Call updateFileNumbers to shift subsequent entries if needed
+    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+      const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+      const soundStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStartShift, soundDelta);
+    }
+    
+    if (camCount === 1) {
+      if (!disabledFields.has('cameraFile') && camDelta > 0) {
+        const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+        const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta);
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+          const camDelta = (() => {
+            if (disabledFields.has(fieldId)) return 0;
+            const r = rangeData[fieldId];
+            if (showRangeMode[fieldId] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            if (!takeData[fieldId]?.trim()) return 0;
+            return 1;
+          })();
+          
+          if (!disabledFields.has(fieldId) && camDelta > 0) {
+            const targetRange = getRangeFromData(existingEntry.data, fieldId);
+            let camStartForField = cameraFromNumber;
+            const fromKey = `camera${i}_from` as const;
+            const fromVal = existingEntry.data?.[fromKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStartForField = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStartForField = n;
+            }
+            const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta);
+          }
+        }
+      }
     }
 
     router.back();
