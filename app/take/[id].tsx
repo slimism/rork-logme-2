@@ -1573,7 +1573,7 @@ This would break the logging logic and create inconsistencies in the file number
     saveNormally();
   };
 
-  const handleSaveWithSelectiveDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+  const handleSaveWithSelectiveDuplicateHandling = async (position: 'before', duplicateInfo: any) => {
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
@@ -1751,26 +1751,70 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    // Apply range persistence to get final data
-    newLogData = applyRangePersistence(newLogData);
-
-    // Save the current logSheet with edited values FIRST
-    await updateLogSheet(logSheet.id, {
-      ...newLogData,
+    // Prepare and save current logSheet data with range persistence
+    if (camCount > 1) {
+      for (let i = 1; i <= camCount; i++) {
+        const fid = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fid] ?? true;
+        if (!isRecActive) delete newLogData[fid];
+      }
+    }
+    newLogData = pruneDisabled(newLogData);
+    const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+    const finalData: Record<string, any> = { ...newLogData };
+    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      finalData['sound_from'] = pad4(rangeData['soundFile'].from);
+      finalData['sound_to'] = pad4(rangeData['soundFile'].to);
+      delete finalData.soundFile;
+    } else if (!disabledFields.has('soundFile')) {
+      delete finalData['sound_from'];
+      delete finalData['sound_to'];
+    } else {
+      delete finalData.soundFile;
+      delete finalData['sound_from'];
+      delete finalData['sound_to'];
+    }
+    if (camCount === 1) {
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
+        finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
+        delete finalData.cameraFile;
+      } else if (!disabledFields.has('cameraFile')) {
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
+      } else {
+        delete finalData.cameraFile;
+        delete finalData['camera1_from'];
+        delete finalData['camera1_to'];
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fid = `cameraFile${i}`;
+        if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to) {
+          finalData[`camera${i}_from`] = pad4(rangeData[fid].from);
+          finalData[`camera${i}_to`] = pad4(rangeData[fid].to);
+          delete finalData[fid];
+        } else if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
+        } else {
+          delete finalData[fid];
+          delete finalData[`camera${i}_from`];
+          delete finalData[`camera${i}_to`];
+        }
+      }
+    }
+    const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
+    const updatedData = {
+      ...finalData,
       classification,
-      shotDetails,
+      shotDetails: filteredShotDetails,
       isGoodTake,
       wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
-    });
-
-    // Then call updateFileNumbers to shift subsequent entries (current logSheet will be skipped)
-    if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-      updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
-    }
-
-    // Finally update the existingEntry
+    };
+    await updateLogSheet(logSheet.id, updatedData);
     if (existingEntryUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
