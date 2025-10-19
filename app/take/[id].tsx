@@ -2453,27 +2453,19 @@ This would break the logging logic and create inconsistencies in the file number
       const n = parseInt(existingEntry.data.soundFile, 10);
       if (!Number.isNaN(n)) soundStart = n;
     }
-    {
-      const soundDelta = (() => {
-        const r = rangeData['soundFile'];
-        if (showRangeMode['soundFile'] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
-        }
-        return 1;
-      })();
-      if (!disabledFields.has('soundFile')) {
-        // Use the inserted range's upper bound as the starting point for shifting subsequent entries
-        const bounds = getInsertedBounds('soundFile');
-        const insertedMax = bounds?.max ?? 0;
-        const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-        // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
-        const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart);
-        updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
-      }
-    }
 
+    // Calculate sound file delta and new ranges for existingEntry FIRST
+    const soundDelta = (() => {
+      const r = rangeData['soundFile'];
+      if (showRangeMode['soundFile'] && r?.from && r?.to) {
+        const a = parseInt(r.from, 10) || 0;
+        const b = parseInt(r.to, 10) || 0;
+        return Math.abs(b - a) + 1;
+      }
+      return 1;
+    })();
+
+    let newSoundToNum = 0;
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
     if (rSound) {
       const exTo = parseInt(rSound.to, 10) || 0;
@@ -2486,6 +2478,7 @@ This would break the logging logic and create inconsistencies in the file number
         const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
         const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(exTo + delta).padStart(4, '0');
+        newSoundToNum = exTo + delta;
         existingEntryUpdates.sound_from = newFrom;
         existingEntryUpdates.sound_to = newTo;
         const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
@@ -2501,8 +2494,16 @@ This would break the logging logic and create inconsistencies in the file number
         : 1;
       const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
       const newVal = String(exNum + delta).padStart(4, '0');
+      newSoundToNum = exNum + delta;
       existingEntryUpdates.soundFile = newVal;
       hasUpdates = true;
+    }
+
+    // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
+    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+      // Start shifting from AFTER the existingEntry's NEW upper bound
+      const start = newSoundToNum > 0 ? newSoundToNum + 1 : soundStart;
+      updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
     }
 
     if (camCount === 1) {
@@ -2514,29 +2515,45 @@ This would break the logging logic and create inconsistencies in the file number
         const n = parseInt(existingEntry.data.cameraFile, 10);
         if (!Number.isNaN(n)) camStart = n;
       }
-      {
-        const camDelta = (() => {
-          // If input camera field is blank, don't shift camera files
-          if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
-            return 0;
-          }
-          const r = rangeData['cameraFile'];
-          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-            const a = parseInt(r.from, 10) || 0;
-            const b = parseInt(r.to, 10) || 0;
-            return Math.abs(b - a) + 1;
-          }
-          return 1;
-        })();
-        if (!disabledFields.has('cameraFile')) {
-          // Use the inserted range's upper bound as the starting point for shifting subsequent entries
-          const bounds = getInsertedBounds('cameraFile');
-          const insertedMax = bounds?.max ?? 0;
-          const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
-          // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
-          const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart);
-          updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta);
+      // Calculate camera file delta and new ranges for existingEntry FIRST
+      const camDelta = (() => {
+        // If input camera field is blank, don't shift camera files
+        if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
+          return 0;
         }
+        const r = rangeData['cameraFile'];
+        if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
+        return 1;
+      })();
+
+      let newCamToNum = 0;
+      const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+      if (targetRange && !disabledFields.has('cameraFile')) {
+        const bounds = getInsertedBounds('cameraFile');
+        const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+        const oldToNum = parseInt(targetRange.to, 10) || 0;
+        const delta = camDelta;
+        const newFrom = String(insertedUpper + 1).padStart(4, '0');
+        const newTo = String(oldToNum + delta).padStart(4, '0');
+        newCamToNum = oldToNum + delta;
+        existingEntryUpdates.camera1_from = newFrom;
+        existingEntryUpdates.camera1_to = newTo;
+        const hadInline = typeof existingEntry.data?.cameraFile === 'string' && isRangeString(existingEntry.data.cameraFile);
+        if (hadInline) {
+          existingEntryUpdates.cameraFile = `${newFrom}-${newTo}`;
+        }
+        hasUpdates = true;
+      }
+
+      // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
+      if (!disabledFields.has('cameraFile') && camDelta > 0) {
+        // Start shifting from AFTER the existingEntry's NEW upper bound
+        const start = newCamToNum > 0 ? newCamToNum + 1 : camStart;
+        updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -2553,59 +2570,47 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(val, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          {
-            const camDelta = (() => {
-              // If input camera field is blank, don't shift camera files
-              if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-                return 0;
-              }
-              const r = rangeData[fieldId];
-              if (showRangeMode[fieldId] && r?.from && r?.to) {
-                const a = parseInt(r.from, 10) || 0;
-                const b = parseInt(r.to, 10) || 0;
-                return Math.abs(b - a) + 1;
-              }
-              return 1;
-            })();
-            if (!disabledFields.has(fieldId)) {
-              // Use the inserted range's upper bound as the starting point for shifting subsequent entries
-              const bounds = getInsertedBounds(fieldId);
-              const insertedMax = bounds?.max ?? 0;
-              const targetRange = getRangeFromData(existingEntry.data, fieldId);
-              // Start shifting from the number after the inserted range's upper bound, or the original position if no inserted range
-              const start = insertedMax > 0 ? insertedMax + 1 : (targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart);
-              updateFileNumbers(logSheet.projectId, fieldId, start, camDelta);
+          // Calculate camera file delta and new ranges for existingEntry FIRST
+          const camDelta = (() => {
+            // If input camera field is blank, don't shift camera files
+            if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+              return 0;
             }
+            const r = rangeData[fieldId];
+            if (showRangeMode[fieldId] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return 1;
+          })();
+
+          let newCamToNum = 0;
+          const targetRange = getRangeFromData(existingEntry.data, fieldId);
+          if (targetRange && !disabledFields.has(fieldId)) {
+            const bounds = getInsertedBounds(fieldId);
+            const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+            const oldToNum = parseInt(targetRange.to, 10) || 0;
+            const delta = camDelta;
+            const newFrom = String(insertedUpper + 1).padStart(4, '0');
+            const newTo = String(oldToNum + delta).padStart(4, '0');
+            newCamToNum = oldToNum + delta;
+            existingEntryUpdates[`camera${i}_from`] = newFrom;
+            existingEntryUpdates[`camera${i}_to`] = newTo;
+            const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+            if (hadInline) {
+              existingEntryUpdates[fieldId] = `${newFrom}-${newTo}`;
+            }
+            hasUpdates = true;
+          }
+
+          // Now call updateFileNumbers with the correct starting point (after the NEW upper bound of existingEntry)
+          if (!disabledFields.has(fieldId) && camDelta > 0) {
+            // Start shifting from AFTER the existingEntry's NEW upper bound
+            const start = newCamToNum > 0 ? newCamToNum + 1 : camStart;
+            updateFileNumbers(logSheet.projectId, fieldId, start, camDelta);
           }
         }
-      }
-    }
-
-    const rCam = getRangeFromData(existingEntry.data, cameraFieldId);
-    if (rCam) {
-      const exTo = parseInt(rCam.to, 10) || 0;
-      const r = rangeData[cameraFieldId];
-      const delta = (showRangeMode[cameraFieldId] && r?.from && r?.to)
-        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
-        : 1;
-      const idxKey = cameraFieldId === 'cameraFile' ? '1' : cameraFieldId.replace('cameraFile','');
-      const fromKey = cameraFieldId === 'soundFile' ? 'sound_from' : `camera${idxKey}_from`;
-      const toKey = cameraFieldId === 'soundFile' ? 'sound_to' : `camera${idxKey}_to`;
-      if (cameraFieldId === 'soundFile') {
-        // sound handled above
-      } else if (!disabledFields.has(cameraFieldId)) {
-        const bounds = getInsertedBounds(cameraFieldId);
-        const insertedUpper = bounds?.max ?? (parseInt(rCam.from, 10) || 0);
-        const newFrom = String(insertedUpper + 1).padStart(4, '0');
-        const newTo = String(exTo + delta).padStart(4, '0');
-        existingEntryUpdates[fromKey] = newFrom;
-        existingEntryUpdates[toKey] = newTo;
-        const inlineField = cameraFieldId;
-        const hadInline = typeof existingEntry.data?.[inlineField] === 'string' && isRangeString(existingEntry.data[inlineField]);
-        if (hadInline) {
-          existingEntryUpdates[inlineField] = `${newFrom}-${newTo}`;
-        }
-        hasUpdates = true;
       }
     }
 
