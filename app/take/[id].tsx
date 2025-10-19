@@ -1698,16 +1698,20 @@ This would break the logging logic and create inconsistencies in the file number
       // Use outer-scoped camDelta variable (assign instead of const)
       camDelta = (() => {
         // For selective shifting, use the input field's delta, not the existing field's
+        // Check rangeData FIRST (for range mode), then fallback to takeData (for single value mode)
+        const r = rangeData[targetFieldId];
+        if (showRangeMode[targetFieldId] && r?.from && r?.to) {
+          // Range mode - calculate delta from range size
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
+        
+        // Single value mode - check if takeData has value
         const inputCameraField = targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId];
         if (!inputCameraField || !inputCameraField.trim()) {
           // Input camera is blank, so delta is 0 (don't shift camera files)
           return 0;
-        }
-        const r = rangeData[targetFieldId];
-        if (showRangeMode[targetFieldId] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
         }
         return 1;
       })();
