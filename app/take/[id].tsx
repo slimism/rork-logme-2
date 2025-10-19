@@ -1842,6 +1842,9 @@ This would break the logging logic and create inconsistencies in the file number
     };
     await updateLogSheet(logSheet.id, updatedData);
     
+    // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
     // This ensures the current logSheet (with edited values) gets skipped
     if (targetFieldId.startsWith('cameraFile')) {
