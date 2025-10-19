@@ -1883,7 +1883,7 @@ This would break the logging logic and create inconsistencies in the file number
     return cleaned;
   };
 
-  const handleSaveWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+  const handleSaveWithDuplicateHandling = async (position: 'before', duplicateInfo: any) => {
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
@@ -2255,6 +2255,8 @@ This would break the logging logic and create inconsistencies in the file number
         }
 
       } else if (duplicateInfo.type === 'file') {
+        const existingEntryUpdates: Record<string, any> = { ...existingEntry.data };
+        let hasUpdates = false;
         // Force insert into target scene/shot
         const targetSceneNumber = existingEntry.data?.sceneNumber;
         const targetShotNumber = existingEntry.data?.shotNumber;
@@ -2375,12 +2377,14 @@ This would break the logging logic and create inconsistencies in the file number
               if (hadInline) {
                 updated.soundFile = `${newFrom}-${newTo}`;
               }
-              updateLogSheet(existingEntry.id, updated);
+              Object.assign(existingEntryUpdates, updated);
+              hasUpdates = true;
             } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
               const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
               const newVal = String(exNum + soundDelta).padStart(4, '0');
               const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-              updateLogSheet(existingEntry.id, updated);
+              Object.assign(existingEntryUpdates, updated);
+              hasUpdates = true;
             }
           }
         } else {
