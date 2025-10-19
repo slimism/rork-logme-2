@@ -1586,7 +1586,28 @@ This would break the logging logic and create inconsistencies in the file number
     if (logSheet?.id) excludeIds.add(logSheet.id as string);
 
     // In edit mode, preserve the user's edited values in takeData, don't overwrite with existingEntry
+    // However, we need to make sure OLD range values from takeData don't interfere
     let newLogData = { ...takeData };
+    
+    // Remove OLD range values from takeData that will be replaced by rangeData
+    if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+      delete newLogData.camera1_from;
+      delete newLogData.camera1_to;
+      delete newLogData.cameraFile;
+    }
+    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      delete newLogData.sound_from;
+      delete newLogData.sound_to;
+      delete newLogData.soundFile;
+    }
+    for (let i = 1; i <= camCount; i++) {
+      const fieldId = `cameraFile${i}`;
+      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+        delete newLogData[`camera${i}_from`];
+        delete newLogData[`camera${i}_to`];
+        delete newLogData[fieldId];
+      }
+    }
 
     // Update scene/shot/take to match the target position
     const targetSceneNumber = existingEntry.data?.sceneNumber;
