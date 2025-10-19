@@ -2171,6 +2171,10 @@ This would break the logging logic and create inconsistencies in the file number
     const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || 
                                !!(typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim());
     
+    // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
+    const existingEntryUpdates: Record<string, any> = { ...existingEntry.data };
+    let hasUpdates = false;
+
     if (targetSoundExists) {
       let soundStart = soundFromNumber;
       const hasSoundRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
@@ -2213,21 +2217,20 @@ This would break the logging logic and create inconsistencies in the file number
         const newFromNum = insertedMax + 1;
         const newToNum = oldToNum + deltaLocal;
 
-        const updatedData: Record<string, any> = { ...existingEntry.data };
-        updatedData.sound_from = String(newFromNum).padStart(4, '0');
-        updatedData.sound_to = String(newToNum).padStart(4, '0');
+        existingEntryUpdates.sound_from = String(newFromNum).padStart(4, '0');
+        existingEntryUpdates.sound_to = String(newToNum).padStart(4, '0');
         if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
-          updatedData.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+          existingEntryUpdates.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
         }
-        updatedData.takeNumber = String(tTake + 1);
-        updateLogSheet(existingEntry.id, updatedData);
+        existingEntryUpdates.takeNumber = String(tTake + 1);
+        hasUpdates = true;
       } else if (!targetRange) {
         const targetSingle = typeof existingEntry.data?.soundFile === 'string' && !existingEntry.data.soundFile.includes('-');
         if (targetSingle && soundDelta > 0) {
           const current = parseInt(existingEntry.data.soundFile as string, 10) || 0;
           const newVal = String(current + soundDelta).padStart(4, '0');
-          const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-          updateLogSheet(existingEntry.id, updatedData);
+          existingEntryUpdates.soundFile = newVal;
+          hasUpdates = true;
         }
       }
     }
@@ -2277,14 +2280,13 @@ This would break the logging logic and create inconsistencies in the file number
           const newFromNum = insertedMax + 1;
           const newToNum = oldToNum + deltaLocal;
 
-          const updatedData: Record<string, any> = { ...existingEntry.data };
-          updatedData['camera1_from'] = String(newFromNum).padStart(4, '0');
-          updatedData['camera1_to'] = String(newToNum).padStart(4, '0');
+          existingEntryUpdates['camera1_from'] = String(newFromNum).padStart(4, '0');
+          existingEntryUpdates['camera1_to'] = String(newToNum).padStart(4, '0');
           if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')) {
-            updatedData['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+            existingEntryUpdates['cameraFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
           }
-          updatedData.takeNumber = String(tTake + 1);
-          updateLogSheet(existingEntry.id, updatedData);
+          existingEntryUpdates.takeNumber = String(tTake + 1);
+          hasUpdates = true;
         }
         // Ensure target single sound is bumped when inserting before a camera-range conflict
         const newEntryHasSound = !!takeData.soundFile && String(takeData.soundFile).trim().length > 0;
@@ -2307,8 +2309,8 @@ This would break the logging logic and create inconsistencies in the file number
             bumpBy = 1;
           }
           if (shouldBump && bumpBy > 0) {
-            const updatedData: Record<string, any> = { ...existingEntry.data, soundFile: String(targetValNum + bumpBy).padStart(4, '0') };
-            updateLogSheet(existingEntry.id, updatedData);
+            existingEntryUpdates.soundFile = String(targetValNum + bumpBy).padStart(4, '0');
+            hasUpdates = true;
           }
         }
       }
@@ -2346,8 +2348,34 @@ This would break the logging logic and create inconsistencies in the file number
             cameraDelta = 0;
           }
           updateFileNumbers(projectId, fieldId, camStart, cameraDelta);
+
+          // Update the range for this camera if it exists
+          const targetRange = (fromVal && toVal) ? { from: fromVal, to: toVal } : null;
+          if (targetRange && showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+            const insertedFrom = parseInt(newLogRange.from, 10) || 0;
+            const insertedTo = parseInt(newLogRange.to, 10) || 0;
+            const insertedMax = Math.max(insertedFrom, insertedTo);
+            const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+            const oldToNum = parseInt(targetRange.to, 10) || 0;
+            const newFromNum = insertedMax + 1;
+            const newToNum = oldToNum + deltaLocal;
+
+            existingEntryUpdates[fromKey] = String(newFromNum).padStart(4, '0');
+            existingEntryUpdates[toKey] = String(newToNum).padStart(4, '0');
+            if (typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].includes('-')) {
+              existingEntryUpdates[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+            }
+            existingEntryUpdates.takeNumber = String(tTake + 1);
+            hasUpdates = true;
+          }
         }
       }
+    }
+
+    // Apply all accumulated updates to the existing entry in a single call
+    if (hasUpdates) {
+      updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
     const logSheet = addLogSheet(
