@@ -1848,11 +1848,15 @@ This would break the logging logic and create inconsistencies in the file number
     
     // Debug logging
     console.log('[handleSaveWithSelectiveDuplicateHandling] Saving current logSheet:');
-    console.log('  rangeData[cameraFile]:', rangeData['cameraFile']);
+    console.log('  targetFieldId:', targetFieldId);
+    console.log('  camDelta:', camDelta);
+    console.log('  camStart:', camStart);
+    console.log('  rangeData[' + targetFieldId + ']:', rangeData[targetFieldId]);
+    console.log('  showRangeMode[' + targetFieldId + ']:', showRangeMode[targetFieldId]);
     console.log('  finalData.camera1_from:', updatedData.camera1_from);
     console.log('  finalData.camera1_to:', updatedData.camera1_to);
     console.log('  finalData.cameraFile:', updatedData.cameraFile);
-    console.log('  showRangeMode[cameraFile]:', showRangeMode['cameraFile']);
+    console.log('  existingEntryUpdates:', existingEntryUpdates);
     
     await updateLogSheet(logSheet.id, updatedData);
     
