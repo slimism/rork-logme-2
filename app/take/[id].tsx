@@ -1624,7 +1624,6 @@ This would break the logging logic and create inconsistencies in the file number
     let camStart = targetTakeNumber;
     let camDelta = 0;
     let existingEntryUpdates: Record<string, any> | null = null;
-    let persistedTargetUpdate = false;
 
     // Only shift the target field
     if (targetFieldId === 'soundFile') {
@@ -1668,15 +1667,11 @@ This would break the logging logic and create inconsistencies in the file number
             updated.soundFile = `${newFrom}-${newTo}`;
           }
           existingEntryUpdates = updated;
-          await updateLogSheet(existingEntry.id, existingEntryUpdates);
-          persistedTargetUpdate = true;
         } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
           const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
           const newVal = String(exNum + soundDelta).padStart(4, '0');
           const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal, takeNumber: String(targetTakeNumber + 1) };
           existingEntryUpdates = updated;
-          await updateLogSheet(existingEntry.id, existingEntryUpdates);
-          persistedTargetUpdate = true;
         }
       }
     } else if (targetFieldId.startsWith('cameraFile')) {
@@ -1787,9 +1782,9 @@ This would break the logging logic and create inconsistencies in the file number
                 [targetFieldId]: String(newCamMax + 1).padStart(4, '0'),
                 takeNumber: String(targetTakeNumber + 1)
               };
+              // Update camStart to point to the NEW position of existingEntry for updateFileNumbers
+              // This ensures updateFileNumbers shifts entries starting AFTER the updated existingEntry
               camStart = newCamMax + 1;
-              await updateLogSheet(existingEntry.id, existingEntryUpdates);
-              persistedTargetUpdate = true;
             }
           }
         }
@@ -1880,7 +1875,7 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     // Update existingEntry after shifting
-    if (existingEntryUpdates && !persistedTargetUpdate) {
+    if (existingEntryUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 

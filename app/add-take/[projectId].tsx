@@ -2430,9 +2430,7 @@ This would break the logging logic and create inconsistencies in the file number
         const newEntryHasSound = !!takeData.soundFile && String(takeData.soundFile).trim().length > 0;
         const targetHasSingleSound = typeof existingEntry.data?.soundFile === 'string' && !String(existingEntry.data.soundFile).includes('-');
         if (newEntryHasSound && targetHasSingleSound) {
-          const insRange = showRangeMode.soundFile && rangeData.soundFile?.from && rangeData.soundFile?.to
-            ? { from: rangeData.soundFile.from, to: rangeData.soundFile.to }
-            : null;
+          const insRange = showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to ? { ...rangeData['soundFile'] } : null;
           const targetValNum = parseInt(existingEntry.data.soundFile as string, 10) || 0;
           let shouldBump = false;
           let bumpBy = 1;
