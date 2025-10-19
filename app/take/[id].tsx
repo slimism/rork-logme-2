@@ -2715,69 +2715,8 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    // Call updateFileNumbers BEFORE updating the existingEntry
-    // This allows isTargetInRange to correctly identify and skip the existingEntry
-    if (!disabledFields.has('soundFile') && soundDelta > 0) {
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-    }
-
-    if (camCount === 1) {
-      if (!disabledFields.has('cameraFile')) {
-        let camStart = cameraFromNumber;
-        if (typeof existingEntry.data?.camera1_from === 'string') {
-          const n = parseInt(existingEntry.data.camera1_from, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        } else if (typeof existingEntry.data?.cameraFile === 'string') {
-          const n = parseInt(existingEntry.data.cameraFile, 10);
-          if (!Number.isNaN(n)) camStart = n;
-        }
-        const camDelta = (() => {
-          if (!takeData.cameraFile || !takeData.cameraFile.trim()) return 0;
-          const r = rangeData['cameraFile'];
-          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-            const a = parseInt(r.from, 10) || 0;
-            const b = parseInt(r.to, 10) || 0;
-            return Math.abs(b - a) + 1;
-          }
-          return 1;
-        })();
-        if (camDelta > 0) {
-          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
-        }
-      }
-    } else {
-      for (let i = 1; i <= camCount; i++) {
-        const fieldId = `cameraFile${i}`;
-        const targetRange = getRangeFromData(existingEntry.data, fieldId);
-        if (targetRange && !disabledFields.has(fieldId)) {
-          let camStart = cameraFromNumber;
-          const fromVal = existingEntry.data?.[`camera${i}_from`];
-          if (typeof fromVal === 'string') {
-            const n = parseInt(fromVal, 10);
-            if (!Number.isNaN(n)) camStart = n;
-          }
-          const camDelta = (() => {
-            if (!takeData[fieldId] || !takeData[fieldId].trim()) return 0;
-            const r = rangeData[fieldId];
-            if (showRangeMode[fieldId] && r?.from && r?.to) {
-              const a = parseInt(r.from, 10) || 0;
-              const b = parseInt(r.to, 10) || 0;
-              return Math.abs(b - a) + 1;
-            }
-            return 1;
-          })();
-          if (camDelta > 0) {
-            updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
-          }
-        }
-      }
-    }
-
-    // Now apply all accumulated updates to the existingEntry AFTER shifting subsequent entries
-    if (hasUpdates) {
-      await updateLogSheet(existingEntry.id, existingEntryUpdates);
-    }
-
+    // Prepare and save the current logSheet's data FIRST before calling updateFileNumbers
+    // This prevents the current logSheet from being shifted by updateFileNumbers
     if (camCount > 1) {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
@@ -2788,9 +2727,8 @@ This would break the logging logic and create inconsistencies in the file number
 
     newLogData = pruneDisabled(newLogData);
     
-    // Apply range persistence logic with current rangeData values
+    // Apply range persistence with edited values
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
-    
     const finalData: Record<string, any> = { ...newLogData };
     
     // Handle sound file range - use current rangeData state (user's edited values)
@@ -2855,7 +2793,74 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
-    updateLogSheet(logSheet.id, updatedData);
+    
+    // Save the current logSheet with edited values BEFORE calling updateFileNumbers
+    // This ensures it won't be shifted by updateFileNumbers
+    await updateLogSheet(logSheet.id, updatedData);
+
+    // Now call updateFileNumbers to shift subsequent entries
+    // The current logSheet and existingEntry will be skipped
+    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+    }
+
+    if (camCount === 1) {
+      if (!disabledFields.has('cameraFile')) {
+        let camStart = cameraFromNumber;
+        if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.cameraFile === 'string') {
+          const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
+        const camDelta = (() => {
+          if (!takeData.cameraFile || !takeData.cameraFile.trim()) return 0;
+          const r = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
+            const a = parseInt(r.from, 10) || 0;
+            const b = parseInt(r.to, 10) || 0;
+            return Math.abs(b - a) + 1;
+          }
+          return 1;
+        })();
+        if (camDelta > 0) {
+          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
+        }
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        const targetRange = getRangeFromData(existingEntry.data, fieldId);
+        if (targetRange && !disabledFields.has(fieldId)) {
+          let camStart = cameraFromNumber;
+          const fromVal = existingEntry.data?.[`camera${i}_from`];
+          if (typeof fromVal === 'string') {
+            const n = parseInt(fromVal, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          }
+          const camDelta = (() => {
+            if (!takeData[fieldId] || !takeData[fieldId].trim()) return 0;
+            const r = rangeData[fieldId];
+            if (showRangeMode[fieldId] && r?.from && r?.to) {
+              const a = parseInt(r.from, 10) || 0;
+              const b = parseInt(r.to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return 1;
+          })();
+          if (camDelta > 0) {
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
+          }
+        }
+      }
+    }
+
+    // Finally, update the existingEntry after all shifts
+    if (hasUpdates) {
+      await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    }
+
     router.back();
   };
 
