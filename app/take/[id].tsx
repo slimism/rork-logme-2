@@ -1599,6 +1599,10 @@ This would break the logging logic and create inconsistencies in the file number
       updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
     }
 
+    // Variables to track shift parameters
+    let camStart = targetTakeNumber;
+    let camDelta = 0;
+
     // Only shift the target field
     if (targetFieldId === 'soundFile') {
       let soundStart = targetTakeNumber;
@@ -1648,7 +1652,7 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
     } else if (targetFieldId.startsWith('cameraFile')) {
-      let camStart = targetTakeNumber;
+      // Use outer-scoped camStart variable
       if (targetFieldId === 'cameraFile') {
         if (typeof existingEntry.data?.camera1_from === 'string') {
           const n = parseInt(existingEntry.data.camera1_from, 10);
@@ -1670,7 +1674,8 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      const camDelta = (() => {
+      // Use outer-scoped camDelta variable (assign instead of const)
+      camDelta = (() => {
         // For selective shifting, use the input field's delta, not the existing field's
         const inputCameraField = targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId];
         if (!inputCameraField || !inputCameraField.trim()) {
@@ -1815,6 +1820,16 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     await updateLogSheet(logSheet.id, updatedData);
+    
+    // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
+    // This ensures the current logSheet (with edited values) gets skipped
+    if (targetFieldId.startsWith('cameraFile')) {
+      if (!disabledFields.has(targetFieldId) && camDelta > 0) {
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+      }
+    }
+    
+    // Update existingEntry after shifting
     if (existingEntryUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
