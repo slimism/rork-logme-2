@@ -2287,6 +2287,20 @@ This would break the logging logic and create inconsistencies in the file number
           }
           existingEntryUpdates.takeNumber = String(tTake + 1);
           hasUpdates = true;
+        } else {
+          // Handle single camera value (not range)
+          const newEntryHasCamera = !!takeData.cameraFile && String(takeData.cameraFile).trim().length > 0;
+          const targetHasSingleCamera = typeof existingEntry.data?.cameraFile === 'string' && !String(existingEntry.data.cameraFile).includes('-');
+          if (newEntryHasCamera && targetHasSingleCamera) {
+            const targetCamNum = parseInt(existingEntry.data.cameraFile as string, 10) || 0;
+            const newCamNum = parseInt(String(takeData.cameraFile), 10) || 0;
+            const shouldBump = newCamNum === targetCamNum;
+            if (shouldBump && camDelta > 0) {
+              existingEntryUpdates.cameraFile = String(targetCamNum + camDelta).padStart(4, '0');
+              existingEntryUpdates.takeNumber = String(tTake + 1);
+              hasUpdates = true;
+            }
+          }
         }
         // Ensure target single sound is bumped when inserting before a camera-range conflict
         const newEntryHasSound = !!takeData.soundFile && String(takeData.soundFile).trim().length > 0;
@@ -2368,6 +2382,20 @@ This would break the logging logic and create inconsistencies in the file number
             }
             existingEntryUpdates.takeNumber = String(tTake + 1);
             hasUpdates = true;
+          } else {
+            // Handle single camera value (not range)
+            const newEntryHasCamera = !!takeData[fieldId] && String(takeData[fieldId]).trim().length > 0;
+            const targetHasSingleCamera = typeof existingEntry.data?.[fieldId] === 'string' && !String(existingEntry.data[fieldId]).includes('-');
+            if (newEntryHasCamera && targetHasSingleCamera) {
+              const targetCamNum = parseInt(existingEntry.data[fieldId] as string, 10) || 0;
+              const newCamNum = parseInt(String(takeData[fieldId]), 10) || 0;
+              const shouldBump = newCamNum === targetCamNum;
+              if (shouldBump && cameraDelta > 0) {
+                existingEntryUpdates[fieldId] = String(targetCamNum + cameraDelta).padStart(4, '0');
+                existingEntryUpdates.takeNumber = String(tTake + 1);
+                hasUpdates = true;
+              }
+            }
           }
         }
       }

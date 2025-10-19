@@ -2540,6 +2540,19 @@ This would break the logging logic and create inconsistencies in the file number
           existingEntryUpdates.cameraFile = `${newFrom}-${newTo}`;
         }
         hasUpdates = true;
+      } else {
+        // Handle single camera value (not range)
+        const newEntryHasCamera = !!takeData.cameraFile && String(takeData.cameraFile).trim().length > 0;
+        const targetHasSingleCamera = typeof existingEntry.data?.cameraFile === 'string' && !isRangeString(existingEntry.data.cameraFile);
+        if (newEntryHasCamera && targetHasSingleCamera) {
+          const targetCamNum = parseInt(existingEntry.data.cameraFile as string, 10) || 0;
+          const newCamNum = parseInt(String(takeData.cameraFile), 10) || 0;
+          const shouldBump = newCamNum === targetCamNum;
+          if (shouldBump && camDelta > 0) {
+            existingEntryUpdates.cameraFile = String(targetCamNum + camDelta).padStart(4, '0');
+            hasUpdates = true;
+          }
+        }
       }
 
     } else {
@@ -2589,6 +2602,19 @@ This would break the logging logic and create inconsistencies in the file number
               existingEntryUpdates[fieldId] = `${newFrom}-${newTo}`;
             }
             hasUpdates = true;
+          } else {
+            // Handle single camera value (not range)
+            const newEntryHasCamera = !!takeData[fieldId] && String(takeData[fieldId]).trim().length > 0;
+            const targetHasSingleCamera = typeof existingEntry.data?.[fieldId] === 'string' && !isRangeString(existingEntry.data[fieldId]);
+            if (newEntryHasCamera && targetHasSingleCamera) {
+              const targetCamNum = parseInt(existingEntry.data[fieldId] as string, 10) || 0;
+              const newCamNum = parseInt(String(takeData[fieldId]), 10) || 0;
+              const shouldBump = newCamNum === targetCamNum;
+              if (shouldBump && camDelta > 0) {
+                existingEntryUpdates[fieldId] = String(targetCamNum + camDelta).padStart(4, '0');
+                hasUpdates = true;
+              }
+            }
           }
 
         }
