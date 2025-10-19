@@ -2595,20 +2595,22 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    // Apply all accumulated updates to the existing entry in a single call BEFORE shifting subsequent entries
-    // This ensures the store sees the updated values when updateFileNumbers runs
-    if (hasUpdates) {
-      await updateLogSheet(existingEntry.id, existingEntryUpdates);
-    }
-
-    // Now shift all subsequent entries AFTER the existingEntry has been updated
-    // Use the NEW upper bound of existingEntry as the starting point
-    if (!disabledFields.has('soundFile') && soundDelta > 0 && newSoundToNum > 0) {
-      updateFileNumbers(logSheet.projectId, 'soundFile', newSoundToNum + 1, soundDelta);
+    // Call updateFileNumbers BEFORE updating the existingEntry
+    // This allows isTargetInRange to correctly identify and skip the existingEntry
+    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
     }
 
     if (camCount === 1) {
-      if (!disabledFields.has('cameraFile') && newCamToNum > 0) {
+      if (!disabledFields.has('cameraFile')) {
+        let camStart = cameraFromNumber;
+        if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.cameraFile === 'string') {
+          const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
         const camDelta = (() => {
           if (!takeData.cameraFile || !takeData.cameraFile.trim()) return 0;
           const r = rangeData['cameraFile'];
@@ -2620,15 +2622,20 @@ This would break the logging logic and create inconsistencies in the file number
           return 1;
         })();
         if (camDelta > 0) {
-          updateFileNumbers(logSheet.projectId, 'cameraFile', newCamToNum + 1, camDelta);
+          updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta);
         }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        // Find the corresponding newCamToNum for this camera - need to recalculate
         const targetRange = getRangeFromData(existingEntry.data, fieldId);
         if (targetRange && !disabledFields.has(fieldId)) {
+          let camStart = cameraFromNumber;
+          const fromVal = existingEntry.data?.[`camera${i}_from`];
+          if (typeof fromVal === 'string') {
+            const n = parseInt(fromVal, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          }
           const camDelta = (() => {
             if (!takeData[fieldId] || !takeData[fieldId].trim()) return 0;
             const r = rangeData[fieldId];
@@ -2640,16 +2647,15 @@ This would break the logging logic and create inconsistencies in the file number
             return 1;
           })();
           if (camDelta > 0) {
-            // Get the NEW upper bound from existingEntryUpdates
-            const newToKey = `camera${i}_to`;
-            const newUpperBound = existingEntryUpdates[newToKey];
-            if (newUpperBound) {
-              const newToNum = parseInt(newUpperBound, 10) || 0;
-              updateFileNumbers(logSheet.projectId, fieldId, newToNum + 1, camDelta);
-            }
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, camDelta);
           }
         }
       }
+    }
+
+    // Now apply all accumulated updates to the existingEntry AFTER shifting subsequent entries
+    if (hasUpdates) {
+      await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
     if (camCount > 1) {
