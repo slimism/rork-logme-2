@@ -1230,9 +1230,12 @@ export default function EditTakeScreen() {
       if (!logSheet) return null as any;
       const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
       const currentVal = takeData[fieldId] as string | undefined;
-      if (!currentVal || disabledFields.has(fieldId)) return null as any;
       const currentRange = rangeData[fieldId];
-      const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
+      const isCurrentRange = showRangeMode[fieldId] && !!currentRange?.from && !!currentRange?.to;
+      if (disabledFields.has(fieldId)) return null as any;
+      const hasSingle = typeof currentVal === 'string' && currentVal.trim().length > 0;
+      const hasInput = isCurrentRange || hasSingle;
+      if (!hasInput) return null as any;
       const parseNum = (s?: string) => (s ? (parseInt(s, 10) || 0) : 0);
       const valNum = parseNum(currentVal);
       for (const sheet of projectLogSheets) {
@@ -1364,15 +1367,24 @@ export default function EditTakeScreen() {
 
         const isCameraBlankInput = (() => {
           if (camCountPref === 1) {
-            return !(takeData.cameraFile?.trim());
+            const hasRange = showRangeMode['cameraFile'] && !!rangeData['cameraFile']?.from && !!rangeData['cameraFile']?.to;
+            const hasSingle = !!takeData.cameraFile?.trim();
+            return !(hasRange || hasSingle);
           }
           for (let i = 1; i <= camCountPref; i++) {
             const fid = `cameraFile${i}`;
-            if ((cameraRecState[fid] ?? true) && takeData[fid]?.trim()) return false;
+            if (!(cameraRecState[fid] ?? true)) continue;
+            const hasRange = showRangeMode[fid] && !!rangeData[fid]?.from && !!rangeData[fid]?.to;
+            const hasSingle = !!takeData[fid]?.trim();
+            if (hasRange || hasSingle) return false;
           }
           return true;
         })();
-        const isSoundBlankInput = !(takeData.soundFile?.trim());
+        const isSoundBlankInput = (() => {
+          const hasRange = showRangeMode['soundFile'] && !!rangeData['soundFile']?.from && !!rangeData['soundFile']?.to;
+          const hasSingle = !!takeData.soundFile?.trim();
+          return !(hasRange || hasSingle);
+        })();
 
         // Check if one field is blank in input - if so, allow selective insertion
         if (isCameraBlankInput && !isSoundBlankInput) {
@@ -1464,15 +1476,24 @@ This would break the logging logic and create inconsistencies in the file number
     const camCountForBlank = project?.settings?.cameraConfiguration || 1;
     const isCameraBlankInput = (() => {
       if (camCountForBlank === 1) {
-        return !(takeData.cameraFile?.trim());
+        const hasRange = showRangeMode['cameraFile'] && !!rangeData['cameraFile']?.from && !!rangeData['cameraFile']?.to;
+        const hasSingle = !!takeData.cameraFile?.trim();
+        return !(hasRange || hasSingle);
       }
       for (let i = 1; i <= camCountForBlank; i++) {
         const fid = `cameraFile${i}`;
-        if ((cameraRecState[fid] ?? true) && takeData[fid]?.trim()) return false;
+        if (!(cameraRecState[fid] ?? true)) continue;
+        const hasRange = showRangeMode[fid] && !!rangeData[fid]?.from && !!rangeData[fid]?.to;
+        const hasSingle = !!takeData[fid]?.trim();
+        if (hasRange || hasSingle) return false;
       }
       return true;
     })();
-    const isSoundBlankInput = !(takeData.soundFile?.trim());
+    const isSoundBlankInput = (() => {
+      const hasRange = showRangeMode['soundFile'] && !!rangeData['soundFile']?.from && !!rangeData['soundFile']?.to;
+      const hasSingle = !!takeData.soundFile?.trim();
+      return !(hasRange || hasSingle);
+    })();
 
     if (soundDup) {
       const target = soundDup.existingEntry;
