@@ -1731,13 +1731,21 @@ This would break the logging logic and create inconsistencies in the file number
                     const min = Math.min(insFrom, insTo);
                     const max = Math.max(insFrom, insTo);
                     if (targetSingleNum >= min && targetSingleNum <= max) {
-                      const updatedData: Record<string, any> = { ...existingEntry.data, cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0') };
+                      const updatedData: Record<string, any> = { 
+                        ...existingEntry.data, 
+                        cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                        takeNumber: String(tTake + 1)
+                      };
                       updateLogSheet(existingEntry.id, updatedData);
                     }
                   } else if (takeData.cameraFile) {
                     const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
                     if (newSingle === targetSingleNum) {
-                      const updatedData: Record<string, any> = { ...existingEntry.data, cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0') };
+                      const updatedData: Record<string, any> = { 
+                        ...existingEntry.data, 
+                        cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                        takeNumber: String(tTake + 1)
+                      };
                       updateLogSheet(existingEntry.id, updatedData);
                     }
                   }
@@ -1812,13 +1820,21 @@ This would break the logging logic and create inconsistencies in the file number
                       const min = Math.min(insFrom, insTo);
                       const max = Math.max(insFrom, insTo);
                       if (targetSingleNum >= min && targetSingleNum <= max) {
-                        const updatedData: Record<string, any> = { ...existingEntry.data, [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0') };
+                        const updatedData: Record<string, any> = { 
+                          ...existingEntry.data, 
+                          [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                          takeNumber: String(tTake + 1)
+                        };
                         updateLogSheet(existingEntry.id, updatedData);
                       }
                     } else if (takeData[fieldId]) {
                       const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
                       if (newSingle === targetSingleNum) {
-                        const updatedData: Record<string, any> = { ...existingEntry.data, [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0') };
+                        const updatedData: Record<string, any> = { 
+                          ...existingEntry.data, 
+                          [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                          takeNumber: String(tTake + 1)
+                        };
                         updateLogSheet(existingEntry.id, updatedData);
                       }
                     }
@@ -1882,6 +1898,38 @@ This would break the logging logic and create inconsistencies in the file number
             }
             updatedData.takeNumber = String(tTake + 1);
             updateLogSheet(existingEntry.id, updatedData);
+          } else {
+            // Handle single camera value (not range)
+            const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
+            if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+              const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+              if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+                // New entry has range, target has single value
+                const insFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+                const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+                const min = Math.min(insFrom, insTo);
+                const max = Math.max(insFrom, insTo);
+                if (targetSingleNum >= min && targetSingleNum <= max) {
+                  const updatedData: Record<string, any> = { 
+                    ...existingEntry.data, 
+                    cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    takeNumber: String(tTake + 1)
+                  };
+                  updateLogSheet(existingEntry.id, updatedData);
+                }
+              } else if (takeData.cameraFile) {
+                // Both have single values
+                const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+                if (newSingle === targetSingleNum) {
+                  const updatedData: Record<string, any> = { 
+                    ...existingEntry.data, 
+                    cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    takeNumber: String(tTake + 1)
+                  };
+                  updateLogSheet(existingEntry.id, updatedData);
+                }
+              }
+            }
           }
         }
       } else {
@@ -1943,6 +1991,38 @@ This would break the logging logic and create inconsistencies in the file number
               }
               updatedData.takeNumber = String(tTake + 1);
               updateLogSheet(existingEntry.id, updatedData);
+            } else {
+              // Handle single camera value (not range)
+              const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+              if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+                const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                  // New entry has range, target has single value
+                  const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                  const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                  const min = Math.min(insFrom, insTo);
+                  const max = Math.max(insFrom, insTo);
+                  if (targetSingleNum >= min && targetSingleNum <= max) {
+                    const updatedData: Record<string, any> = { 
+                      ...existingEntry.data, 
+                      [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                      takeNumber: String(tTake + 1)
+                    };
+                    updateLogSheet(existingEntry.id, updatedData);
+                  }
+                } else if (takeData[fieldId]) {
+                  // Both have single values
+                  const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                  if (newSingle === targetSingleNum) {
+                    const updatedData: Record<string, any> = { 
+                      ...existingEntry.data, 
+                      [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                      takeNumber: String(tTake + 1)
+                    };
+                    updateLogSheet(existingEntry.id, updatedData);
+                  }
+                }
+              }
             }
           }
         }
