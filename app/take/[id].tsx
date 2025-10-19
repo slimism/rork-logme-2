@@ -1623,6 +1623,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Variables to track shift parameters
     let camStart = targetTakeNumber;
     let camDelta = 0;
+    let existingEntryUpdates: Record<string, any> | null = null;
 
     // Only shift the target field
     if (targetFieldId === 'soundFile') {
@@ -1717,8 +1718,6 @@ This would break the logging logic and create inconsistencies in the file number
       })();
       
       // Calculate existingEntry updates but don't save yet
-      let existingEntryUpdates: Record<string, any> | null = null;
-      
       if (!disabledFields.has(targetFieldId)) {
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
