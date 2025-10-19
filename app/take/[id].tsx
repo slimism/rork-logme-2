@@ -1823,9 +1823,13 @@ This would break the logging logic and create inconsistencies in the file number
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
-        delete finalData.cameraFile;
-        delete finalData['camera1_from'];
-        delete finalData['camera1_to'];
+        // For disabled fields, only delete if it's not a waste take with preserved range data
+        // Waste takes should preserve their range data even when disabled
+        if (classification !== 'Waste' || !wasteOptions.camera) {
+          delete finalData.cameraFile;
+          delete finalData['camera1_from'];
+          delete finalData['camera1_to'];
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -1838,9 +1842,13 @@ This would break the logging logic and create inconsistencies in the file number
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
-          delete finalData[fid];
-          delete finalData[`camera${i}_from`];
-          delete finalData[`camera${i}_to`];
+          // For disabled fields, only delete if it's not a waste take with preserved range data
+          // Waste takes should preserve their range data even when disabled
+          if (classification !== 'Waste' || !wasteOptions.camera) {
+            delete finalData[fid];
+            delete finalData[`camera${i}_from`];
+            delete finalData[`camera${i}_to`];
+          }
         }
       }
     }
@@ -2308,9 +2316,13 @@ This would break the logging logic and create inconsistencies in the file number
               delete finalData['camera1_from'];
               delete finalData['camera1_to'];
             } else {
-              delete finalData.cameraFile;
-              delete finalData['camera1_from'];
-              delete finalData['camera1_to'];
+              // For disabled fields, only delete if it's not a waste take with preserved range data
+              // Waste takes should preserve their range data even when disabled
+              if (classification !== 'Waste' || !wasteOptions.camera) {
+                delete finalData.cameraFile;
+                delete finalData['camera1_from'];
+                delete finalData['camera1_to'];
+              }
             }
           } else {
             for (let i = 1; i <= camCount; i++) {
@@ -2323,9 +2335,13 @@ This would break the logging logic and create inconsistencies in the file number
                 delete finalData[`camera${i}_from`];
                 delete finalData[`camera${i}_to`];
               } else {
-                delete finalData[fid];
-                delete finalData[`camera${i}_from`];
-                delete finalData[`camera${i}_to`];
+                // For disabled fields, only delete if it's not a waste take with preserved range data
+                // Waste takes should preserve their range data even when disabled
+                if (classification !== 'Waste' || !wasteOptions.camera) {
+                  delete finalData[fid];
+                  delete finalData[`camera${i}_from`];
+                  delete finalData[`camera${i}_to`];
+                }
               }
             }
           }
@@ -2946,10 +2962,13 @@ This would break the logging logic and create inconsistencies in the file number
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
-        // Disabled field - remove all
-        delete finalData.cameraFile;
-        delete finalData['camera1_from'];
-        delete finalData['camera1_to'];
+        // For disabled fields, only delete if it's not a waste take with preserved range data
+        // Waste takes should preserve their range data even when disabled
+        if (classification !== 'Waste' || !wasteOptions.camera) {
+          delete finalData.cameraFile;
+          delete finalData['camera1_from'];
+          delete finalData['camera1_to'];
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -2963,10 +2982,13 @@ This would break the logging logic and create inconsistencies in the file number
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
-          // Disabled field or REC off - remove all
-          delete finalData[fieldId];
-          delete finalData[`camera${i}_from`];
-          delete finalData[`camera${i}_to`];
+          // For disabled fields, only delete if it's not a waste take with preserved range data
+          // Waste takes should preserve their range data even when disabled
+          if (classification !== 'Waste' || !wasteOptions.camera) {
+            delete finalData[fieldId];
+            delete finalData[`camera${i}_from`];
+            delete finalData[`camera${i}_to`];
+          }
         }
       }
     }
