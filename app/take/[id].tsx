@@ -1696,9 +1696,8 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      // Use outer-scoped camDelta variable (assign instead of const)
+      // Calculate delta based on range size being inserted
       camDelta = (() => {
-        // For selective shifting, use the input field's delta, not the existing field's
         // Check rangeData FIRST (for range mode), then fallback to takeData (for single value mode)
         const r = rangeData[targetFieldId];
         if (showRangeMode[targetFieldId] && r?.from && r?.to) {
@@ -1717,8 +1716,8 @@ This would break the logging logic and create inconsistencies in the file number
         return 1;
       })();
       
-      // Calculate existingEntry updates but don't save yet
-      if (!disabledFields.has(targetFieldId)) {
+      // Calculate existingEntry updates
+      if (!disabledFields.has(targetFieldId) && camDelta > 0) {
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
         if (targetRange) {
@@ -1744,11 +1743,11 @@ This would break the logging logic and create inconsistencies in the file number
           if (targetHasSingleCamera) {
             const targetCamNum = parseInt(existingEntry.data[targetFieldId] as string, 10) || 0;
             
-            // Check if new entry has range or single value
+            // Check if new entry has range or single value to get the inserted bounds
             let newCamMin: number;
             let newCamMax: number;
             if (showRangeMode[targetFieldId] && rangeData[targetFieldId]?.from && rangeData[targetFieldId]?.to) {
-              // New entry has range
+              // New entry has range - inserting range before single value
               const a = parseInt(rangeData[targetFieldId].from, 10) || 0;
               const b = parseInt(rangeData[targetFieldId].to, 10) || 0;
               newCamMin = Math.min(a, b);
@@ -1769,13 +1768,16 @@ This would break the logging logic and create inconsistencies in the file number
             
             // Only bump if target camera number equals the min of the new range (insert before scenario)
             const shouldBump = targetCamNum === newCamMin;
-            if (shouldBump && camDelta > 0) {
-              // Shift target to the end of the inserted range + 1
+            if (shouldBump) {
+              // Shift target to max(inserted range) + 1
               existingEntryUpdates = {
                 ...existingEntry.data,
                 [targetFieldId]: String(newCamMax + 1).padStart(4, '0'),
                 takeNumber: String(targetTakeNumber + 1)
               };
+              // Update camStart to point to the NEW position of existingEntry for updateFileNumbers
+              // This ensures updateFileNumbers shifts entries starting AFTER the updated existingEntry
+              camStart = newCamMax + 1;
             }
           }
         }
