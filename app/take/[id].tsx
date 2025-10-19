@@ -2129,12 +2129,11 @@ This would break the logging logic and create inconsistencies in the file number
                 }
                 updateLogSheet(existingEntry.id, updated);
               } else {
-                // Handle single camera value (not range) in type=take scenario
+                // Handle single camera value (not range) in type=file scenario
                 const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
                 if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                   const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                   if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-                    // New entry has range, target has single value
                     const insFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
                     const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
                     const min = Math.min(insFrom, insTo);
@@ -2142,19 +2141,16 @@ This would break the logging logic and create inconsistencies in the file number
                     if (targetSingleNum >= min && targetSingleNum <= max) {
                       const updated: Record<string, any> = { 
                         ...existingEntry.data, 
-                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
-                        takeNumber: String(targetTake + 1)
+                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0')
                       };
                       updateLogSheet(existingEntry.id, updated);
                     }
                   } else if (takeData.cameraFile) {
-                    // Both have single values
                     const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
                     if (newSingle === targetSingleNum) {
                       const updated: Record<string, any> = { 
                         ...existingEntry.data, 
-                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
-                        takeNumber: String(targetTake + 1)
+                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0')
                       };
                       updateLogSheet(existingEntry.id, updated);
                     }
@@ -2214,12 +2210,11 @@ This would break the logging logic and create inconsistencies in the file number
                     }
                     updateLogSheet(existingEntry.id, updated);
                   } else {
-                    // Handle single camera value (not range) in type=take multi-camera scenario
+                    // Handle single camera value (not range) in type=file multi-camera scenario
                     const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
                     if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                       const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                       if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                        // New entry has range, target has single value
                         const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
                         const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
                         const min = Math.min(insFrom, insTo);
@@ -2227,19 +2222,16 @@ This would break the logging logic and create inconsistencies in the file number
                         if (targetSingleNum >= min && targetSingleNum <= max) {
                           const updated: Record<string, any> = { 
                             ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
-                            takeNumber: String(targetTake + 1)
+                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
                           };
                           updateLogSheet(existingEntry.id, updated);
                         }
                       } else if (takeData[fieldId]) {
-                        // Both have single values
                         const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
                         if (newSingle === targetSingleNum) {
                           const updated: Record<string, any> = { 
                             ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
-                            takeNumber: String(targetTake + 1)
+                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
                           };
                           updateLogSheet(existingEntry.id, updated);
                         }
@@ -2258,20 +2250,6 @@ This would break the logging logic and create inconsistencies in the file number
         }
 
       } else if (duplicateInfo.type === 'file') {
-        if (existingEntry.data?.soundFile) {
-          newLogData.soundFile = existingEntry.data.soundFile;
-        }
-        if (camCount === 1 && existingEntry.data?.cameraFile) {
-          newLogData.cameraFile = existingEntry.data.cameraFile;
-        } else if (camCount > 1) {
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (existingEntry.data?.[fieldId]) {
-              newLogData[fieldId] = existingEntry.data[fieldId];
-            }
-          }
-        }
-
         // Force insert into target scene/shot
         const targetSceneNumber = existingEntry.data?.sceneNumber;
         const targetShotNumber = existingEntry.data?.shotNumber;
@@ -2281,6 +2259,75 @@ This would break the logging logic and create inconsistencies in the file number
         if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
           updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+        }
+
+        // Save current log FIRST with range persistence to avoid stale ranges
+        {
+          let finalData: Record<string, any> = { ...newLogData };
+          if (camCount > 1) {
+            for (let i = 1; i <= camCount; i++) {
+              const fid = `cameraFile${i}`;
+              const isRecActive = cameraRecState[fid] ?? true;
+              if (!isRecActive) delete finalData[fid];
+            }
+          }
+          finalData = pruneDisabled(finalData);
+          const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+          // Persist sound range or single
+          if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+            finalData['sound_from'] = pad4(rangeData['soundFile'].from);
+            finalData['sound_to'] = pad4(rangeData['soundFile'].to);
+            delete finalData.soundFile;
+          } else if (!disabledFields.has('soundFile')) {
+            delete finalData['sound_from'];
+            delete finalData['sound_to'];
+          } else {
+            delete finalData.soundFile;
+            delete finalData['sound_from'];
+            delete finalData['sound_to'];
+          }
+          // Persist camera ranges
+          if (camCount === 1) {
+            if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+              finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
+              finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
+              delete finalData.cameraFile;
+            } else if (!disabledFields.has('cameraFile')) {
+              delete finalData['camera1_from'];
+              delete finalData['camera1_to'];
+            } else {
+              delete finalData.cameraFile;
+              delete finalData['camera1_from'];
+              delete finalData['camera1_to'];
+            }
+          } else {
+            for (let i = 1; i <= camCount; i++) {
+              const fid = `cameraFile${i}`;
+              if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to) {
+                finalData[`camera${i}_from`] = pad4(rangeData[fid].from);
+                finalData[`camera${i}_to`] = pad4(rangeData[fid].to);
+                delete finalData[fid];
+              } else if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+                delete finalData[`camera${i}_from`];
+                delete finalData[`camera${i}_to`];
+              } else {
+                delete finalData[fid];
+                delete finalData[`camera${i}_from`];
+                delete finalData[`camera${i}_to`];
+              }
+            }
+          }
+          const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
+          const updatedData = {
+            ...finalData,
+            classification,
+            shotDetails: filteredShotDetails,
+            isGoodTake,
+            wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+            insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+            cameraRecState: camCount > 1 ? cameraRecState : undefined
+          };
+          updateLogSheet(logSheet.id, updatedData);
         }
 
         // Shift file numbers starting from target
