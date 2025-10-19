@@ -1879,11 +1879,22 @@ This would break the logging logic and create inconsistencies in the file number
           updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
 
           const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
-          if (targetRange && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-            const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-            const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-            const insertedMax = Math.max(insertedFrom, insertedTo);
-            const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+          if (targetRange) {
+            // Target has a range - update it regardless of whether new entry is range or single
+            let insertedMax: number;
+            let deltaLocal: number;
+            
+            if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+              // New entry has range
+              const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+              const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+              insertedMax = Math.max(insertedFrom, insertedTo);
+              deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+            } else {
+              // New entry has single value
+              insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
+              deltaLocal = 1;
+            }
 
             const oldToNum = parseInt(targetRange.to, 10) || 0;
             const newFromNum = insertedMax + 1;
@@ -1969,11 +1980,22 @@ This would break the logging logic and create inconsistencies in the file number
             updateFileNumbers(projectId, fieldId, camStart, camIncrement);
 
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
-            if (targetRange && showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-              const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-              const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
-              const insertedMax = Math.max(insertedFrom, insertedTo);
-              const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+            if (targetRange) {
+              // Target has a range - update it regardless of whether new entry is range or single
+              let insertedMax: number;
+              let deltaLocal: number;
+              
+              if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                // New entry has range
+                const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                insertedMax = Math.max(insertedFrom, insertedTo);
+                deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+              } else {
+                // New entry has single value
+                insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
+                deltaLocal = 1;
+              }
 
               const oldToNum = parseInt(targetRange.to, 10) || 0;
               const newFromNum = insertedMax + 1;
@@ -2287,11 +2309,22 @@ This would break the logging logic and create inconsistencies in the file number
         const to = existingEntry.data?.sound_to;
         return from && to ? { from, to } : null;
       })();
-      if (targetRange && showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
-        const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
-        const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
-        const insertedMax = Math.max(insertedFrom, insertedTo);
-        const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+      if (targetRange) {
+        // Target has a range - update it regardless of whether new entry is range or single
+        let insertedMax: number;
+        let deltaLocal: number;
+        
+        if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+          // New entry has range
+          const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+          const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+          insertedMax = Math.max(insertedFrom, insertedTo);
+          deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+        } else {
+          // New entry has single value
+          insertedMax = parseInt(String(takeData.soundFile), 10) || 0;
+          deltaLocal = 1;
+        }
 
         const oldToNum = parseInt(targetRange.to, 10) || 0;
         const newFromNum = insertedMax + 1;
@@ -2350,11 +2383,22 @@ This would break the logging logic and create inconsistencies in the file number
           const to = existingEntry.data?.camera1_to;
           return from && to ? { from, to } : null;
         })();
-        if (targetRange && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-          const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-          const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-          const insertedMax = Math.max(insertedFrom, insertedTo);
-          const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+        if (targetRange) {
+          // Target has a range - update it regardless of whether new entry is range or single
+          let insertedMax: number;
+          let deltaLocal: number;
+          
+          if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+            // New entry has range
+            const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+            const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+            insertedMax = Math.max(insertedFrom, insertedTo);
+            deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+          } else {
+            // New entry has single value
+            insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
+            deltaLocal = 1;
+          }
 
           const oldToNum = parseInt(targetRange.to, 10) || 0;
           const newFromNum = insertedMax + 1;
