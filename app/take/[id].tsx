@@ -1395,39 +1395,64 @@ export default function EditTakeScreen() {
           return !(hasRange || hasSingle);
         })();
 
-        // Skip duplicate insertion logic for Ambience and SFX - they don't affect scene/shot/take numbering
+        // Check if one field is blank in input - if so, allow selective insertion
         const isCurrentAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
         
-        // Check if one field is blank in input - if so, allow selective insertion (but not for Ambience/SFX)
-        if (!isCurrentAmbienceOrSFX && isCameraBlankInput && !isSoundBlankInput) {
+        if (isCameraBlankInput && !isSoundBlankInput) {
           // Camera is blank, sound has duplicate - allow selective insertion for sound only
           const e = soundDup.existingEntry;
           const targetClassification = e.data?.classification;
           const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
-          Alert.alert(
-            'Duplicate Detected',
-            `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Insert Before (Sound Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
-            ]
-          );
+          
+          if (isCurrentAmbienceOrSFX) {
+            // Special message for Ambience/SFX
+            Alert.alert(
+              `${classification} Duplicate Detected`,
+              `Sound file is a duplicate at ${loc}.\n\nThis will be saved as ${classification}. The sound file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Save', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+              ]
+            );
+          } else {
+            Alert.alert(
+              'Duplicate Detected',
+              `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Insert Before (Sound Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+              ]
+            );
+          }
           return;
         }
 
-        if (!isCurrentAmbienceOrSFX && !isCameraBlankInput && isSoundBlankInput) {
+        if (!isCameraBlankInput && isSoundBlankInput) {
           // Sound is blank, camera has duplicate - allow selective insertion for camera only
           const e = cameraDup.existingEntry;
           const targetClassification = e.data?.classification;
           const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
-          Alert.alert(
-            'Duplicate Detected',
-            `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Insert Before (Camera Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
-            ]
-          );
+          
+          if (isCurrentAmbienceOrSFX) {
+            // Special message for Ambience/SFX
+            Alert.alert(
+              `${classification} Duplicate Detected`,
+              `Camera file is a duplicate at ${loc}.\n\nThis will be saved as ${classification}. The camera file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Save', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+              ]
+            );
+          } else {
+            Alert.alert(
+              'Duplicate Detected',
+              `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Insert Before (Camera Only)', onPress: () => handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+              ]
+            );
+          }
           return;
         }
 
@@ -1615,6 +1640,7 @@ This would break the logging logic and create inconsistencies in the file number
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
     const targetFieldId = duplicateInfo.fieldId;
+    const isCurrentAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
 
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
 
@@ -1650,20 +1676,24 @@ This would break the logging logic and create inconsistencies in the file number
     const targetSceneNumber = existingEntry.data?.sceneNumber;
     const targetShotNumber = existingEntry.data?.shotNumber;
     const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
-    newLogData.sceneNumber = targetSceneNumber;
-    newLogData.shotNumber = targetShotNumber;
-    if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
-      newLogData.takeNumber = existingEntry.data.takeNumber;
-      const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
-      const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
-      console.log('DEBUG - Calling updateTakeNumbers with excludeLogId and maxTake:', {
-        fromTakeNumber: targetTakeNumber,
-        increment: 1,
-        excludeLogId: logSheet.id,
-        originalTakeNumber,
-        maxTakeNumber: maxTake
-      });
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
+    
+    // For Ambience/SFX, don't update scene/shot/take numbers (they go to separate sections)
+    if (!isCurrentAmbienceOrSFX) {
+      newLogData.sceneNumber = targetSceneNumber;
+      newLogData.shotNumber = targetShotNumber;
+      if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
+        newLogData.takeNumber = existingEntry.data.takeNumber;
+        const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
+        const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
+        console.log('DEBUG - Calling updateTakeNumbers with excludeLogId and maxTake:', {
+          fromTakeNumber: targetTakeNumber,
+          increment: 1,
+          excludeLogId: logSheet.id,
+          originalTakeNumber,
+          maxTakeNumber: maxTake
+        });
+        updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
+      }
     }
 
     // Variables to track shift parameters
