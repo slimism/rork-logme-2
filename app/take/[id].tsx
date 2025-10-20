@@ -1991,6 +1991,26 @@ This would break the logging logic and create inconsistencies in the file number
 
     if (position === 'before') {
       let newLogData = { ...takeData };
+      
+      // Remove OLD range values from takeData that will be replaced by rangeData
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        delete newLogData.camera1_from;
+        delete newLogData.camera1_to;
+        delete newLogData.cameraFile;
+      }
+      if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+        delete newLogData.sound_from;
+        delete newLogData.sound_to;
+        delete newLogData.soundFile;
+      }
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          delete newLogData[`camera${i}_from`];
+          delete newLogData[`camera${i}_to`];
+          delete newLogData[fieldId];
+        }
+      }
 
       if (duplicateInfo.type === 'take') {
         if (existingEntry.data?.soundFile) {
@@ -2644,6 +2664,27 @@ This would break the logging logic and create inconsistencies in the file number
     try {
       let finalTakeData = { ...takeData } as Record<string, any>;
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      
+      // Remove OLD range values from takeData that will be replaced by rangeData
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        delete finalTakeData.camera1_from;
+        delete finalTakeData.camera1_to;
+        delete finalTakeData.cameraFile;
+      }
+      if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+        delete finalTakeData.sound_from;
+        delete finalTakeData.sound_to;
+        delete finalTakeData.soundFile;
+      }
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          delete finalTakeData[`camera${i}_from`];
+          delete finalTakeData[`camera${i}_to`];
+          delete finalTakeData[fieldId];
+        }
+      }
+      
       if (cameraConfiguration > 1) {
         for (let i = 1; i <= cameraConfiguration; i++) {
           const fieldId = `cameraFile${i}`;
