@@ -19,7 +19,7 @@ interface ProjectState {
   updateLogSheet: (id: string, data: any) => void;
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
-  updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string) => void;
+  updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
   updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => void;
 }
 
@@ -227,14 +227,15 @@ export const useProjectStore = create<ProjectState>()(
         }
       },
       
-      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string) => {
+      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => {
         console.log('=== updateTakeNumbers called ===', {
           projectId,
           sceneNumber,
           shotNumber,
           fromTakeNumber,
           increment,
-          excludeLogId
+          excludeLogId,
+          maxTakeNumber
         });
         
         set((state) => ({
@@ -259,7 +260,12 @@ export const useProjectStore = create<ProjectState>()(
               const takeRaw = (data as any).takeNumber as unknown;
               const currentTakeNum = typeof takeRaw === 'string' ? parseInt(takeRaw, 10) : Number.NaN;
 
-              if (!Number.isNaN(currentTakeNum) && currentTakeNum >= fromTakeNumber) {
+              // Check if take should be shifted
+              const shouldShift = !Number.isNaN(currentTakeNum) && 
+                                 currentTakeNum >= fromTakeNumber &&
+                                 (maxTakeNumber === undefined || currentTakeNum <= maxTakeNumber);
+              
+              if (shouldShift) {
                 console.log(`  -> Shifting take ${currentTakeNum} to ${currentTakeNum + increment} (log ${logSheet.id})`);
                 return {
                   ...logSheet,
@@ -269,6 +275,8 @@ export const useProjectStore = create<ProjectState>()(
                   },
                   updatedAt: new Date().toISOString(),
                 };
+              } else if (!Number.isNaN(currentTakeNum) && currentTakeNum > fromTakeNumber && maxTakeNumber !== undefined) {
+                console.log(`  -> Skipping take ${currentTakeNum} (beyond maxTakeNumber ${maxTakeNumber})`);
               }
               return logSheet;
             } catch (e) {

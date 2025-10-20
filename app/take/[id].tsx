@@ -1649,12 +1649,16 @@ This would break the logging logic and create inconsistencies in the file number
     newLogData.shotNumber = targetShotNumber;
     if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
       newLogData.takeNumber = existingEntry.data.takeNumber;
-      console.log('DEBUG - Calling updateTakeNumbers with excludeLogId:', {
+      const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
+      const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
+      console.log('DEBUG - Calling updateTakeNumbers with excludeLogId and maxTake:', {
         fromTakeNumber: targetTakeNumber,
         increment: 1,
-        excludeLogId: logSheet.id
+        excludeLogId: logSheet.id,
+        originalTakeNumber,
+        maxTakeNumber: maxTake
       });
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
     }
 
     // Variables to track shift parameters
@@ -2144,12 +2148,16 @@ This would break the logging logic and create inconsistencies in the file number
         newLogData.shotNumber = targetShotNumber;
         if (!Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data?.takeNumber;
-          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogId:', {
+          const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
+          const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
+          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogId and maxTake:', {
             fromTakeNumber: targetTakeNumber,
             increment: 1,
-            excludeLogId: logSheet.id
+            excludeLogId: logSheet.id,
+            originalTakeNumber,
+            maxTakeNumber: maxTake
           });
-          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
+          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
         }
 
         // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -2413,12 +2421,16 @@ This would break the logging logic and create inconsistencies in the file number
         newLogData.shotNumber = targetShotNumber;
         if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
-          console.log('DEBUG handleSaveWithDuplicateHandling type=file - Calling updateTakeNumbers with excludeLogId:', {
+          const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
+          const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
+          console.log('DEBUG handleSaveWithDuplicateHandling type=file - Calling updateTakeNumbers with excludeLogId and maxTake:', {
             fromTakeNumber: targetTakeNumber,
             increment: 1,
-            excludeLogId: logSheet.id
+            excludeLogId: logSheet.id,
+            originalTakeNumber,
+            maxTakeNumber: maxTake
           });
-          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
+          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
         }
 
         // Save current log FIRST with range persistence to avoid stale ranges
@@ -2988,12 +3000,16 @@ This would break the logging logic and create inconsistencies in the file number
     newLogData.shotNumber = targetShotNumber;
     if (!Number.isNaN(targetTake)) {
       newLogData.takeNumber = existingEntry.data?.takeNumber;
-      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogId:', {
+      const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
+      const maxTake = originalTakeNumber > targetTake ? originalTakeNumber - 1 : undefined;
+      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogId and maxTake:', {
         fromTakeNumber: targetTake,
         increment: 1,
-        excludeLogId: logSheet.id
+        excludeLogId: logSheet.id,
+        originalTakeNumber,
+        maxTakeNumber: maxTake
       });
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id);
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id, maxTake);
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
