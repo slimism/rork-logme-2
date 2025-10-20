@@ -160,8 +160,29 @@ export default function ProjectScreen() {
   const renderTake = ({ item: take }: { item: any }) => {
     const isExpanded = expandedTakes.has(take.id);
     const takeNumber = take.data?.takeNumber || '1';
-    const cameraFile = take.data?.cameraFile || take.data?.cameraFile1 || '';
-    const soundFile = take.data?.soundFile || '';
+    
+    // Helper to get camera file display value (handles ranges)
+    const getCameraFileDisplay = () => {
+      // Check for range stored in camera1_from/camera1_to
+      if (take.data?.camera1_from && take.data?.camera1_to) {
+        return `${take.data.camera1_from}-${take.data.camera1_to}`;
+      }
+      // Check for inline range or single value
+      return take.data?.cameraFile || take.data?.cameraFile1 || '';
+    };
+    
+    // Helper to get sound file display value (handles ranges)
+    const getSoundFileDisplay = () => {
+      // Check for range stored in sound_from/sound_to
+      if (take.data?.sound_from && take.data?.sound_to) {
+        return `${take.data.sound_from}-${take.data.sound_to}`;
+      }
+      // Check for inline range or single value
+      return take.data?.soundFile || '';
+    };
+    
+    const cameraFile = getCameraFileDisplay();
+    const soundFile = getSoundFileDisplay();
     
     return (
       <Card style={styles.takeCard}>
@@ -252,7 +273,16 @@ export default function ProjectScreen() {
                 if (cameraCount && cameraCount > 1) {
                   return Array.from({ length: cameraCount }, (_, i) => {
                     const cameraFieldId = `cameraFile${i + 1}`;
-                    const cameraValue = take.data?.[cameraFieldId];
+                    const cameraNum = i + 1;
+                    
+                    // Check for range first
+                    let cameraValue = '';
+                    if (take.data?.[`camera${cameraNum}_from`] && take.data?.[`camera${cameraNum}_to`]) {
+                      cameraValue = `${take.data[`camera${cameraNum}_from`]}-${take.data[`camera${cameraNum}_to`]}`;
+                    } else {
+                      cameraValue = take.data?.[cameraFieldId] || '';
+                    }
+                    
                     if (cameraValue) {
                       return (
                         <View key={`${take.id}-${cameraFieldId}`} style={styles.detailRow}>
