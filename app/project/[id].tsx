@@ -278,6 +278,9 @@ export default function ProjectScreen() {
         if (take.data?.classification === 'Waste' && (fromValue || toValue || fileValue)) {
           console.log(`DEBUG ProjectScreen - Rendering camera ${camNum} for waste take:`, {
             takeId: take.id,
+            sceneNumber: take.data?.sceneNumber,
+            shotNumber: take.data?.shotNumber,
+            takeNumber: take.data?.takeNumber,
             fromValue,
             toValue,
             fileValue,
@@ -290,6 +293,9 @@ export default function ProjectScreen() {
           const from = fromValue.toString().padStart(4, '0');
           const to = toValue.toString().padStart(4, '0');
           const displayValue = from === to ? from : `${from}–${to}`;
+          if (take.data?.classification === 'Waste') {
+            console.log(`DEBUG - Using range format for waste take: from=${from}, to=${to}, displayValue=${displayValue}`);
+          }
           files.push({ cameraNumber: camNum, displayValue });
         }
         // Handle single camera file

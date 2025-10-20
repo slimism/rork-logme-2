@@ -1825,6 +1825,12 @@ This would break the logging logic and create inconsistencies in the file number
     newLogData = pruneDisabled(newLogData);
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
     const finalData: Record<string, any> = { ...newLogData };
+    
+    console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - After pruneDisabled:', {
+      'newLogData.cameraFile': newLogData.cameraFile,
+      'finalData.cameraFile': finalData.cameraFile,
+      disabledFields: Array.from(disabledFields)
+    });
     if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
       finalData['sound_from'] = pad4(rangeData['soundFile'].from);
       finalData['sound_to'] = pad4(rangeData['soundFile'].to);
@@ -1842,11 +1848,25 @@ This would break the logging logic and create inconsistencies in the file number
       const hasRange = showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to;
       const isDisabled = disabledFields.has('cameraFile');
       
+      console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - Before camera handling:', {
+        hasRange,
+        isDisabled,
+        'finalData.cameraFile': finalData.cameraFile,
+        'finalData.camera1_from': finalData.camera1_from,
+        'finalData.camera1_to': finalData.camera1_to
+      });
+      
       if (hasRange) {
         // Has range data - save it (works for both waste and non-waste)
         finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
         finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
         delete finalData.cameraFile;
+        
+        console.log('DEBUG - After setting range and deleting cameraFile:', {
+          'finalData.cameraFile': finalData.cameraFile,
+          'finalData.camera1_from': finalData.camera1_from,
+          'finalData.camera1_to': finalData.camera1_to
+        });
       } else if (!isDisabled) {
         // Enabled field without range - keep single value mode, delete range fields
         delete finalData['camera1_from'];
