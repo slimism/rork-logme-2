@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
+import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search, FileText } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useTokenStore } from '@/store/subscriptionStore';
@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { colors } from '@/constants/colors';
 import { exportProjectToPDF } from '@/utils/pdfExport';
 import { ClassificationType } from '@/types';
+import { consoleLogger } from '@/utils/consoleLogger';
 
 export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function ProjectScreen() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isExportingLogs, setIsExportingLogs] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     scene: '',
@@ -73,6 +75,9 @@ export default function ProjectScreen() {
             <Text style={styles.consumeTokenText}>Unlock</Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity onPress={handleExportLogs} style={styles.exportButton} disabled={isExportingLogs}>
+          <FileText size={20} color={isExportingLogs ? colors.subtext : colors.primary} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
           <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
         </TouchableOpacity>
@@ -128,6 +133,22 @@ export default function ProjectScreen() {
       Alert.alert('Error', 'Failed to export project. Please try again.');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportLogs = async () => {
+    setIsExportingLogs(true);
+    try {
+      const success = await consoleLogger.exportLogs();
+      if (!success) {
+        Alert.alert('Error', 'Failed to export console logs. Please try again.');
+      } else {
+        Alert.alert('Success', 'Console logs exported successfully!');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to export console logs. Please try again.');
+    } finally {
+      setIsExportingLogs(false);
     }
   };
 
