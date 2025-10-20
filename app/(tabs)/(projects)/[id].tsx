@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Plus, ArrowLeft, Share, Edit3, ChevronRight, Camera, Mic, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
@@ -16,8 +16,8 @@ export default function ProjectScreen() {
   const { projects, logSheets } = useProjectStore();
 
   
-  const [project, setProject] = useState(projects.find(p => p.id === id));
-  const [projectLogSheets, setProjectLogSheets] = useState(logSheets.filter(l => l.projectId === id));
+  const project = projects.find(p => p.id === id);
+  const projectLogSheets = logSheets.filter(l => l.projectId === id);
 
   const [expandedTakes, setExpandedTakes] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
@@ -34,10 +34,7 @@ export default function ProjectScreen() {
   const [sceneFilterInput, setSceneFilterInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    setProject(projects.find(p => p.id === id));
-    setProjectLogSheets(logSheets.filter(l => l.projectId === id));
-  }, [id, projects, logSheets]);
+
 
   const HeaderLeft = () => (
     <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
