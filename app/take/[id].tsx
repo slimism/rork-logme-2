@@ -1823,11 +1823,34 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
     newLogData = pruneDisabled(newLogData);
+    
+    // CRITICAL: Remove old range field values that will be replaced by rangeData
+    // This prevents stale camera1_from/camera1_to from persisting when editing ranges
+    if (camCount === 1) {
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        // We're in range mode - delete any old range fields and inline string
+        delete newLogData.camera1_from;
+        delete newLogData.camera1_to;
+        delete newLogData.cameraFile;
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          delete newLogData[`camera${i}_from`];
+          delete newLogData[`camera${i}_to`];
+          delete newLogData[fieldId];
+        }
+      }
+    }
+    
     const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
     const finalData: Record<string, any> = { ...newLogData };
     
-    console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - After pruneDisabled:', {
+    console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - After pruneDisabled and range cleanup:', {
       'newLogData.cameraFile': newLogData.cameraFile,
+      'newLogData.camera1_from': newLogData.camera1_from,
+      'newLogData.camera1_to': newLogData.camera1_to,
       'finalData.cameraFile': finalData.cameraFile,
       disabledFields: Array.from(disabledFields)
     });
