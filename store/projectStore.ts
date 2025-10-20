@@ -20,7 +20,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -263,13 +263,27 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
+        console.log('=== updateFileNumbers called ===', {
+          projectId,
+          fieldId,
+          fromNumber,
+          increment,
+          excludeLogId
+        });
+        
         set((state) => ({
           logSheets: (() => {
             let skippedTarget = false;
             const isTargetInRange = (start: number, end: number) => fromNumber >= Math.min(start, end) && fromNumber <= Math.max(start, end);
             return state.logSheets.map((logSheet) => {
               if (logSheet.projectId !== projectId) return logSheet;
+              
+              // Skip the excluded log (the edited log that was just saved)
+              if (excludeLogId && logSheet.id === excludeLogId) {
+                console.log(`  -> Explicitly skipping excluded log: ${logSheet.id}`);
+                return logSheet;
+              }
               const data = logSheet.data;
               if (!data) return logSheet;
 

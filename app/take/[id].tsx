@@ -2629,9 +2629,9 @@ This would break the logging logic and create inconsistencies in the file number
                   camStart,
                   targetRange,
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
-                  'editedLogId_ShouldBeSkipped': logSheet.id
+                  'editedLogId_ToExclude': logSheet.id
                 });
-                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); 
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
               }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
