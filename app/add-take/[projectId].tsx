@@ -2321,8 +2321,9 @@ This would break the logging logic and create inconsistencies in the file number
       
       if (!disabledFields.has('soundFile') && soundDelta > 0) {
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-        const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
-        updateFileNumbers(projectId, 'soundFile', start, soundDelta);
+        // Always use soundStart (the beginning of the duplicate), not the end of the range
+        // updateFileNumbers will skip the first occurrence and shift everything else
+        updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
         
         // If target has a range, adjust it
         if (targetRange) {
@@ -2397,8 +2398,9 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
         if (targetRange) {
-          const start = (parseInt(targetRange.to, 10) || 0) + 1;
-          updateFileNumbers(projectId, targetFieldId, start, camDelta);
+          // Always use camStart (the beginning of the duplicate), not the end of the range
+          // updateFileNumbers will skip the first occurrence and shift everything else
+          updateFileNumbers(projectId, targetFieldId, camStart, camDelta);
           
           const insertedFrom = showRangeMode[targetFieldId] && rangeData[targetFieldId]?.from 
             ? parseInt(rangeData[targetFieldId].from, 10) || 0 
