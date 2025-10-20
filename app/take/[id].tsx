@@ -2660,19 +2660,38 @@ This would break the logging logic and create inconsistencies in the file number
         const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
           const inRange = showRangeMode[fieldId] === true;
           const r = rangeData[fieldId];
+          
+          // For disabled fields (waste), still save range data if it exists
           if (!enabled) {
-            if (fieldId === 'soundFile') {
-              delete out.soundFile;
-              delete out['sound_from'];
-              delete out['sound_to'];
-            } else if (idx != null) {
-              const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
-              delete out[base];
-              delete out[`camera${idx}_from`];
-              delete out[`camera${idx}_to`];
+            if (inRange && r && r.from && r.to) {
+              // Field is disabled but has range data - save the range (waste with range)
+              if (fieldId === 'soundFile') {
+                out['sound_from'] = pad4(r.from);
+                out['sound_to'] = pad4(r.to);
+                delete out.soundFile;
+              } else if (idx != null) {
+                out[`camera${idx}_from`] = pad4(r.from);
+                out[`camera${idx}_to`] = pad4(r.to);
+                const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+                delete out[base];
+              }
+            } else {
+              // Field is disabled and has no range data - delete all related fields
+              if (fieldId === 'soundFile') {
+                delete out.soundFile;
+                delete out['sound_from'];
+                delete out['sound_to'];
+              } else if (idx != null) {
+                const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+                delete out[base];
+                delete out[`camera${idx}_from`];
+                delete out[`camera${idx}_to`];
+              }
             }
             return;
           }
+          
+          // Field is enabled - apply normal logic
           if (inRange && r && r.from && r.to) {
             if (fieldId === 'soundFile') {
               out['sound_from'] = pad4(r.from);
@@ -2747,6 +2766,26 @@ This would break the logging logic and create inconsistencies in the file number
 
     // In edit mode, preserve the user's edited values from rangeData and takeData
     let newLogData = { ...takeData } as Record<string, any>;
+    
+    // Remove OLD range values from takeData that will be replaced by rangeData
+    if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+      delete newLogData.camera1_from;
+      delete newLogData.camera1_to;
+      delete newLogData.cameraFile;
+    }
+    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+      delete newLogData.sound_from;
+      delete newLogData.sound_to;
+      delete newLogData.soundFile;
+    }
+    for (let i = 1; i <= camCount; i++) {
+      const fieldId = `cameraFile${i}`;
+      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+        delete newLogData[`camera${i}_from`];
+        delete newLogData[`camera${i}_to`];
+        delete newLogData[fieldId];
+      }
+    }
     
     // Update scene/shot/take to match the target position
     const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
