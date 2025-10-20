@@ -3413,28 +3413,13 @@ This would break the logging logic and create inconsistencies in the file number
     // Use Promise to ensure Zustand state has propagated
     await new Promise(resolve => setTimeout(resolve, 0));
     
-    // Call updateFileNumbers to shift ALL entries with sound files >= inserted sound file
-    // For Insert Before: We want to shift ALL logs (including those BEFORE the insertion point)
-    // that have sound files >= the inserted sound file minimum value
+    // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0) {
-      // Get the MINIMUM value of the inserted sound file(s)
-      const insertedSoundMin = (() => {
-        const r = rangeData['soundFile'];
-        if (showRangeMode['soundFile'] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.min(a, b);
-        }
-        return parseInt(takeData.soundFile as string, 10) || 0;
-      })();
-      
-      // Shift ALL logs with sound >= insertedSoundMin (this includes logs before AND after)
-      updateFileNumbers(logSheet.projectId, 'soundFile', insertedSoundMin, soundDelta, logSheet.id);
+      const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+      const soundStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStartShift, soundDelta);
     }
     
-    // Call updateFileNumbers to shift ALL entries with camera files >= inserted camera file
-    // For Insert Before: We want to shift ALL logs (including those BEFORE the insertion point)
-    // that have camera files >= the inserted camera file minimum value
     if (camCount === 1) {
       // Recalculate camDelta from edited values
       const camDelta = (() => {
@@ -3455,50 +3440,50 @@ This would break the logging logic and create inconsistencies in the file number
       })();
 
       if (!disabledFields.has('cameraFile') && camDelta > 0) {
-        // Get the MINIMUM value of the inserted camera file(s)
-        const insertedCameraMin = (() => {
-          const r = rangeData['cameraFile'];
-          if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-            const a = parseInt(r.from, 10) || 0;
-            const b = parseInt(r.to, 10) || 0;
-            return Math.min(a, b);
-          }
-          return parseInt(takeData.cameraFile as string, 10) || 0;
-        })();
-        
-        // Shift ALL logs with camera >= insertedCameraMin (this includes logs before AND after)
-        updateFileNumbers(logSheet.projectId, 'cameraFile', insertedCameraMin, camDelta, logSheet.id);
+        const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+        let camStart = cameraFromNumber;
+        if (typeof existingEntry.data?.camera1_from === 'string') {
+          const n = parseInt(existingEntry.data.camera1_from, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        } else if (typeof existingEntry.data?.cameraFile === 'string') {
+          const n = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(n)) camStart = n;
+        }
+        const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        // Only process if the field has data or will have data
-        const camDelta = (() => {
-          if (disabledFields.has(fieldId)) return 0;
-          const r = rangeData[fieldId];
-          if (showRangeMode[fieldId] && r?.from && r?.to) {
-            const a = parseInt(r.from, 10) || 0;
-            const b = parseInt(r.to, 10) || 0;
-            return Math.abs(b - a) + 1;
-          }
-          if (!takeData[fieldId]?.trim()) return 0;
-          return 1;
-        })();
-        
-        if (!disabledFields.has(fieldId) && camDelta > 0) {
-          // Get the MINIMUM value of the inserted camera file(s)
-          const insertedCameraMin = (() => {
+        if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
+          const camDelta = (() => {
+            if (disabledFields.has(fieldId)) return 0;
             const r = rangeData[fieldId];
             if (showRangeMode[fieldId] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
               const b = parseInt(r.to, 10) || 0;
-              return Math.min(a, b);
+              return Math.abs(b - a) + 1;
             }
-            return parseInt(takeData[fieldId] as string, 10) || 0;
+            if (!takeData[fieldId]?.trim()) return 0;
+            return 1;
           })();
           
-          // Shift ALL logs with camera >= insertedCameraMin (this includes logs before AND after)
-          updateFileNumbers(logSheet.projectId, fieldId, insertedCameraMin, camDelta, logSheet.id);
+          if (!disabledFields.has(fieldId) && camDelta > 0) {
+            const targetRange = getRangeFromData(existingEntry.data, fieldId);
+            let camStartForField = cameraFromNumber;
+            const fromKey = `camera${i}_from` as const;
+            const fromVal = existingEntry.data?.[fromKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStartForField = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStartForField = n;
+            }
+            const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta);
+          }
         }
       }
     }
