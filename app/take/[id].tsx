@@ -266,6 +266,14 @@ export default function EditTakeScreen() {
           }
         }
       });
+      
+      console.log('DEBUG OnLoad - Loading log sheet:');
+      console.log('  currentLogSheet.data.camera1_from:', currentLogSheet.data?.camera1_from);
+      console.log('  currentLogSheet.data.camera1_to:', currentLogSheet.data?.camera1_to);
+      console.log('  currentLogSheet.data.cameraFile:', currentLogSheet.data?.cameraFile);
+      console.log('  newRangeData:', newRangeData);
+      console.log('  newShowRangeMode:', newShowRangeMode);
+      
       setRangeData(newRangeData);
       setShowRangeMode(newShowRangeMode);
 
@@ -1870,6 +1878,16 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
+    console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - Before save:');
+    console.log('  showRangeMode:', showRangeMode);
+    console.log('  rangeData:', rangeData);
+    console.log('  disabledFields:', Array.from(disabledFields));
+    console.log('  updatedData to save:', {
+      camera1_from: updatedData.camera1_from,
+      camera1_to: updatedData.camera1_to,
+      cameraFile: updatedData.cameraFile
+    });
+    
     // Save the current logSheet with edited values FIRST
     await updateLogSheet(logSheet.id, updatedData);
     
@@ -2733,6 +2751,14 @@ This would break the logging logic and create inconsistencies in the file number
       finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
       finalTakeData = applyRangePersistence(finalTakeData);
 
+      console.log('DEBUG saveNormally - Before save:');
+      console.log('  showRangeMode:', showRangeMode);
+      console.log('  rangeData:', rangeData);
+      console.log('  disabledFields:', Array.from(disabledFields));
+      console.log('  finalTakeData camera1_from:', finalTakeData.camera1_from);
+      console.log('  finalTakeData camera1_to:', finalTakeData.camera1_to);
+      console.log('  finalTakeData cameraFile:', finalTakeData.cameraFile);
+
       const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
         ? shotDetails.filter(d => d !== 'MOS')
         : shotDetails;
@@ -2746,6 +2772,13 @@ This would break the logging logic and create inconsistencies in the file number
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
         cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
       };
+      
+      console.log('DEBUG saveNormally - updatedData to save:', {
+        camera1_from: updatedData.camera1_from,
+        camera1_to: updatedData.camera1_to,
+        cameraFile: updatedData.cameraFile
+      });
+      
       updateLogSheet(logSheet.id, updatedData);
       router.back();
     } catch (error) {
