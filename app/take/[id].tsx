@@ -1395,12 +1395,15 @@ export default function EditTakeScreen() {
           return !(hasRange || hasSingle);
         })();
 
-        // Check if one field is blank in input - if so, allow selective insertion
-        if (isCameraBlankInput && !isSoundBlankInput) {
+        // Skip duplicate insertion logic for Ambience and SFX - they don't affect scene/shot/take numbering
+        const isCurrentAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
+        
+        // Check if one field is blank in input - if so, allow selective insertion (but not for Ambience/SFX)
+        if (!isCurrentAmbienceOrSFX && isCameraBlankInput && !isSoundBlankInput) {
           // Camera is blank, sound has duplicate - allow selective insertion for sound only
           const e = soundDup.existingEntry;
-          const classification = e.data?.classification;
-          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          const targetClassification = e.data?.classification;
+          const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           Alert.alert(
             'Duplicate Detected',
             `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
@@ -1412,11 +1415,11 @@ export default function EditTakeScreen() {
           return;
         }
 
-        if (!isCameraBlankInput && isSoundBlankInput) {
+        if (!isCurrentAmbienceOrSFX && !isCameraBlankInput && isSoundBlankInput) {
           // Sound is blank, camera has duplicate - allow selective insertion for camera only
           const e = cameraDup.existingEntry;
-          const classification = e.data?.classification;
-          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          const targetClassification = e.data?.classification;
+          const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           Alert.alert(
             'Duplicate Detected',
             `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
@@ -1428,10 +1431,10 @@ export default function EditTakeScreen() {
           return;
         }
 
-        if (targetSoundBlank || isSoundBlankInput) {
+        if (!isCurrentAmbienceOrSFX && (targetSoundBlank || isSoundBlankInput)) {
           const e = ce;
-          const classification = e.data?.classification;
-          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          const targetClassification = e.data?.classification;
+          const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           Alert.alert(
             'Duplicate Detected',
             `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
@@ -1443,10 +1446,10 @@ export default function EditTakeScreen() {
           return;
         }
 
-        if (targetCameraBlank || isCameraBlankInput) {
+        if (!isCurrentAmbienceOrSFX && (targetCameraBlank || isCameraBlankInput)) {
           const e = se;
-          const classification = e.data?.classification;
-          const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+          const targetClassification = e.data?.classification;
+          const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           Alert.alert(
             'Duplicate Detected',
             `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
@@ -1458,26 +1461,28 @@ export default function EditTakeScreen() {
           return;
         }
 
-        const sLoc = se.data?.classification === 'SFX' ? 'SFX' : (se.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`);
-        const cLoc = ce.data?.classification === 'SFX' ? 'SFX' : (ce.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`);
-        
-        // Get the actual file numbers for better user understanding
-        const soundFileNumber = takeData.soundFile || 'Unknown';
-        const cameraFileNumber = cameraDup.fieldId === 'cameraFile' ? 
-          (takeData.cameraFile || 'Unknown') : 
-          (takeData[cameraDup.fieldId] || 'Unknown');
-        
-        Alert.alert(
-          'Cross-Log Conflict Detected',
-          `Cannot insert log because the sound file and camera file already exist in different logs:
+        if (!isCurrentAmbienceOrSFX) {
+          const sLoc = se.data?.classification === 'SFX' ? 'SFX' : (se.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${se.data?.sceneNumber || 'Unknown'}, Shot ${se.data?.shotNumber || 'Unknown'}, Take ${se.data?.takeNumber || 'Unknown'}`);
+          const cLoc = ce.data?.classification === 'SFX' ? 'SFX' : (ce.data?.classification === 'Ambience' ? 'Ambience' : `Scene ${ce.data?.sceneNumber || 'Unknown'}, Shot ${ce.data?.shotNumber || 'Unknown'}, Take ${ce.data?.takeNumber || 'Unknown'}`);
+          
+          // Get the actual file numbers for better user understanding
+          const soundFileNumber = takeData.soundFile || 'Unknown';
+          const cameraFileNumber = cameraDup.fieldId === 'cameraFile' ? 
+            (takeData.cameraFile || 'Unknown') : 
+            (takeData[cameraDup.fieldId] || 'Unknown');
+          
+          Alert.alert(
+            'Cross-Log Conflict Detected',
+            `Cannot insert log because the sound file and camera file already exist in different logs:
 
 Sound File ${soundFileNumber} → Found in: ${sLoc}
 Camera File ${cameraFileNumber} → Found in: ${cLoc}
 
 This would break the logging logic and create inconsistencies in the file numbering system. Please adjust your file numbers to avoid conflicts.`,
-          [{ text: 'OK', style: 'default' }]
-        );
-        return;
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
       }
     }
 

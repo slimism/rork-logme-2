@@ -1235,12 +1235,15 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    // Check if one field is blank in input - if so, allow selective insertion
-    if (isCameraBlank && !isSoundBlank && soundDup) {
+    // Skip duplicate insertion logic for Ambience and SFX - they don't affect scene/shot/take numbering
+    const isCurrentAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
+    
+    // Check if one field is blank in input - if so, allow selective insertion (but not for Ambience/SFX)
+    if (!isCurrentAmbienceOrSFX && isCameraBlank && !isSoundBlank && soundDup) {
       // Camera is blank, sound has duplicate - allow selective insertion for sound only
       const e = soundDup.existingEntry;
-      const classification = e.data?.classification;
-      const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+      const targetClassification = e.data?.classification;
+      const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
       Alert.alert(
         'Duplicate Detected',
         `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
@@ -1252,11 +1255,11 @@ This would break the logging logic and create inconsistencies in the file number
       return;
     }
 
-    if (!isCameraBlank && isSoundBlank && cameraDup) {
+    if (!isCurrentAmbienceOrSFX && !isCameraBlank && isSoundBlank && cameraDup) {
       // Sound is blank, camera has duplicate - allow selective insertion for camera only
       const e = cameraDup.existingEntry;
-      const classification = e.data?.classification;
-      const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+      const targetClassification = e.data?.classification;
+      const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
       Alert.alert(
         'Duplicate Detected',
         `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
@@ -1269,8 +1272,8 @@ This would break the logging logic and create inconsistencies in the file number
     }
 
     // New rule: allow Insert Before when only one duplicate exists AND the other field is blank
-    // Allow insert-before when target duplicate has the other field blank
-    if (soundDup) {
+    // Allow insert-before when target duplicate has the other field blank (but not for Ambience/SFX)
+    if (!isCurrentAmbienceOrSFX && soundDup) {
       const target = soundDup.existingEntry;
       const camCount = project?.settings?.cameraConfiguration || 1;
       const isTargetCameraBlank = (() => {
@@ -1295,11 +1298,11 @@ This would break the logging logic and create inconsistencies in the file number
 
       if (isTargetCameraBlank || isCameraBlank) {
         const e = target;
-        const classification = e.data?.classification;
+        const targetClassification = e.data?.classification;
         let loc: string;
-        if (classification === 'SFX') {
+        if (targetClassification === 'SFX') {
           loc = 'SFX';
-        } else if (classification === 'Ambience') {
+        } else if (targetClassification === 'Ambience') {
           loc = 'Ambience';
         } else {
           loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
@@ -1319,13 +1322,13 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    if (soundDup && isCameraBlank) {
+    if (!isCurrentAmbienceOrSFX && soundDup && isCameraBlank) {
       const e = soundDup.existingEntry;
-      const classification = e.data?.classification;
+      const targetClassification = e.data?.classification;
       let loc: string;
-      if (classification === 'SFX') {
+      if (targetClassification === 'SFX') {
         loc = 'SFX';
-      } else if (classification === 'Ambience') {
+      } else if (targetClassification === 'Ambience') {
         loc = 'Ambience';
       } else {
         loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
@@ -1344,7 +1347,7 @@ This would break the logging logic and create inconsistencies in the file number
       return;
     }
 
-    if (cameraDup) {
+    if (!isCurrentAmbienceOrSFX && cameraDup) {
       const target = cameraDup.existingEntry;
       const isTargetSoundBlank = (() => {
         const hasSingle = typeof target.data?.soundFile === 'string' && target.data.soundFile.trim().length > 0;
@@ -1354,11 +1357,11 @@ This would break the logging logic and create inconsistencies in the file number
 
       if (isTargetSoundBlank || isSoundBlank) {
         const e = target;
-        const classification = e.data?.classification;
+        const targetClassification = e.data?.classification;
         let loc: string;
-        if (classification === 'SFX') {
+        if (targetClassification === 'SFX') {
           loc = 'SFX';
-        } else if (classification === 'Ambience') {
+        } else if (targetClassification === 'Ambience') {
           loc = 'Ambience';
         } else {
           loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
@@ -1378,13 +1381,13 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    if (cameraDup && isSoundBlank) {
+    if (!isCurrentAmbienceOrSFX && cameraDup && isSoundBlank) {
       const e = cameraDup.existingEntry;
-      const classification = e.data?.classification;
+      const targetClassification = e.data?.classification;
       let loc: string;
-      if (classification === 'SFX') {
+      if (targetClassification === 'SFX') {
         loc = 'SFX';
-      } else if (classification === 'Ambience') {
+      } else if (targetClassification === 'Ambience') {
         loc = 'Ambience';
       } else {
         loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
@@ -1403,15 +1406,15 @@ This would break the logging logic and create inconsistencies in the file number
       return;
     }
 
-    if (soundDup || cameraDup) {
+    if (!isCurrentAmbienceOrSFX && (soundDup || cameraDup)) {
       const dup = soundDup || cameraDup!;
       const label = dup.fieldId.startsWith('sound') ? 'Sound' : 'Camera';
       const e = dup.existingEntry;
-      const classification = e.data?.classification;
+      const targetClassification = e.data?.classification;
       let loc: string;
-      if (classification === 'SFX') {
+      if (targetClassification === 'SFX') {
         loc = 'SFX';
-      } else if (classification === 'Ambience') {
+      } else if (targetClassification === 'Ambience') {
         loc = 'Ambience';
       } else {
         loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
