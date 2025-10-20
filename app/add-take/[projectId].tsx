@@ -2503,16 +2503,82 @@ This would break the logging logic and create inconsistencies in the file number
       delete newLogData[field];
     }
 
-    addLogSheet({
-      projectId,
-      data: newLogData,
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistenceSelective = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        if (!enabled) {
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          return;
+        }
+        if (inRange && r && r.from && r.to) {
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+            delete out.soundFile;
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+          }
+        } else {
+          if (fieldId === 'soundFile') {
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+        }
+      };
+
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+
+      if (camCount === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+
+    let finalTakeData = sanitizeDataBeforeSave({ ...newLogData }, classification);
+    finalTakeData = applyRangePersistenceSelective(finalTakeData);
+
+    logSheet.data = {
+      ...finalTakeData,
       classification,
       shotDetails,
       isGoodTake,
       wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
-    });
+    };
 
     router.back();
   };
