@@ -1212,6 +1212,7 @@ export default function EditTakeScreen() {
   };
 
   const handleSaveTake = () => {
+    console.log('========== SAVE INITIATED: handleSaveTake ==========');
     if (!logSheet) return;
     if (!validateMandatoryFields()) {
       return;
@@ -1603,6 +1604,8 @@ This would break the logging logic and create inconsistencies in the file number
   };
 
   const handleSaveWithSelectiveDuplicateHandling = async (position: 'before', duplicateInfo: any) => {
+    console.log('========== SAVE INITIATED: handleSaveWithSelectiveDuplicateHandling ==========');
+    console.log('  duplicateInfo:', duplicateInfo);
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
@@ -1981,6 +1984,8 @@ This would break the logging logic and create inconsistencies in the file number
   };
 
   const handleSaveWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+    console.log('========== SAVE INITIATED: handleSaveWithDuplicateHandling ==========');
+    console.log('  duplicateInfo:', duplicateInfo);
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
     const existingEntry = duplicateInfo.existingEntry;
@@ -2715,6 +2720,7 @@ This would break the logging logic and create inconsistencies in the file number
   };
 
   const saveNormally = () => {
+    console.log('========== SAVE INITIATED: saveNormally ==========');
     if (!logSheet || !project) return;
     try {
       let finalTakeData = { ...takeData } as Record<string, any>;
@@ -2866,11 +2872,32 @@ This would break the logging logic and create inconsistencies in the file number
     cameraFieldId: string,
     cameraFromNumber: number
   ) => {
+    console.log('========== SAVE INITIATED: handleSaveWithDuplicatePair ==========');
+    console.log('  existingEntry.id:', existingEntry?.id);
     if (!logSheet || !project) return;
     const camCount = project?.settings?.cameraConfiguration || 1;
 
     // In edit mode, preserve the user's edited values from rangeData and takeData
     let newLogData = { ...takeData } as Record<string, any>;
+    
+    // CRITICAL: Remove old range field values that will be replaced by rangeData
+    // This prevents stale camera1_from/camera1_to from persisting when editing ranges
+    if (camCount === 1) {
+      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+        delete newLogData.camera1_from;
+        delete newLogData.camera1_to;
+        delete newLogData.cameraFile;
+      }
+    } else {
+      for (let i = 1; i <= camCount; i++) {
+        const fieldId = `cameraFile${i}`;
+        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+          delete newLogData[`camera${i}_from`];
+          delete newLogData[`camera${i}_to`];
+          delete newLogData[fieldId];
+        }
+      }
+    }
     
     // Update scene/shot/take to match the target position
     const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
@@ -3167,19 +3194,37 @@ This would break the logging logic and create inconsistencies in the file number
       delete finalData['sound_to'];
     }
     
-    // Handle camera file ranges - use edited values from rangeData when in range mode
+    // Handle camera ranges - checking range mode FIRST regardless of enabled/disabled status
     if (camCount === 1) {
-      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-        // Keep edited range, not original
+      const hasRange = showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to;
+      const isDisabled = disabledFields.has('cameraFile');
+      
+      console.log('DEBUG handleSaveWithDuplicatePair - Camera handling for camCount=1:', {
+        hasRange,
+        isDisabled,
+        'rangeData.cameraFile': rangeData['cameraFile'],
+        'finalData.cameraFile BEFORE': finalData.cameraFile,
+        'finalData.camera1_from BEFORE': finalData.camera1_from,
+        'finalData.camera1_to BEFORE': finalData.camera1_to
+      });
+      
+      if (hasRange) {
+        // Has range data - save it (works for both waste and non-waste)
         finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
         finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
         delete finalData.cameraFile;
-      } else if (!disabledFields.has('cameraFile')) {
-        // Single value mode - use value from takeData
+        
+        console.log('DEBUG - Set range values:', {
+          'finalData.camera1_from': finalData.camera1_from,
+          'finalData.camera1_to': finalData.camera1_to,
+          'finalData.cameraFile': finalData.cameraFile
+        });
+      } else if (!isDisabled) {
+        // Enabled field without range - keep single value mode, delete range fields
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
-        // Disabled field - remove all
+        // Disabled field without range data - delete everything (waste without range)
         delete finalData.cameraFile;
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
@@ -3187,17 +3232,21 @@ This would break the logging logic and create inconsistencies in the file number
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
-        if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-          // Keep edited range, not original
+        const hasRange = showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to;
+        const isDisabled = disabledFields.has(fieldId);
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        
+        if (hasRange) {
+          // Has range data - save it (works for both waste and non-waste)
           finalData[`camera${i}_from`] = pad4(rangeData[fieldId].from);
           finalData[`camera${i}_to`] = pad4(rangeData[fieldId].to);
           delete finalData[fieldId];
-        } else if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
-          // Single value mode - use value from takeData
+        } else if (!isDisabled && isRecActive) {
+          // Enabled field without range - keep single value mode, delete range fields
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
-          // Disabled field or REC off - remove all
+          // Disabled field or REC off without range data - delete everything
           delete finalData[fieldId];
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
@@ -3215,6 +3264,12 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
+    
+    console.log('DEBUG handleSaveWithDuplicatePair - Final data to save:', {
+      'updatedData.camera1_from': updatedData.camera1_from,
+      'updatedData.camera1_to': updatedData.camera1_to,
+      'updatedData.cameraFile': updatedData.cameraFile
+    });
     
     // Save the current logSheet with edited values
     await updateLogSheet(logSheet.id, updatedData);
