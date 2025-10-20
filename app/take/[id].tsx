@@ -3017,7 +3017,9 @@ This would break the logging logic and create inconsistencies in the file number
     let hasUpdates = false;
     
     // Update the take number for the existing entry (it's being shifted by 1)
-    if (!Number.isNaN(targetTake)) {
+    // Skip incrementing take number if the target is Ambience or SFX
+    const targetClassification = existingEntry.data?.classification;
+    if (!Number.isNaN(targetTake) && targetClassification !== 'Ambience' && targetClassification !== 'SFX') {
       existingEntryUpdates.takeNumber = String(targetTake + 1);
       hasUpdates = true;
     }
@@ -3095,10 +3097,11 @@ This would break the logging logic and create inconsistencies in the file number
         const shouldBump = targetSoundNum === newSoundMin;
         if (shouldBump) {
           // Use edited range's max + 1 for calculating bump position
+          const targetClassification = existingEntry.data?.classification;
           existingEntryUpdates = {
             ...existingEntryUpdates,
             soundFile: String(newSoundMax + 1).padStart(4, '0'),
-            takeNumber: String(targetTake + 1)
+            ...(targetClassification !== 'Ambience' && targetClassification !== 'SFX' ? { takeNumber: String(targetTake + 1) } : {})
           };
           hasUpdates = true;
         }
@@ -3181,10 +3184,11 @@ This would break the logging logic and create inconsistencies in the file number
           const shouldBump = targetCamNum === newCamMin;
           if (shouldBump) {
             // Use edited range's max + 1 for calculating bump position
+            const targetClassification = existingEntry.data?.classification;
             existingEntryUpdates = {
               ...existingEntryUpdates,
               cameraFile: String(newCamMax + 1).padStart(4, '0'),
-              takeNumber: String(targetTake + 1)
+              ...(targetClassification !== 'Ambience' && targetClassification !== 'SFX' ? { takeNumber: String(targetTake + 1) } : {})
             };
             hasUpdates = true;
           }
@@ -3273,10 +3277,11 @@ This would break the logging logic and create inconsistencies in the file number
               const shouldBump = targetCamNum === newCamMin;
               if (shouldBump) {
                 // Use edited range's max + 1 for calculating bump position
+                const targetClassification = existingEntry.data?.classification;
                 existingEntryUpdates = {
                   ...existingEntryUpdates,
                   [fieldId]: String(newCamMax + 1).padStart(4, '0'),
-                  takeNumber: String(targetTake + 1)
+                  ...(targetClassification !== 'Ambience' && targetClassification !== 'SFX' ? { takeNumber: String(targetTake + 1) } : {})
                 };
                 hasUpdates = true;
               }
