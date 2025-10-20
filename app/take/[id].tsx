@@ -2071,6 +2071,44 @@ This would break the logging logic and create inconsistencies in the file number
 
     if (position === 'before') {
       let newLogData = { ...takeData };
+      
+      console.log('DEBUG handleSaveWithDuplicateHandling - Before cleanup:', {
+        'takeData.cameraFile': takeData.cameraFile,
+        'takeData.camera1_from': takeData.camera1_from,
+        'takeData.camera1_to': takeData.camera1_to,
+        'rangeData.cameraFile': rangeData['cameraFile'],
+        'showRangeMode.cameraFile': showRangeMode['cameraFile']
+      });
+      
+      // CRITICAL: Remove old range field values that will be replaced by rangeData
+      // This prevents stale camera1_from/camera1_to from persisting when editing ranges
+      if (camCount === 1) {
+        if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+          delete newLogData.camera1_from;
+          delete newLogData.camera1_to;
+          delete newLogData.cameraFile;
+        }
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+            delete newLogData[`camera${i}_from`];
+            delete newLogData[`camera${i}_to`];
+            delete newLogData[fieldId];
+          }
+        }
+      }
+      if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+        delete newLogData.sound_from;
+        delete newLogData.sound_to;
+        delete newLogData.soundFile;
+      }
+      
+      console.log('DEBUG - After cleanup:', {
+        'newLogData.cameraFile': newLogData.cameraFile,
+        'newLogData.camera1_from': newLogData.camera1_from,
+        'newLogData.camera1_to': newLogData.camera1_to
+      });
 
       if (duplicateInfo.type === 'take') {
         if (existingEntry.data?.soundFile) {
@@ -2393,16 +2431,36 @@ This would break the logging logic and create inconsistencies in the file number
             delete finalData['sound_from'];
             delete finalData['sound_to'];
           }
-          // Persist camera ranges
+          // Persist camera ranges - checking range mode FIRST regardless of enabled/disabled status
           if (camCount === 1) {
-            if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+            const hasRange = showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to;
+            const isDisabled = disabledFields.has('cameraFile');
+            
+            console.log('DEBUG handleSaveWithDuplicateHandling type=file - Camera handling:', {
+              hasRange,
+              isDisabled,
+              'rangeData.cameraFile': rangeData['cameraFile'],
+              'finalData.camera1_from BEFORE': finalData.camera1_from,
+              'finalData.camera1_to BEFORE': finalData.camera1_to
+            });
+            
+            if (hasRange) {
+              // Has range data - save it (works for both waste and non-waste)
               finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
               finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
               delete finalData.cameraFile;
-            } else if (!disabledFields.has('cameraFile')) {
+              
+              console.log('DEBUG - Set camera range:', {
+                'finalData.camera1_from': finalData.camera1_from,
+                'finalData.camera1_to': finalData.camera1_to,
+                'finalData.cameraFile': finalData.cameraFile
+              });
+            } else if (!isDisabled) {
+              // Enabled field without range - keep single value mode, delete range fields
               delete finalData['camera1_from'];
               delete finalData['camera1_to'];
             } else {
+              // Disabled field without range data - delete everything (waste without range)
               delete finalData.cameraFile;
               delete finalData['camera1_from'];
               delete finalData['camera1_to'];
@@ -2410,14 +2468,21 @@ This would break the logging logic and create inconsistencies in the file number
           } else {
             for (let i = 1; i <= camCount; i++) {
               const fid = `cameraFile${i}`;
-              if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to) {
+              const hasRange = showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to;
+              const isDisabled = disabledFields.has(fid);
+              const isRecActive = cameraRecState[fid] ?? true;
+              
+              if (hasRange) {
+                // Has range data - save it (works for both waste and non-waste)
                 finalData[`camera${i}_from`] = pad4(rangeData[fid].from);
                 finalData[`camera${i}_to`] = pad4(rangeData[fid].to);
                 delete finalData[fid];
-              } else if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+              } else if (!isDisabled && isRecActive) {
+                // Enabled field without range - keep single value mode, delete range fields
                 delete finalData[`camera${i}_from`];
                 delete finalData[`camera${i}_to`];
               } else {
+                // Disabled field or REC off without range data - delete everything
                 delete finalData[fid];
                 delete finalData[`camera${i}_from`];
                 delete finalData[`camera${i}_to`];
@@ -2434,6 +2499,13 @@ This would break the logging logic and create inconsistencies in the file number
             insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
             cameraRecState: camCount > 1 ? cameraRecState : undefined
           };
+          
+          console.log('DEBUG handleSaveWithDuplicateHandling type=file - Final updatedData:', {
+            'updatedData.camera1_from': updatedData.camera1_from,
+            'updatedData.camera1_to': updatedData.camera1_to,
+            'updatedData.cameraFile': updatedData.cameraFile
+          });
+          
           updateLogSheet(logSheet.id, updatedData);
         }
 
