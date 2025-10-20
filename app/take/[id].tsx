@@ -2761,32 +2761,9 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
 
-      let finalTakeData = { ...newLogData };
-      if (camCount > 1) {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fieldId] ?? true;
-          if (!isRecActive) {
-            delete finalTakeData[fieldId];
-          }
-        }
-      }
-
-      finalTakeData = pruneDisabled(finalTakeData);
-      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
-        ? shotDetails.filter(d => d !== 'MOS')
-        : shotDetails;
-      const updatedData = {
-        ...finalTakeData,
-        classification,
-        shotDetails: filteredShotDetails,
-        isGoodTake,
-        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-        cameraRecState: camCount > 1 ? cameraRecState : undefined
-      };
-      updateLogSheet(logSheet.id, updatedData);
-
+      // Note: For type='file', the log was already saved at line 2509 with correct range persistence
+      // This redundant save code has been removed to prevent overwriting with cleaned data
+      console.log('DEBUG handleSaveWithDuplicateHandling type=file - Skipping redundant second save');
     }
     router.back();
   };
