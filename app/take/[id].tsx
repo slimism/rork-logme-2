@@ -1649,7 +1649,12 @@ This would break the logging logic and create inconsistencies in the file number
     newLogData.shotNumber = targetShotNumber;
     if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
       newLogData.takeNumber = existingEntry.data.takeNumber;
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+      console.log('DEBUG - Calling updateTakeNumbers with excludeLogId:', {
+        fromTakeNumber: targetTakeNumber,
+        increment: 1,
+        excludeLogId: logSheet.id
+      });
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
     }
 
     // Variables to track shift parameters
@@ -2139,7 +2144,12 @@ This would break the logging logic and create inconsistencies in the file number
         newLogData.shotNumber = targetShotNumber;
         if (!Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data?.takeNumber;
-          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogId:', {
+            fromTakeNumber: targetTakeNumber,
+            increment: 1,
+            excludeLogId: logSheet.id
+          });
+          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
         }
 
         // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -2403,7 +2413,12 @@ This would break the logging logic and create inconsistencies in the file number
         newLogData.shotNumber = targetShotNumber;
         if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
-          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
+          console.log('DEBUG handleSaveWithDuplicateHandling type=file - Calling updateTakeNumbers with excludeLogId:', {
+            fromTakeNumber: targetTakeNumber,
+            increment: 1,
+            excludeLogId: logSheet.id
+          });
+          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id);
         }
 
         // Save current log FIRST with range persistence to avoid stale ranges
@@ -2973,7 +2988,12 @@ This would break the logging logic and create inconsistencies in the file number
     newLogData.shotNumber = targetShotNumber;
     if (!Number.isNaN(targetTake)) {
       newLogData.takeNumber = existingEntry.data?.takeNumber;
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1);
+      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogId:', {
+        fromTakeNumber: targetTake,
+        increment: 1,
+        excludeLogId: logSheet.id
+      });
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id);
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls

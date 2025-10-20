@@ -19,7 +19,7 @@ interface ProjectState {
   updateLogSheet: (id: string, data: any) => void;
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
-  updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number) => void;
+  updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string) => void;
   updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => void;
 }
 
@@ -227,11 +227,26 @@ export const useProjectStore = create<ProjectState>()(
         }
       },
       
-      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number) => {
+      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string) => {
+        console.log('=== updateTakeNumbers called ===', {
+          projectId,
+          sceneNumber,
+          shotNumber,
+          fromTakeNumber,
+          increment,
+          excludeLogId
+        });
+        
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => {
             try {
               if (logSheet.projectId !== projectId) return logSheet;
+              
+              // Skip the excluded log (the edited log being moved)
+              if (excludeLogId && logSheet.id === excludeLogId) {
+                console.log(`  -> Explicitly skipping excluded log: ${logSheet.id} (take ${logSheet.data?.takeNumber})`);
+                return logSheet;
+              }
 
               const data = logSheet.data ?? {} as Record<string, unknown>;
               const lsScene = typeof data.sceneNumber === 'string' ? data.sceneNumber.trim() : '';
@@ -245,6 +260,7 @@ export const useProjectStore = create<ProjectState>()(
               const currentTakeNum = typeof takeRaw === 'string' ? parseInt(takeRaw, 10) : Number.NaN;
 
               if (!Number.isNaN(currentTakeNum) && currentTakeNum >= fromTakeNumber) {
+                console.log(`  -> Shifting take ${currentTakeNum} to ${currentTakeNum + increment} (log ${logSheet.id})`);
                 return {
                   ...logSheet,
                   data: {
