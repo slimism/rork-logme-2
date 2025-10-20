@@ -1837,15 +1837,22 @@ This would break the logging logic and create inconsistencies in the file number
       delete finalData['sound_from'];
       delete finalData['sound_to'];
     }
+    // Handle camera ranges - checking range mode FIRST regardless of enabled/disabled status
     if (camCount === 1) {
-      if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+      const hasRange = showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to;
+      const isDisabled = disabledFields.has('cameraFile');
+      
+      if (hasRange) {
+        // Has range data - save it (works for both waste and non-waste)
         finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
         finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
         delete finalData.cameraFile;
-      } else if (!disabledFields.has('cameraFile')) {
+      } else if (!isDisabled) {
+        // Enabled field without range - keep single value mode, delete range fields
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
       } else {
+        // Disabled field without range data - delete everything (waste without range)
         delete finalData.cameraFile;
         delete finalData['camera1_from'];
         delete finalData['camera1_to'];
@@ -1853,14 +1860,21 @@ This would break the logging logic and create inconsistencies in the file number
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fid = `cameraFile${i}`;
-        if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to) {
+        const hasRange = showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to;
+        const isDisabled = disabledFields.has(fid);
+        const isRecActive = cameraRecState[fid] ?? true;
+        
+        if (hasRange) {
+          // Has range data - save it (works for both waste and non-waste)
           finalData[`camera${i}_from`] = pad4(rangeData[fid].from);
           finalData[`camera${i}_to`] = pad4(rangeData[fid].to);
           delete finalData[fid];
-        } else if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+        } else if (!isDisabled && isRecActive) {
+          // Enabled field without range - keep single value mode, delete range fields
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
         } else {
+          // Disabled field or REC off without range data - delete everything
           delete finalData[fid];
           delete finalData[`camera${i}_from`];
           delete finalData[`camera${i}_to`];
