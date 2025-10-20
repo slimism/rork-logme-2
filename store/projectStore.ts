@@ -149,6 +149,13 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       updateLogSheet: (id: string, data: any) => {
+        console.log('=== STORE updateLogSheet called ===');
+        console.log('  id:', id);
+        console.log('  data.camera1_from:', data.camera1_from);
+        console.log('  data.camera1_to:', data.camera1_to);
+        console.log('  data.cameraFile:', data.cameraFile);
+        console.log('  data.classification:', data.classification);
+        
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => 
             logSheet.id === id 
@@ -156,6 +163,12 @@ export const useProjectStore = create<ProjectState>()(
               : logSheet
           ),
         }));
+        
+        const updated = get().logSheets.find(sheet => sheet.id === id);
+        console.log('=== After store update ===');
+        console.log('  Updated data.camera1_from:', updated?.data?.camera1_from);
+        console.log('  Updated data.camera1_to:', updated?.data?.camera1_to);
+        console.log('  Updated data.cameraFile:', updated?.data?.cameraFile);
       },
       
       updateLogSheetName: (id: string, name: string) => {
