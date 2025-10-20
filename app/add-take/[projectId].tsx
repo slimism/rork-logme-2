@@ -2278,8 +2278,14 @@ This would break the logging logic and create inconsistencies in the file number
     const targetShotNumber = existingEntry.data?.shotNumber;
     const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
     
-    // For Ambience/SFX, don't update scene/shot/take numbers (they go to separate sections)
-    if (!isCurrentAmbienceOrSFX) {
+    // For Ambience/SFX, remove scene/shot/take numbers (they go to separate sections)
+    if (isCurrentAmbienceOrSFX) {
+      // Explicitly remove scene/shot/take to ensure it goes to Ambience/SFX section
+      delete newLogData.sceneNumber;
+      delete newLogData.shotNumber;
+      delete newLogData.takeNumber;
+    } else {
+      // For regular logs, update scene/shot/take to match target position
       newLogData.sceneNumber = targetSceneNumber;
       newLogData.shotNumber = targetShotNumber;
       if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
