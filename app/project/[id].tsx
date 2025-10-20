@@ -39,7 +39,19 @@ export default function ProjectScreen() {
 
   useEffect(() => {
     setProject(projects.find(p => p.id === id));
-    setProjectLogSheets(logSheets.filter(l => l.projectId === id));
+    const sheets = logSheets.filter(l => l.projectId === id);
+    console.log('DEBUG ProjectScreen useEffect - Updating log sheets:', {
+      projectId: id,
+      sheetCount: sheets.length,
+      firstSheet: sheets[0] ? {
+        id: sheets[0].id,
+        camera1_from: sheets[0].data?.camera1_from,
+        camera1_to: sheets[0].data?.camera1_to,
+        cameraFile: sheets[0].data?.cameraFile,
+        classification: sheets[0].data?.classification
+      } : null
+    });
+    setProjectLogSheets(sheets);
   }, [id, projects, logSheets]);
 
   const HeaderLeft = () => (
@@ -262,6 +274,17 @@ export default function ProjectScreen() {
           fileValue = data[altFileKey];
         }
         
+        // DEBUG: Log what we're reading for camera ranges
+        if (take.data?.classification === 'Waste' && (fromValue || toValue || fileValue)) {
+          console.log(`DEBUG ProjectScreen - Rendering camera ${camNum} for waste take:`, {
+            takeId: take.id,
+            fromValue,
+            toValue,
+            fileValue,
+            hasInlineRange: typeof fileValue === 'string' && fileValue.includes('-')
+          });
+        }
+        
         // Handle range format (stable keys)
         if (fromValue && toValue) {
           const from = fromValue.toString().padStart(4, '0');
@@ -271,7 +294,15 @@ export default function ProjectScreen() {
         }
         // Handle single camera file
         else if (fileValue && typeof fileValue === 'string' && fileValue.trim().length > 0) {
-          files.push({ cameraNumber: camNum, displayValue: fileValue });
+          // Check if it's an inline range format like "004-008"
+          if (fileValue.includes('-')) {
+            // Parse the inline range
+            const [from, to] = fileValue.split('-').map(v => v.trim().padStart(4, '0'));
+            const displayValue = from === to ? from : `${from}–${to}`;
+            files.push({ cameraNumber: camNum, displayValue });
+          } else {
+            files.push({ cameraNumber: camNum, displayValue: fileValue });
+          }
         }
       });
       
