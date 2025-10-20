@@ -1683,6 +1683,7 @@ This would break the logging logic and create inconsistencies in the file number
       delete newLogData.sceneNumber;
       delete newLogData.shotNumber;
       delete newLogData.takeNumber;
+      // IMPORTANT: Don't call updateTakeNumbers for SFX/Ambience logs
     } else {
       // For regular logs, update scene/shot/take to match target position
       newLogData.sceneNumber = targetSceneNumber;
@@ -1978,7 +1979,7 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
     const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
-    const updatedData = {
+    let updatedData: Record<string, any> = {
       ...finalData,
       classification,
       shotDetails: filteredShotDetails,
@@ -1987,6 +1988,13 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
+    
+    // CRITICAL FIX: For Ambience/SFX, ensure scene/shot/take are completely removed
+    if (isCurrentAmbienceOrSFX) {
+      delete updatedData.sceneNumber;
+      delete updatedData.shotNumber;
+      delete updatedData.takeNumber;
+    }
     
     console.log('DEBUG handleSaveWithSelectiveDuplicateHandling - Before save:');
     console.log('  showRangeMode:', showRangeMode);
