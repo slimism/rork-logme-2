@@ -161,28 +161,25 @@ export default function ProjectScreen() {
     const isExpanded = expandedTakes.has(take.id);
     const takeNumber = take.data?.takeNumber || '1';
     
-    // Helper to get camera file display value (handles ranges)
-    const getCameraFileDisplay = () => {
+    // Get camera file display value (handles ranges) - directly from current data
+    const cameraFile = (() => {
       // Check for range stored in camera1_from/camera1_to
       if (take.data?.camera1_from && take.data?.camera1_to) {
         return `${take.data.camera1_from}-${take.data.camera1_to}`;
       }
       // Check for inline range or single value
       return take.data?.cameraFile || take.data?.cameraFile1 || '';
-    };
+    })();
     
-    // Helper to get sound file display value (handles ranges)
-    const getSoundFileDisplay = () => {
+    // Get sound file display value (handles ranges) - directly from current data
+    const soundFile = (() => {
       // Check for range stored in sound_from/sound_to
       if (take.data?.sound_from && take.data?.sound_to) {
         return `${take.data.sound_from}-${take.data.sound_to}`;
       }
       // Check for inline range or single value
       return take.data?.soundFile || '';
-    };
-    
-    const cameraFile = getCameraFileDisplay();
-    const soundFile = getSoundFileDisplay();
+    })();
     
     return (
       <Card style={styles.takeCard}>
