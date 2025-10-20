@@ -2680,6 +2680,14 @@ This would break the logging logic and create inconsistencies in the file number
           const inRange = showRangeMode[fieldId] === true;
           const r = rangeData[fieldId];
           
+          if (fieldId === 'cameraFile' || fieldId.startsWith('cameraFile')) {
+            console.log(`DEBUG applyRangePersistence - handleField('${fieldId}'):`);
+            console.log(`  enabled: ${enabled}, inRange: ${inRange}`);
+            console.log(`  rangeData[${fieldId}]:`, r);
+            console.log(`  Before delete - out.camera${idx}_from:`, out[`camera${idx}_from`]);
+            console.log(`  Before delete - out.camera${idx}_to:`, out[`camera${idx}_to`]);
+          }
+          
           // First, clear any existing range or single values to ensure clean state
           if (fieldId === 'soundFile') {
             delete out.soundFile;
@@ -2702,6 +2710,14 @@ This would break the logging logic and create inconsistencies in the file number
               } else if (idx != null) {
                 out[`camera${idx}_from`] = pad4(r.from);
                 out[`camera${idx}_to`] = pad4(r.to);
+                if (fieldId === 'cameraFile' || fieldId.startsWith('cameraFile')) {
+                  console.log(`  Set camera${idx}_from =`, pad4(r.from));
+                  console.log(`  Set camera${idx}_to =`, pad4(r.to));
+                }
+              }
+            } else {
+              if (fieldId === 'cameraFile' || fieldId.startsWith('cameraFile')) {
+                console.log(`  No range data to save (inRange:${inRange}, r:`, r, ')');
               }
             }
             // If no range data, fields remain deleted (blank for waste)
