@@ -3033,9 +3033,6 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Calculate sound file delta and new ranges for existingEntry FIRST
     const soundDelta = (() => {
-      // Check if sound field is actually disabled
-      if (disabledFields.has('soundFile')) return 0;
-      
       // For range mode, check rangeData
       const r = rangeData['soundFile'];
       if (showRangeMode['soundFile'] && r?.from && r?.to) {
@@ -3051,58 +3048,36 @@ This would break the logging logic and create inconsistencies in the file number
 
     let newSoundToNum = 0;
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
-    if (rSound && !disabledFields.has('soundFile')) {
-      const bounds = getInsertedBounds('soundFile');
-      const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
-      const oldToNum = parseInt(rSound.to, 10) || 0;
-      const delta = soundDelta;
-      const newFrom = String(insertedUpper + 1).padStart(4, '0');
-      const newTo = String(oldToNum + delta).padStart(4, '0');
-      newSoundToNum = oldToNum + delta;
-      existingEntryUpdates.sound_from = newFrom;
-      existingEntryUpdates.sound_to = newTo;
-      const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
-      if (hadInline) {
-        existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
+    if (rSound) {
+      const exTo = parseInt(rSound.to, 10) || 0;
+      const r = rangeData['soundFile'];
+      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
+        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
+        : 1;
+      if (!disabledFields.has('soundFile')) {
+        const bounds = getInsertedBounds('soundFile');
+        const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
+        const newFrom = String(insertedUpper + 1).padStart(4, '0');
+        const newTo = String(exTo + delta).padStart(4, '0');
+        newSoundToNum = exTo + delta;
+        existingEntryUpdates.sound_from = newFrom;
+        existingEntryUpdates.sound_to = newTo;
+        const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+        if (hadInline) {
+          existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
+        }
+        hasUpdates = true;
       }
+    } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0 && !disabledFields.has('soundFile')) {
+      const r = rangeData['soundFile'];
+      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
+        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
+        : 1;
+      const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+      const newVal = String(exNum + delta).padStart(4, '0');
+      newSoundToNum = exNum + delta;
+      existingEntryUpdates.soundFile = newVal;
       hasUpdates = true;
-    } else {
-      // Handle single sound value (not range) - target has single, need to update it
-      const targetHasSingleSound = typeof existingEntry.data?.soundFile === 'string' && !isRangeString(existingEntry.data.soundFile);
-      if (targetHasSingleSound) {
-        const targetSoundNum = parseInt(existingEntry.data.soundFile as string, 10) || 0;
-        
-        // Check if new entry has range or single value - use edited values
-        let newSoundMin: number;
-        let newSoundMax: number;
-        if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
-          // New entry has range - use edited range values
-          const a = parseInt(rangeData['soundFile'].from, 10) || 0;
-          const b = parseInt(rangeData['soundFile'].to, 10) || 0;
-          newSoundMin = Math.min(a, b);
-          newSoundMax = Math.max(a, b);
-        } else if (takeData.soundFile) {
-          // New entry has single value
-          const val = parseInt(String(takeData.soundFile), 10) || 0;
-          newSoundMin = val;
-          newSoundMax = val;
-        } else {
-          newSoundMin = 0;
-          newSoundMax = 0;
-        }
-        
-        // Only bump if target sound number equals the min of the new range (insert before scenario)
-        const shouldBump = targetSoundNum === newSoundMin;
-        if (shouldBump) {
-          // Use edited range's max + 1 for calculating bump position
-          existingEntryUpdates = {
-            ...existingEntryUpdates,
-            soundFile: String(newSoundMax + 1).padStart(4, '0'),
-            takeNumber: String(targetTake + 1)
-          };
-          hasUpdates = true;
-        }
-      }
     }
 
     if (camCount === 1) {
