@@ -2511,6 +2511,9 @@ This would break the logging logic and create inconsistencies in the file number
 
         // Shift file numbers starting from target
         // Shift sound files starting from the correct number
+        console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
+        console.log('  Edited log ID:', logSheet.id);
+        console.log('  Existing entry ID:', existingEntry.id);
         if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
           let soundStart = targetTakeNumber;
           if (typeof existingEntry.data?.sound_from === 'string') {
@@ -2592,6 +2595,7 @@ This would break the logging logic and create inconsistencies in the file number
           }
         }
 
+        console.log('DEBUG - Processing camera shifts for camCount=1');
         if (camCount === 1) {
           let camStart = targetTakeNumber;
           if (typeof existingEntry.data?.camera1_from === 'string') {
@@ -2616,7 +2620,19 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
+              { 
+                const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
+                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
+                console.log('====> Calling updateFileNumbers for cameraFile:', {
+                  start,
+                  camDelta,
+                  camStart,
+                  targetRange,
+                  'existingEntry.cameraFile': existingEntry.data?.cameraFile,
+                  'editedLogId_ShouldBeSkipped': logSheet.id
+                });
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); 
+              }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');

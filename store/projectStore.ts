@@ -329,11 +329,25 @@ export const useProjectStore = create<ProjectState>()(
                   const cFromNum = parseInt(cameraFrom, 10);
                   const cToNum = parseInt(cameraTo, 10);
                   if (!Number.isNaN(cFromNum) && !Number.isNaN(cToNum)) {
+                    console.log(`DEBUG updateFileNumbers - Checking log ${logSheet.id}:`, {
+                      fieldId,
+                      cFromNum,
+                      cToNum,
+                      fromNumber,
+                      increment,
+                      skippedTarget,
+                      'isTargetInRange': isTargetInRange(cFromNum, cToNum)
+                    });
+                    
                     if (!skippedTarget && isTargetInRange(cFromNum, cToNum)) {
+                      console.log(`  -> Skipping target log (contains fromNumber ${fromNumber})`);
                       skippedTarget = true;
                     } else if (cFromNum >= fromNumber || cToNum >= fromNumber) {
-                      newData[`camera${cameraNum}_from`] = String(cFromNum + increment).padStart(4, '0');
-                      newData[`camera${cameraNum}_to`] = String(cToNum + increment).padStart(4, '0');
+                      const newStart = cFromNum + increment;
+                      const newEnd = cToNum + increment;
+                      newData[`camera${cameraNum}_from`] = String(newStart).padStart(4, '0');
+                      newData[`camera${cameraNum}_to`] = String(newEnd).padStart(4, '0');
+                      console.log(`  -> Shifting from ${cFromNum}-${cToNum} to ${newStart}-${newEnd}`);
                       updated = true;
                     }
                   }
