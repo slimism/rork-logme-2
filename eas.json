@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">=16.18.0",
+    "version": ">= 16.18.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -13,8 +13,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "node": "20.19.5",
-      "packageManager": "npm",
       "env": {
         "POD_INSTALLER_FLAGS": "--repo-update"
       },
