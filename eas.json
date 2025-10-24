@@ -12,8 +12,8 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
-  "env": {
+      "autoIncrement": true,
+      "env": {
         "POD_INSTALLER_FLAGS": "--repo-update"
       },
       "ios": {
