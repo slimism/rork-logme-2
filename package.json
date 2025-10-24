@@ -10,7 +10,10 @@
   "scripts": {
     "start": "bunx rork start -p etpmdf2p79o43atan1jw1 --tunnel",
     "start-web": "bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel"
+    "start-web-dev": "DEBUG=expo* bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
+    "build:ios": "eas build --platform ios --profile production --auto-submit",
+    "build:ios:no-submit": "eas build --platform ios --profile production",
+    "submit:ios": "eas submit --platform ios --profile production"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -53,6 +56,6 @@
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3",
-    "eas-cli": "^16.24.1"
+    "eas-cli": "16.24.1"
   }
 }
