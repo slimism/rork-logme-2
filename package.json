@@ -1,7 +1,12 @@
 {
   "name": "expo-app",
-  "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "packageManager": "npm@10.9.0",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "bunx rork start -p etpmdf2p79o43atan1jw1 --tunnel",
     "start-web": "bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
@@ -49,6 +54,5 @@
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3",
     "eas-cli": "^16.24.1"
-  },
-  "private": true
+  }
 }
