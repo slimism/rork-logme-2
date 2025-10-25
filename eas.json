@@ -1,5 +1,6 @@
 {
   "cli": {
+    "version": ">= 16.18.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -11,20 +12,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "POD_INSTALLER_FLAGS": "--repo-update"
-      },
-      "ios": {
-        "image": "latest"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "ascAppId": "6749378616"
-      }
-    }
+    "production": {}
   }
 }
