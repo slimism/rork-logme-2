@@ -7,7 +7,7 @@ import Toast from 'react-native-toast-message';
 import { useThemeStore } from '@/store/themeStore';
 import { useColors } from '@/constants/colors';
 import { OrientationGuard } from '@/components/OrientationGuard';
-import '@/utils/consoleLogger';
+// import '@/utils/consoleLogger'; // Temporarily disabled to fix getDevServer error
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
