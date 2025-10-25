@@ -11,7 +11,13 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "POD_INSTALLER_FLAGS": "--repo-update"
+      },
+      "ios": {
+        "image": "latest"
+      }
     }
   },
   "submit": {
