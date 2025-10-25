@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LogMe - Film",
+    "name": "LogMe - Film Logger",
     "slug": "log-me-atan1jw1",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.logme-2",
+      "bundleIdentifier": "app.rork.log-me-atan1jw1",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
