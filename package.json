@@ -7,9 +7,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "expo start --tunnel",
-    "start-web": "expo start --web --tunnel",
-    "start-web-dev": "DEBUG=expo* expo start --web --tunnel",
+    "start": "expo start",
+    "start-web": "expo start --web",
+    "start-web-dev": "DEBUG=expo* expo start --web",
     "build:ios": "eas build --platform ios --profile production --auto-submit",
     "build:ios:no-submit": "eas build --platform ios --profile production",
     "submit:ios": "eas submit --platform ios --profile production"
