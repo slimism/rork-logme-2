@@ -64,7 +64,7 @@ Replace test IDs with your actual AdMob ad unit IDs:
 - **Web**: Ads are disabled (returns null)
 
 ## Dependencies
-- `expo-ads-admob`: AdMob integration for Expo
+- `react-native-google-mobile-ads`: Modern AdMob integration for React Native
 - Uses dynamic imports to handle missing dependencies gracefully
 
 ## Pro Subscription
