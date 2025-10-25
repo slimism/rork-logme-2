@@ -7,9 +7,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "bunx rork start -p etpmdf2p79o43atan1jw1 --tunnel",
-    "start-web": "bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
+    "start": "expo start --tunnel",
+    "start-web": "expo start --web --tunnel",
+    "start-web-dev": "DEBUG=expo* expo start --web --tunnel",
     "build:ios": "eas build --platform ios --profile production --auto-submit",
     "build:ios:no-submit": "eas build --platform ios --profile production",
     "submit:ios": "eas submit --platform ios --profile production"
