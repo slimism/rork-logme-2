@@ -23,7 +23,8 @@
       },
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "plugins": ["react-native-google-mobile-ads"]
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +40,8 @@
       ],
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-2281039488802313~6407266916"
-      }
+      },
+      "plugins": ["react-native-google-mobile-ads"]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -56,8 +58,7 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
-      ],
-      "react-native-google-mobile-ads"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
