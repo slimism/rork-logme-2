@@ -18,13 +18,11 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "GADApplicationIdentifier": "ca-app-pub-2281039488802313~6407266916"
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
       },
       "config": {
         "usesNonExemptEncryption": false
-      },
-      "plugins": ["react-native-google-mobile-ads"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,11 +35,7 @@
         "WRITE_EXTERNAL_STORAGE",
         "INTERNET",
         "CAMERA"
-      ],
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-2281039488802313~6407266916"
-      },
-      "plugins": ["react-native-google-mobile-ads"]
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

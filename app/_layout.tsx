@@ -8,7 +8,6 @@ import { useThemeStore } from '@/store/themeStore';
 import { useColors } from '@/constants/colors';
 import { OrientationGuard } from '@/components/OrientationGuard';
 import '@/utils/consoleLogger';
-import { Platform } from 'react-native';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -21,26 +20,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    
-    // Initialize AdMob on native platforms only
-    if (Platform.OS !== 'web') {
-      try {
-        // Dynamic import to handle missing dependencies gracefully
-        const mobileAds = require('react-native-google-mobile-ads').default;
-        if (mobileAds) {
-          mobileAds()
-            .initialize()
-            .then(adapterStatuses => {
-              console.log('[AdMob] Initialized successfully');
-            })
-            .catch(error => {
-              console.error('[AdMob] Initialization error:', error);
-            });
-        }
-      } catch (error) {
-        console.log('[AdMob] Not available:', error);
-      }
-    }
   }, []);
 
   const handleSplashFinish = () => {
