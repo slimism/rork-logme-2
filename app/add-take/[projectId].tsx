@@ -1057,16 +1057,25 @@ export default function AddTakeScreen() {
     const soundDup = getEligibleDuplicateForField('soundFile');
 
     let cameraDup: { fieldId: string; number: number; existingEntry: any } | null = null;
+    const cameraDups: { fieldId: string; number: number; existingEntry: any }[] = [];
     const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
     if (cameraConfiguration === 1) {
       cameraDup = getEligibleDuplicateForField('cameraFile');
+      if (cameraDup) {
+        cameraDups.push(cameraDup);
+      }
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fid = `cameraFile${i}`;
         const isRecActive = cameraRecState[fid] ?? true;
         if (isRecActive && takeData[fid]) {
           const d = getEligibleDuplicateForField(fid);
-          if (d) { cameraDup = d; break; }
+          if (d) { 
+            cameraDups.push(d);
+            if (!cameraDup) {
+              cameraDup = d; // Keep first one for backward compatibility
+            }
+          }
         }
       }
     }
@@ -1817,13 +1826,18 @@ This would break the logging logic and create inconsistencies in the file number
         } else {
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
+            const fromKey = `camera${i}_from` as const;
+            const toKey = `camera${i}_to` as const;
+            
             // Check if target duplicate has this camera file (not blank)
             const targetCameraExists = !!(typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].trim()) ||
-                                        !!(typeof existingEntry.data?.[`camera${i}_from`] === 'string' && existingEntry.data[`camera${i}_from`].trim());
+                                        !!(typeof existingEntry.data?.[fromKey] === 'string' && existingEntry.data[fromKey].trim());
             
-            if (targetCameraExists) {
-              const fromKey = `camera${i}_from` as const;
-              const toKey = `camera${i}_to` as const;
+            // Check if new entry has this camera file (not blank and not disabled)
+            const isRecActive = cameraRecState[fieldId] ?? true;
+            const newCameraExists = isRecActive && !disabledFields.has(fieldId) && !!(takeData[fieldId]?.trim());
+            
+            if (targetCameraExists && newCameraExists) {
               let camStart: number | null = null;
               const fromVal = existingEntry.data?.[fromKey];
               const toVal = existingEntry.data?.[toKey];
@@ -1909,6 +1923,16 @@ This would break the logging logic and create inconsistencies in the file number
     }
 
     if (duplicateInfo.fieldId === 'cameraFile' || (typeof duplicateInfo.fieldId === 'string' && duplicateInfo.fieldId.startsWith('cameraFile'))) {
+      // Calculate increment once based on the camera file that triggered the duplicate
+      const duplicateFieldId = duplicateInfo.fieldId;
+      let globalCamIncrement = 1;
+      const globalCamRange = rangeData[duplicateFieldId];
+      if (showRangeMode[duplicateFieldId] && globalCamRange?.from && globalCamRange?.to) {
+        const newFrom = parseInt(globalCamRange.from, 10) || 0;
+        const newTo = parseInt(globalCamRange.to, 10) || 0;
+        globalCamIncrement = Math.abs(newTo - newFrom) + 1;
+      }
+      
       if (camCount === 1) {
         // Check if target duplicate has camera file (not blank)
         const targetCameraExists = !!(typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.trim()) ||
@@ -1928,16 +1952,8 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) camStart = n;
           }
           
-          // Calculate increment based on new log's range size
-          let camIncrement = 1;
-          const newLogRange = rangeData['cameraFile'];
-          if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
-            const newFrom = parseInt(newLogRange.from, 10) || 0;
-            const newTo = parseInt(newLogRange.to, 10) || 0;
-            camIncrement = Math.abs(newTo - newFrom) + 1;
-          }
-          
-          updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+          // Use the global increment calculated from the duplicate camera
+          updateFileNumbers(projectId, 'cameraFile', camStart, globalCamIncrement);
 
           const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
           if (targetRange) {
@@ -1984,7 +2000,7 @@ This would break the logging logic and create inconsistencies in the file number
                 if (targetSingleNum >= min && targetSingleNum <= max) {
                   const updatedData: Record<string, any> = { 
                     ...existingEntry.data, 
-                    cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    cameraFile: String(targetSingleNum + globalCamIncrement).padStart(4, '0'),
                     takeNumber: String(tTake + 1)
                   };
                   updateLogSheet(existingEntry.id, updatedData);
@@ -1995,7 +2011,7 @@ This would break the logging logic and create inconsistencies in the file number
                 if (newSingle === targetSingleNum) {
                   const updatedData: Record<string, any> = { 
                     ...existingEntry.data, 
-                    cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    cameraFile: String(targetSingleNum + globalCamIncrement).padStart(4, '0'),
                     takeNumber: String(tTake + 1)
                   };
                   updateLogSheet(existingEntry.id, updatedData);
@@ -2007,14 +2023,15 @@ This would break the logging logic and create inconsistencies in the file number
       } else {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
+          const fromKey = `camera${i}_from` as const;
+          const toKey = `camera${i}_to` as const;
+          
           // Check if target duplicate has this camera file (not blank)
           const targetCameraExists = !!(typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].trim()) ||
-                                      !!(typeof existingEntry.data?.[`camera${i}_from`] === 'string' && existingEntry.data[`camera${i}_from`].trim());
+                                      !!(typeof existingEntry.data?.[fromKey] === 'string' && existingEntry.data[fromKey].trim());
           
           if (targetCameraExists) {
-            let camStart = targetFileNumber;
-            const fromKey = `camera${i}_from` as const;
-            const toKey = `camera${i}_to` as const;
+            let camStart: number = 0;
             const val = existingEntry.data?.[fieldId];
             const fromVal = existingEntry.data?.[fromKey];
             const toVal = existingEntry.data?.[toKey];
@@ -2029,16 +2046,8 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStart = n;
             }
             
-            // Calculate increment based on new log's range size
-            let camIncrement = 1;
-            const newLogRange = rangeData[fieldId];
-            if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
-              const newFrom = parseInt(newLogRange.from, 10) || 0;
-              const newTo = parseInt(newLogRange.to, 10) || 0;
-              camIncrement = Math.abs(newTo - newFrom) + 1;
-            }
-            
-            updateFileNumbers(projectId, fieldId, camStart, camIncrement);
+            // Use the global increment calculated from the duplicate camera
+            updateFileNumbers(projectId, fieldId, camStart, globalCamIncrement);
 
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
             if (targetRange) {
@@ -2088,7 +2097,7 @@ This would break the logging logic and create inconsistencies in the file number
                   if (targetSingleNum >= min && targetSingleNum <= max) {
                     const updatedData: Record<string, any> = { 
                       ...existingEntry.data, 
-                      [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                      [fieldId]: String(targetSingleNum + globalCamIncrement).padStart(4, '0'),
                       takeNumber: String(tTake + 1)
                     };
                     updateLogSheet(existingEntry.id, updatedData);
@@ -2099,7 +2108,7 @@ This would break the logging logic and create inconsistencies in the file number
                   if (newSingle === targetSingleNum) {
                     const updatedData: Record<string, any> = { 
                       ...existingEntry.data, 
-                      [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                      [fieldId]: String(targetSingleNum + globalCamIncrement).padStart(4, '0'),
                       takeNumber: String(tTake + 1)
                     };
                     updateLogSheet(existingEntry.id, updatedData);
@@ -2245,7 +2254,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
     finalTakeData = applyRangePersistence(finalTakeData);
 
-    logSheet.data = {
+    const finalData = {
       ...finalTakeData,
       classification,
       shotDetails,
@@ -2255,6 +2264,7 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
+    updateLogSheet(logSheet.id, finalData);
     router.back();
   };
 
@@ -2572,7 +2582,7 @@ This would break the logging logic and create inconsistencies in the file number
     let finalTakeData = sanitizeDataBeforeSave({ ...newLogData }, classification);
     finalTakeData = applyRangePersistenceSelective(finalTakeData);
 
-    logSheet.data = {
+    const finalData = {
       ...finalTakeData,
       classification,
       shotDetails,
@@ -2582,6 +2592,7 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
+    updateLogSheet(logSheet.id, finalData);
     router.back();
   };
 
@@ -2995,7 +3006,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
     finalTakeData = applyRangePersistence(finalTakeData);
 
-    logSheet.data = {
+    const finalData = {
       ...finalTakeData,
       classification,
       shotDetails,
@@ -3005,6 +3016,7 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
+    updateLogSheet(logSheet.id, finalData);
     router.back();
   };
 
@@ -3107,7 +3119,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
     finalTakeData = applyRangePersistence(finalTakeData);
       
-      logSheet.data = {
+      const finalData = {
       ...finalTakeData,
       classification,
       shotDetails,
@@ -3117,6 +3129,7 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
     };
     
+    updateLogSheet(logSheet.id, finalData);
     router.back();
   };
 

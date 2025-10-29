@@ -9,6 +9,7 @@ export interface DuplicateInfo {
 export interface DuplicateCheckResult {
   soundDup: DuplicateInfo | null;
   cameraDup: DuplicateInfo | null;
+  cameraDups: DuplicateInfo[];
 }
 
 export interface BlankFieldCheck {
@@ -114,6 +115,7 @@ export class DuplicateService {
     );
 
     let cameraDup: DuplicateInfo | null = null;
+    const cameraDups: DuplicateInfo[] = [];
     const cameraConfiguration = this.project?.settings?.cameraConfiguration || 1;
 
     if (cameraConfiguration === 1) {
@@ -123,6 +125,9 @@ export class DuplicateService {
         showRangeMode['cameraFile'] ? rangeData['cameraFile'] : null,
         disabledFields
       );
+      if (cameraDup) {
+        cameraDups.push(cameraDup);
+      }
     } else {
       for (let i = 1; i <= cameraConfiguration; i++) {
         const fieldId = `cameraFile${i}`;
@@ -135,14 +140,16 @@ export class DuplicateService {
             disabledFields
           );
           if (duplicate) {
-            cameraDup = duplicate;
-            break;
+            cameraDups.push(duplicate);
+            if (!cameraDup) {
+              cameraDup = duplicate; // Keep first one for backward compatibility
+            }
           }
         }
       }
     }
 
-    return { soundDup, cameraDup };
+    return { soundDup, cameraDup, cameraDups };
   }
 
   /**
