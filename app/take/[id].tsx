@@ -2035,6 +2035,68 @@ This would break the logging logic and create inconsistencies in the file number
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
+    // Normalize tail (last take) to next sequential single numbers after shifts
+    try {
+      const scene = takeData.sceneNumber;
+      const shot = takeData.shotNumber;
+      const allInShot = logSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+      const maxTake = allInShot.reduce((m, s) => {
+        const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
+        return Number.isNaN(tn) ? m : Math.max(m, tn);
+      }, 0);
+      const last = allInShot.find(s => String(s.data?.takeNumber) === String(maxTake));
+      if (last) {
+        console.debug('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
+        const updatedTail: Record<string, any> = { ...last.data };
+        // compute next per field
+        const highestForField = (fieldId: string, camIdx?: number) => {
+          let highest = 0;
+          allInShot.forEach(s => {
+            const data = s.data || {} as any;
+            if (fieldId === 'soundFile') {
+              if (typeof data.sound_from === 'string') highest = Math.max(highest, parseInt(data.sound_from, 10) || 0);
+              if (typeof data.sound_to === 'string') highest = Math.max(highest, parseInt(data.sound_to, 10) || 0);
+              if (typeof data.soundFile === 'string') highest = Math.max(highest, parseInt(data.soundFile, 10) || 0);
+            } else if (fieldId === 'camera') {
+              const i = camIdx || 1;
+              const fromKey = `camera${i}_from`;
+              const toKey = `camera${i}_to`;
+              const singleKey = i === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${i}`;
+              if (typeof data[fromKey] === 'string') highest = Math.max(highest, parseInt(data[fromKey], 10) || 0);
+              if (typeof data[toKey] === 'string') highest = Math.max(highest, parseInt(data[toKey], 10) || 0);
+              if (typeof data[singleKey] === 'string') highest = Math.max(highest, parseInt(data[singleKey], 10) || 0);
+            }
+          });
+          return highest;
+        };
+
+        // sound
+        const highestSound = highestForField('soundFile');
+        updatedTail.soundFile = String((highestSound || 0) + 1).padStart(4, '0');
+
+        // cameras
+        if (camCount === 1) {
+          const highestCam = highestForField('camera', 1);
+          updatedTail.cameraFile = String((highestCam || 0) + 1).padStart(4, '0');
+          // clear any range keys if present for tail to enforce single
+          delete updatedTail.camera1_from; delete updatedTail.camera1_to;
+        } else {
+          for (let i = 1; i <= camCount; i++) {
+            const highestCam = highestForField('camera', i);
+            const key = `cameraFile${i}`;
+            updatedTail[key] = String((highestCam || 0) + 1).padStart(4, '0');
+            delete updatedTail[`camera${i}_from`];
+            delete updatedTail[`camera${i}_to`];
+          }
+        }
+
+        console.debug('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
+        await updateLogSheet(last.id, updatedTail);
+      }
+    } catch (e) {
+      console.warn('TAIL NORMALIZE error', e);
+    }
+
     router.back();
   };
 
