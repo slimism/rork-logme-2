@@ -2282,17 +2282,41 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
           if (soundStart != null) {
-            const soundDelta = (() => {
+            const computeSoundDelta = () => {
               const r = rangeData['soundFile'];
+              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+              const targetTo = targetRange ? (parseInt(targetRange.to, 10) || 0) : null;
               if (showRangeMode['soundFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
                 const b = parseInt(r.to, 10) || 0;
+                const insertedMax = Math.max(a, b);
+                if (targetTo != null) {
+                  return Math.max(0, insertedMax - targetTo);
+                }
                 return Math.abs(b - a) + 1;
               }
+              // single value
+              const singleVal = (() => {
+                const v = typeof newLogData.soundFile === 'string' ? parseInt(newLogData.soundFile, 10) : parseInt(String(takeData.soundFile ?? ''), 10);
+                return Number.isNaN(v) ? null : v;
+              })();
+              if (targetTo != null && singleVal != null) {
+                return singleVal > targetTo ? 1 : 0;
+              }
               return 1;
-            })();
-            if (!disabledFields.has('soundFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id); }
+            };
+            const soundDelta = computeSoundDelta();
+            if (!disabledFields.has('soundFile') && soundDelta > 0) {
+              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+              const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
+              console.debug('SHIFT soundFile', {
+                start,
+                soundDelta,
+                targetRange,
+                editedRange: rangeData['soundFile'],
+                showRange: showRangeMode['soundFile']
+              });
+              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id);
             }
           }
         }
@@ -2308,19 +2332,29 @@ This would break the logging logic and create inconsistencies in the file number
           {
             const camDelta = (() => {
               const r = rangeData['cameraFile'];
+              const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+              const targetTo = targetRange ? (parseInt(targetRange.to, 10) || 0) : null;
               if (showRangeMode['cameraFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
                 const b = parseInt(r.to, 10) || 0;
+                const insertedMax = Math.max(a, b);
+                if (targetTo != null) {
+                  return Math.max(0, insertedMax - targetTo);
+                }
                 return Math.abs(b - a) + 1;
               }
               // If input camera field is blank, don't shift camera files
               if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
                 return 0;
               }
+              if (targetTo != null) {
+                const singleVal = parseInt(String(takeData.cameraFile), 10);
+                if (!Number.isNaN(singleVal)) return singleVal > targetTo ? 1 : 0;
+              }
               return 1;
             })();
-            if (!disabledFields.has('cameraFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
+            if (!disabledFields.has('cameraFile') && camDelta > 0) {
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; console.debug('SHIFT cameraFile (single-cam)', { start, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] }); updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -3469,6 +3503,7 @@ This would break the logging logic and create inconsistencies in the file number
           if (!Number.isNaN(n)) camStart = n;
         }
         const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
+        console.debug('SHIFT cameraFile (single-cam consolidated)', { camStartShift, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] });
         updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id);
       }
     } else {
@@ -3478,12 +3513,22 @@ This would break the logging logic and create inconsistencies in the file number
           const camDelta = (() => {
             if (disabledFields.has(fieldId)) return 0;
             const r = rangeData[fieldId];
+            const targetRangeLocal = getRangeFromData(existingEntry.data, fieldId);
+            const targetToLocal = targetRangeLocal ? (parseInt(targetRangeLocal.to, 10) || 0) : null;
             if (showRangeMode[fieldId] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
               const b = parseInt(r.to, 10) || 0;
+              const insertedMax = Math.max(a, b);
+              if (targetToLocal != null) {
+                return Math.max(0, insertedMax - targetToLocal);
+              }
               return Math.abs(b - a) + 1;
             }
             if (!takeData[fieldId]?.trim()) return 0;
+            if (targetToLocal != null) {
+              const singleVal = parseInt(String(takeData[fieldId]), 10);
+              if (!Number.isNaN(singleVal)) return singleVal > targetToLocal ? 1 : 0;
+            }
             return 1;
           })();
           
@@ -3501,6 +3546,7 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStartForField = n;
             }
             const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
+            console.debug('SHIFT camera multi', { fieldId, camStartShift, camDelta, targetRange, editedRange: rangeData[fieldId], showRange: showRangeMode[fieldId] });
             updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, logSheet.id);
           }
         }
