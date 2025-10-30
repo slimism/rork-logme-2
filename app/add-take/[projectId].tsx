@@ -730,20 +730,14 @@ export default function AddTakeScreen() {
                     conflictType = 'lower';
                   } else if (currentFrom > existingMin && currentFrom <= existingMax) {
                     conflictType = 'within';
-                  } else {
+                  } else if (currentFrom === exMax) {
                     conflictType = 'upper';
+                  } else if (currentMin < exMin && currentMax >= exMin) {
+                    conflictType = 'lower';
+                  } else {
+                    conflictType = 'within';
                   }
-                  return {
-                    type: 'file',
-                    label: `Camera File ${i}`,
-                    fieldId,
-                    value: `${currentRange.from}–${currentRange.to}`,
-                    number: currentFrom,
-                    existingEntry: sheet,
-                    isRangeConflict: true,
-                    conflictType,
-                    rangeInfo: existingRange
-                  } as DuplicateInfo;
+                  return { fieldId, label, existingEntry: sheet, conflictType } as { fieldId: string; label: string; existingEntry: any; conflictType: 'lower' | 'upper' | 'within' };
                 }
               }
               

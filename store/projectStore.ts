@@ -149,6 +149,17 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       updateLogSheet: (id: string, data: any) => {
+        // --- Field normalization fix ---
+        ['sceneNumber', 'shotNumber', 'takeNumber'].forEach((key) => {
+          if (data.hasOwnProperty(key)) {
+            if (typeof data[key] === 'string') {
+              const trimmed = data[key].trim();
+              data[key] = trimmed.length > 0 ? trimmed : undefined;
+            } else if (data[key] == null) {
+              data[key] = undefined;
+            }
+          }
+        });
         console.log('=== STORE updateLogSheet called ===');
         console.log('  id:', id);
         console.log('  data.camera1_from:', data.camera1_from);
