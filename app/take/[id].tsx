@@ -438,6 +438,53 @@ export default function EditTakeScreen() {
   };
 
   const toggleRangeMode = (fieldId: string) => {
+    const isCameraField = fieldId === 'cameraFile' || /^cameraFile\d+$/.test(fieldId);
+    const camCount = project?.settings?.cameraConfiguration || 1;
+    if (isCameraField && camCount > 1) {
+      const currentAnyRange = Object.keys(showRangeMode)
+        .filter(f => f === 'cameraFile' || /^cameraFile\d+$/.test(f))
+        .some(f => showRangeMode[f]);
+      const willEnableRange = !currentAnyRange || !showRangeMode[fieldId];
+      setShowRangeMode(prev => {
+        const next = { ...prev } as Record<string, boolean>;
+        for (let i = 1; i <= camCount; i++) {
+          next[`cameraFile${i}`] = willEnableRange;
+        }
+        next['cameraFile'] = willEnableRange;
+        return next;
+      });
+      if (willEnableRange) {
+        setRangeData(prev => {
+          const next = { ...prev } as Record<string, { from: string; to: string }>;
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}` as const;
+            next[key] = { from: (takeData[key] as string) || '', to: prev[key]?.to || '' };
+          }
+          if (camCount === 1) {
+            next['cameraFile'] = { from: (takeData['cameraFile'] as string) || '', to: prev['cameraFile']?.to || '' };
+          }
+          return next;
+        });
+      } else {
+        setRangeData(prev => {
+          const next = { ...prev } as Record<string, { from: string; to: string }>;
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}` as const;
+            if (next[key]) {
+              updateTakeData(key, next[key].from);
+              delete (next as any)[key];
+            }
+          }
+          if (camCount === 1 && next['cameraFile']) {
+            updateTakeData('cameraFile', next['cameraFile'].from);
+            delete (next as any)['cameraFile'];
+          }
+          return next;
+        });
+      }
+      return;
+    }
+
     setShowRangeMode(prev => ({
       ...prev,
       [fieldId]: !prev[fieldId]
@@ -3685,13 +3732,15 @@ This would break the logging logic and create inconsistencies in the file number
               {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
             </Text>
             <View style={styles.buttonGroup}>
-              <TouchableOpacity
-                style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                onPress={() => !isDisabled && toggleRangeMode(fieldId)}
-                disabled={isDisabled}
-              >
-                <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-              </TouchableOpacity>
+              {(cameraCount === 1 || i === 1) && (
+                <TouchableOpacity
+                  style={[styles.rangeButton, isDisabled && styles.disabledButton]}
+                  onPress={() => !isDisabled && toggleRangeMode(fieldId)}
+                  disabled={isDisabled}
+                >
+                  <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
+                </TouchableOpacity>
+              )}
               {cameraCount > 1 && (
                 <TouchableOpacity 
                   style={[
