@@ -2361,7 +2361,7 @@ This would break the logging logic and create inconsistencies in the file number
               }
               return 1;
             })();
-            if (!disabledFields.has('cameraFile') && camDelta > 0 && !didCameraShiftRef.current) {
+            if (!disabledFields.has('cameraFile') && camDelta > 0 && !didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) {
               didCameraShiftRef.current = true;
               { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; console.debug('SHIFT cameraFile (single-cam)', { start, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] }); updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
               
@@ -2742,7 +2742,7 @@ This would break the logging logic and create inconsistencies in the file number
             })();
             if (!disabledFields.has('cameraFile')) {
               { 
-                if (!didCameraShiftRef.current) {
+                if (!didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) {
                   didCameraShiftRef.current = true;
                 const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
                 const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
@@ -3518,7 +3518,7 @@ This would break the logging logic and create inconsistencies in the file number
         }
         const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
         console.debug('SHIFT cameraFile (single-cam consolidated)', { camStartShift, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] });
-        if (!didCameraShiftRef.current) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id); }
+        if (!didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id); }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
