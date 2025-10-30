@@ -127,9 +127,27 @@ End of Logs`;
         URL.revokeObjectURL(url);
         return true;
       } else {
-        const fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
-        await FileSystem.writeAsStringAsync(fileUri, content);
-        
+        let fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
+        try {
+          await FileSystem.writeAsStringAsync(fileUri, content);
+        } catch (e) {
+          // Fallback to cache directory if documentDirectory fails
+          try {
+            fileUri = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}${filename}.txt`;
+            await FileSystem.writeAsStringAsync(fileUri, content);
+          } catch (e2) {
+            // As a last resort, try sharing without writing a file (base64)
+            if (await Sharing.isAvailableAsync()) {
+              const base64 = Buffer.from(content, 'utf-8').toString('base64');
+              await Sharing.shareAsync(`data:text/plain;base64,${base64}`, {
+                mimeType: 'text/plain',
+                dialogTitle: 'Share Console Logs',
+              });
+              return true;
+            }
+            throw e2;
+          }
+        }
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
             mimeType: 'text/plain',
