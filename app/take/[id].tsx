@@ -3685,13 +3685,6 @@ This would break the logging logic and create inconsistencies in the file number
               {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
             </Text>
             <View style={styles.buttonGroup}>
-              <TouchableOpacity
-                style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                onPress={() => !isDisabled && toggleRangeMode(fieldId)}
-                disabled={isDisabled}
-              >
-                <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-              </TouchableOpacity>
               {cameraCount > 1 && (
                 <TouchableOpacity 
                   style={[
@@ -3988,6 +3981,15 @@ This would break the logging logic and create inconsistencies in the file number
             )}
           </View>
 
+          <View style={styles.fieldHeaderRow}>
+            <Text style={styles.fieldLabel}>Camera Files</Text>
+            <TouchableOpacity
+              style={styles.rangeButton}
+              onPress={() => toggleRangeMode('cameraFile')}
+            >
+              <Text style={styles.rangeButtonText}>Range</Text>
+            </TouchableOpacity>
+          </View>
           {renderCameraFields(cameraConfiguration, allFieldIds)}
 
           {cardFieldEnabled && (

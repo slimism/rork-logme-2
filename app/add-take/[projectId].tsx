@@ -4334,6 +4334,15 @@ This would break the logging logic and create inconsistencies in the file number
           {/* Additional camera fields if more than 1 camera - each on its own row */}
           {cameraConfiguration > 1 && (
             <View style={styles.additionalCameraFields}>
+              <View style={styles.fieldHeaderRow}>
+                <Text style={styles.fieldLabel}>Camera Files</Text>
+                <TouchableOpacity 
+                  style={styles.rangeButton}
+                  onPress={() => toggleRangeMode('cameraFile')}
+                >
+                  <Text style={styles.rangeButtonText}>Range</Text>
+                </TouchableOpacity>
+              </View>
               {Array.from({ length: cameraConfiguration }, (_, i) => {
                 const fieldId = `cameraFile${i + 1}`;
                 const fieldLabel = `Camera file ${i + 1}`;
@@ -4349,13 +4358,6 @@ This would break the logging logic and create inconsistencies in the file number
                         {fieldLabel}{!isDisabled && (cameraRecState[fieldId] ?? true) && <Text style={styles.asterisk}> *</Text>}
                       </Text>
                       <View style={styles.buttonGroup}>
-                        <TouchableOpacity 
-                          style={[styles.rangeButton, isDisabled && styles.disabledButton]}
-                          onPress={() => !isDisabled && toggleRangeMode(fieldId)}
-                          disabled={isDisabled}
-                        >
-                          <Text style={[styles.rangeButtonText, isDisabled && styles.disabledText]}>Range</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity 
                           style={[
                             styles.recButton, 
