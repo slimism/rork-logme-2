@@ -357,7 +357,11 @@ export const useProjectStore = create<ProjectState>()(
                 } else {
                   const currentNum = parseInt(raw as string, 10);
                   if (!Number.isNaN(currentNum)) {
-                    if (!skippedTarget && currentNum === fromNumber) {
+                    // Do NOT consume the skippedTarget for camera fields' single values.
+                    // We want the skip to apply to the first RANGE that contains fromNumber (the target),
+                    // not to a single-value equal to fromNumber (e.g., the immediate next take like 0008).
+                    const isCameraField = fieldId.startsWith('cameraFile');
+                    if (!isCameraField && !skippedTarget && currentNum === fromNumber) {
                       skippedTarget = true;
                     } else if (currentNum >= fromNumber) {
                       newData[fieldId] = String(currentNum + increment).padStart(4, '0');
