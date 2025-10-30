@@ -1687,7 +1687,7 @@ This would break the logging logic and create inconsistencies in the file number
           soundIncrement = Math.abs(newTo - newFrom) + 1;
         }
         
-        updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
+        callUpdateFileNumbers('soundFile', existingEntry, soundStart, soundIncrement);
 
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
         if (targetRange && showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
@@ -2132,7 +2132,7 @@ This would break the logging logic and create inconsistencies in the file number
               const newTo = parseInt(newLogRange.to, 10) || 0;
               soundIncrement = Math.abs(newTo - newFrom) + 1;
             }
-            updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement);
+            callUpdateFileNumbers('soundFile', existingEntry, soundStart, soundIncrement);
             const targetRangeLocal = getRangeFromData(existingEntry.data, 'soundFile');
             if (!targetRangeLocal) {
               const targetSingleStr = existingEntry.data?.soundFile as string | undefined;
