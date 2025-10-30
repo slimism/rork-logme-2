@@ -730,16 +730,29 @@ export default function AddTakeScreen() {
                     conflictType = 'lower';
                   } else if (currentFrom > existingMin && currentFrom <= existingMax) {
                     conflictType = 'within';
-                  } else if (currentFrom === exMax) {
-                    conflictType = 'upper';
-                  } else if (currentMin < exMin && currentMax >= exMin) {
-                    conflictType = 'lower';
-                  } else {
-                    conflictType = 'within';
-                  }
-                  return { fieldId, label, existingEntry: sheet, conflictType } as { fieldId: string; label: string; existingEntry: any; conflictType: 'lower' | 'upper' | 'within' };
+                                  }
+                // Overlap detected - classify conflict type based on where current range starts
+                let conflictType: 'lower' | 'upper' | 'within';
+                if (currentFrom === existingMin) {
+                  conflictType = 'lower';
+                } else if (currentFrom > existingMin && currentFrom <= existingMax) {
+                  conflictType = 'within';
+                } else {
+                  conflictType = 'upper';
                 }
+                return {
+                  type: 'file',
+                  label: `Camera File ${i}`,
+                  fieldId,
+                  value: `${currentRange.from}–${currentRange.to}`,
+                  number: currentFrom,
+                  existingEntry: sheet,
+                  isRangeConflict: true,
+                  conflictType,
+                  rangeInfo: existingRange
+                } as any;
               }
+            }
               
               if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
                 const existingNum = parseInt(data[fieldId]) || 0;
@@ -4360,7 +4373,7 @@ This would break the logging logic and create inconsistencies in the file number
                           style={[
                             styles.recButton, 
                             (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
-                            (!isFieldEnabled) && styles.disabledButton
+                            isDisabled && styles.disabledButton
                           ]}
                           onPress={() => !isDisabled && toggleCameraRec(fieldId)}
                           disabled={isDisabled}
