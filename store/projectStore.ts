@@ -326,6 +326,13 @@ export const useProjectStore = create<ProjectState>()(
               const newData: Record<string, any> = { ...data };
 
               const raw = data[fieldId] as unknown;
+              console.debug('[updateFileNumbers] inspecting', {
+                fieldId,
+                logId: logSheet.id,
+                raw,
+                rangeFrom: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_from`],
+                rangeTo: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_to`]
+              });
               if (typeof raw === 'string' && raw.length > 0) {
                 if (raw.includes('-')) {
                   const [startStr, endStr] = raw.split('-');
@@ -339,6 +346,12 @@ export const useProjectStore = create<ProjectState>()(
                       const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
                       newData[fieldId] = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
                       updated = true;
+                      console.debug('[updateFileNumbers] inline-range-shift', {
+                        fieldId,
+                        logId: logSheet.id,
+                        from: `${startNum}-${endNum}`,
+                        to: newData[fieldId]
+                      });
                     }
                   }
                 } else {
@@ -349,6 +362,12 @@ export const useProjectStore = create<ProjectState>()(
                     } else if (currentNum >= fromNumber) {
                       newData[fieldId] = String(currentNum + increment).padStart(4, '0');
                       updated = true;
+                      console.debug('[updateFileNumbers] single-shift', {
+                        fieldId,
+                        logId: logSheet.id,
+                        from: currentNum,
+                        to: newData[fieldId]
+                      });
                     }
                   }
                 }
@@ -367,6 +386,11 @@ export const useProjectStore = create<ProjectState>()(
                       newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
                       newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
                       updated = true;
+                      console.debug('[updateFileNumbers] sound-range-shift', {
+                        logId: logSheet.id,
+                        from: `${sFromNum}-${sToNum}`,
+                        to: `${newData['sound_from']}-${newData['sound_to']}`
+                      });
                     }
                   }
                 }
@@ -398,12 +422,19 @@ export const useProjectStore = create<ProjectState>()(
                       newData[`camera${cameraNum}_to`] = String(newEnd).padStart(4, '0');
                       console.log(`  -> Shifting from ${cFromNum}-${cToNum} to ${newStart}-${newEnd}`);
                       updated = true;
+                      console.debug('[updateFileNumbers] camera-range-shift', {
+                        fieldId,
+                        logId: logSheet.id,
+                        from: `${cFromNum}-${cToNum}`,
+                        to: `${newStart}-${newEnd}`
+                      });
                     }
                   }
                 }
               }
 
               if (updated) {
+                console.debug('[updateFileNumbers] applying update', { logId: logSheet.id, fieldId });
                 return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
               }
               return logSheet;

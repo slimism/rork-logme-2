@@ -3560,8 +3560,8 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStartForField = n;
             }
             const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
-            console.debug('SHIFT camera multi', { fieldId, camStartShift, camDelta, targetRange, editedRange: rangeData[fieldId], showRange: showRangeMode[fieldId] });
-            if (!didCameraShiftRef.current) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, logSheet.id); }
+            console.debug('SHIFT camera multi', { fieldId, camStartShift, camDelta, targetRange, editedRange: rangeData[fieldId], showRange: showRangeMode[fieldId], excludeId: existingEntry.id, editedLogId: logSheet.id, existingEntryTake: existingEntry.data?.takeNumber, currentEditedTake: takeData.takeNumber });
+            if (!didCameraShiftRef.current) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, existingEntry.id); }
           }
         }
       }
