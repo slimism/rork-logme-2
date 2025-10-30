@@ -3672,7 +3672,8 @@ This would break the logging logic and create inconsistencies in the file number
     for (let i = 1; i <= cameraCount; i++) {
       const fieldId = cameraCount === 1 ? 'cameraFile' : `cameraFile${i}`;
       const fieldLabel = cameraCount === 1 ? 'Camera File' : `Camera File ${i}`;
-      const isDisabled = disabledFields.has(fieldId);
+      const baseDisabled = disabledFields.has(fieldId);
+      const isDisabled = baseDisabled || !(cameraRecState[fieldId] ?? true);
 
       fields.push(
         <View key={fieldId} style={styles.fieldContainer}>
@@ -3690,15 +3691,15 @@ This would break the logging logic and create inconsistencies in the file number
                   style={[
                     styles.recButton, 
                     (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
-                    isDisabled && styles.disabledButton
+                    baseDisabled && styles.disabledButton
                   ]}
-                  onPress={() => !isDisabled && toggleCameraRec(fieldId)}
-                  disabled={isDisabled}
+                  onPress={() => !baseDisabled && toggleCameraRec(fieldId)}
+                  disabled={baseDisabled}
                 >
                   <Text style={[
                     styles.recButtonText, 
                     (cameraRecState[fieldId] ?? true) ? styles.recButtonTextActive : styles.recButtonTextInactive,
-                    isDisabled && styles.disabledText
+                    baseDisabled && styles.disabledText
                   ]}>REC</Text>
                 </TouchableOpacity>
               )}
