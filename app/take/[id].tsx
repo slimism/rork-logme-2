@@ -47,6 +47,7 @@ export default function EditTakeScreen() {
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
   const didSoundShiftRef = useRef(false);
   const didCameraShiftRef = useRef(false);
+  const shiftedCamerasRef = useRef<Set<string>>(new Set());
   const savedFieldValues = useRef<Record<string, string>>({});
 
   const { width, height } = useWindowDimensions();
@@ -2037,6 +2038,9 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Normalize tail (last take) to next sequential single numbers after shifts
     try {
+      console.log('TAIL NORMALIZE - START');
+      // small delay to ensure prior shifts propagated
+      await new Promise(resolve => setTimeout(resolve, 20));
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
       const allInShot = logSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
@@ -2046,7 +2050,7 @@ This would break the logging logic and create inconsistencies in the file number
       }, 0);
       const last = allInShot.find(s => String(s.data?.takeNumber) === String(maxTake));
       if (last) {
-        console.debug('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
+        console.log('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
         const updatedTail: Record<string, any> = { ...last.data };
         // compute next per field
         const highestForField = (fieldId: string, camIdx?: number) => {
@@ -2090,11 +2094,11 @@ This would break the logging logic and create inconsistencies in the file number
           }
         }
 
-        console.debug('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
+        console.log('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
         await updateLogSheet(last.id, updatedTail);
       }
     } catch (e) {
-      console.warn('TAIL NORMALIZE error', e);
+      console.log('TAIL NORMALIZE error', e);
     }
 
     router.back();
@@ -3326,6 +3330,7 @@ This would break the logging logic and create inconsistencies in the file number
       }
 
     } else {
+      shiftedCamerasRef.current.clear();
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
@@ -3608,7 +3613,7 @@ This would break the logging logic and create inconsistencies in the file number
             return 1;
           })();
           
-          if (!disabledFields.has(fieldId) && camDelta > 0) {
+          if (!disabledFields.has(fieldId) && camDelta > 0 && !shiftedCamerasRef.current.has(fieldId)) {
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
             let camStartForField = cameraFromNumber;
             const fromKey = `camera${i}_from` as const;
@@ -3623,7 +3628,8 @@ This would break the logging logic and create inconsistencies in the file number
             }
             const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
             console.debug('SHIFT camera multi', { fieldId, camStartShift, camDelta, targetRange, editedRange: rangeData[fieldId], showRange: showRangeMode[fieldId], excludeId: existingEntry.id, editedLogId: logSheet.id, existingEntryTake: existingEntry.data?.takeNumber, currentEditedTake: takeData.takeNumber });
-            if (!didCameraShiftRef.current) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, existingEntry.id); }
+            shiftedCamerasRef.current.add(fieldId);
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, existingEntry.id);
           }
         }
       }
