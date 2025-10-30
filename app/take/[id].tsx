@@ -3985,7 +3985,47 @@ This would break the logging logic and create inconsistencies in the file number
             <Text style={styles.fieldLabel}>Camera Files</Text>
             <TouchableOpacity
               style={styles.rangeButton}
-              onPress={() => toggleRangeMode('cameraFile')}
+              onPress={() => {
+                const camCount = project?.settings?.cameraConfiguration || 1;
+                setShowRangeMode(prev => {
+                  const next = { ...prev } as { [key: string]: boolean };
+                  if (camCount === 1) {
+                    const current = !!prev['cameraFile'];
+                    next['cameraFile'] = !current;
+                    if (!current) {
+                      const currentValue = (takeData['cameraFile'] as string) || '0001';
+                      setRangeData(rp => ({
+                        ...rp,
+                        ['cameraFile']: { from: currentValue, to: currentValue }
+                      }));
+                    } else {
+                      const r = rangeData['cameraFile'];
+                      if (r) {
+                        updateTakeData('cameraFile', r.from);
+                      }
+                    }
+                  } else {
+                    for (let i = 1; i <= camCount; i++) {
+                      const fid = `cameraFile${i}`;
+                      const current = !!prev[fid];
+                      next[fid] = !current;
+                      if (!current) {
+                        const currentValue = (takeData[fid] as string) || '0001';
+                        setRangeData(rp => ({
+                          ...rp,
+                          [fid]: { from: currentValue, to: currentValue }
+                        }));
+                      } else {
+                        const r = rangeData[fid];
+                        if (r) {
+                          updateTakeData(fid, r.from);
+                        }
+                      }
+                    }
+                  }
+                  return next;
+                });
+              }}
             >
               <Text style={styles.rangeButtonText}>Range</Text>
             </TouchableOpacity>
