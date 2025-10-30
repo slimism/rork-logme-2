@@ -4360,7 +4360,7 @@ This would break the logging logic and create inconsistencies in the file number
                           style={[
                             styles.recButton, 
                             (cameraRecState[fieldId] ?? true) ? styles.recButtonActive : styles.recButtonInactive,
-                            isDisabled && styles.disabledButton
+                            (!isFieldEnabled) && styles.disabledButton
                           ]}
                           onPress={() => !isDisabled && toggleCameraRec(fieldId)}
                           disabled={isDisabled}

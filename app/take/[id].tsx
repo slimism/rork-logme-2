@@ -3720,6 +3720,8 @@ This would break the logging logic and create inconsistencies in the file number
       const fieldId = cameraCount === 1 ? 'cameraFile' : `cameraFile${i}`;
       const fieldLabel = cameraCount === 1 ? 'Camera File' : `Camera File ${i}`;
       const isDisabled = disabledFields.has(fieldId);
+      const isRecActive = cameraRecState[fieldId] ?? true;
+      const isFieldEnabled = !isDisabled && (cameraCount === 1 ? true : isRecActive);
 
       fields.push(
         <View key={fieldId} style={styles.fieldContainer}>
