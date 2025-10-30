@@ -3148,35 +3148,84 @@ This would break the logging logic and create inconsistencies in the file number
   };
 
   const toggleRangeMode = (fieldId: string) => {
-    const isCurrentlyInRangeMode = showRangeMode[fieldId];
-    
-    // Update only the specific field's range mode
-    setShowRangeMode(prev => ({
-      ...prev,
-      [fieldId]: !isCurrentlyInRangeMode
-    }));
-    
-    if (!isCurrentlyInRangeMode) {
-      // Entering range mode: initialize range data for this field only
-      const currentValue = takeData[fieldId] || '';
-      setRangeData(prev => ({
-        ...prev,
-        [fieldId]: { 
-          from: currentValue, 
-          to: prev[fieldId]?.to || '' // Preserve existing 'to' value if it exists
+    // Determine if this is a camera field or sound
+    const isCameraField = fieldId === 'cameraFile' || /^cameraFile\d+$/.test(fieldId);
+    if (isCameraField && (project?.settings?.cameraConfiguration || 1) > 1) {
+      // Multi camera setup: synchronize all camera range modes.
+      const camCount = project?.settings?.cameraConfiguration || 1;
+      const currentAnyRange = Object.keys(showRangeMode)
+        .filter(f => f === 'cameraFile' || /^cameraFile\d+$/.test(f))
+        .some(f => showRangeMode[f]);
+      // Toggling ON if not all in range, or OFF if all are in range.
+      const willEnableRange = !currentAnyRange || !showRangeMode[fieldId];
+      setShowRangeMode(prev => {
+        const newShow = { ...prev };
+        for (let i = 1; i <= camCount; i++) {
+          newShow[`cameraFile${i}`] = willEnableRange;
         }
-      }));
-    } else {
-      // Exiting range mode: set the single value to the 'from' value for this field only
-      const range = rangeData[fieldId];
-      if (range) {
-        updateTakeData(fieldId, range.from);
-        // Clear only this field's range data
+        // Also fallback for cameraFile (for legacy or single cam mode)
+        newShow["cameraFile"] = willEnableRange;
+        return newShow;
+      });
+      // For rangeData, also apply the same style of entering/exiting as before but for all camera files
+      if (willEnableRange) {
         setRangeData(prev => {
-          const newRangeData = { ...prev };
-          delete newRangeData[fieldId];
-          return newRangeData;
+          const next = { ...prev };
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}`;
+            next[key] = { from: takeData[key] || '', to: prev[key]?.to || '' };
+          }
+          // cameraFile legacy (single cam)
+          if (camCount === 1) {
+            next["cameraFile"] = { from: takeData["cameraFile"] || '', to: prev["cameraFile"]?.to || '' };
+          }
+          return next;
         });
+      } else {
+        // range -> single for all
+        setRangeData(prev => {
+          const next = { ...prev };
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}`;
+            if (next[key]) {
+              updateTakeData(key, next[key].from);
+              delete next[key];
+            }
+          }
+          // legacy
+          if (camCount === 1 && next["cameraFile"]) {
+            updateTakeData("cameraFile", next["cameraFile"].from);
+            delete next["cameraFile"];
+          }
+          return next;
+        });
+      }
+    } else {
+      // For soundFile or single cam: legacy logic
+      const isCurrentlyInRangeMode = showRangeMode[fieldId];
+      setShowRangeMode(prev => ({
+        ...prev,
+        [fieldId]: !isCurrentlyInRangeMode
+      }));
+      if (!isCurrentlyInRangeMode) {
+        const currentValue = takeData[fieldId] || '';
+        setRangeData(prev => ({
+          ...prev,
+          [fieldId]: {
+            from: currentValue,
+            to: prev[fieldId]?.to || ''
+          }
+        }));
+      } else {
+        const range = rangeData[fieldId];
+        if (range) {
+          updateTakeData(fieldId, range.from);
+          setRangeData(prev => {
+            const newRangeData = { ...prev };
+            delete newRangeData[fieldId];
+            return newRangeData;
+          });
+        }
       }
     }
   };
