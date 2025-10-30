@@ -1755,7 +1755,9 @@ This would break the logging logic and create inconsistencies in the file number
                 const newTo = parseInt(newLogRange.to, 10) || 0;
                 camIncrement = Math.abs(newTo - newFrom) + 1;
               }
-              updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+              if ((currentProject?.settings?.cameraConfiguration || 1) === 1) {
+                updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+              }
 
               const targetRangeCam = getRangeFromData(existingEntry.data, 'cameraFile');
               if (targetRangeCam && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
@@ -1931,7 +1933,9 @@ This would break the logging logic and create inconsistencies in the file number
             camIncrement = Math.abs(newTo - newFrom) + 1;
           }
           
-          updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+          if ((currentProject?.settings?.cameraConfiguration || 1) === 1) {
+            updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+          }
 
           const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
           if (targetRange) {
@@ -2757,7 +2761,9 @@ This would break the logging logic and create inconsistencies in the file number
         } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
           camDelta = 0;
         }
-        updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
+        if ((currentProject?.settings?.cameraConfiguration || 1) === 1) {
+          updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
+        }
 
         const targetRange = (() => {
           const from = existingEntry.data?.camera1_from;

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+// Use legacy API for compatibility with current SDK version
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 interface LogEntry {
