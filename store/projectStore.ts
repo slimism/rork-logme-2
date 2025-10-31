@@ -165,14 +165,26 @@ export const useProjectStore = create<ProjectState>()(
         console.log('  data.camera1_from:', data.camera1_from);
         console.log('  data.camera1_to:', data.camera1_to);
         console.log('  data.cameraFile:', data.cameraFile);
+        console.log('  data.cameraFile1:', (data as any)?.cameraFile1);
+        console.log('  data.cameraFile2:', (data as any)?.cameraFile2);
+        console.log('  data.cameraFile3:', (data as any)?.cameraFile3);
         console.log('  data.classification:', data.classification);
         
         set((state) => ({
-          logSheets: state.logSheets.map((logSheet) => 
-            logSheet.id === id 
-              ? { ...logSheet, data, updatedAt: new Date().toISOString() } 
-              : logSheet
-          ),
+          logSheets: state.logSheets.map((logSheet) => {
+            if (logSheet.id !== id) return logSheet;
+            // Merge strategy: combine existing data with incoming; explicit null deletes the key
+            const merged: Record<string, any> = { ...(logSheet.data || {}), ...(data || {}) };
+            Object.keys(data || {}).forEach((k) => {
+              if (data[k] === null) {
+                delete merged[k];
+              }
+            });
+            console.log('=== Merged updateLogSheet ===');
+            console.log('  incoming keys:', Object.keys(data || {}));
+            console.log('  resulting keys:', Object.keys(merged));
+            return { ...logSheet, data: merged, updatedAt: new Date().toISOString() };
+          }),
         }));
         
         const updated = get().logSheets.find(sheet => sheet.id === id);
@@ -180,6 +192,9 @@ export const useProjectStore = create<ProjectState>()(
         console.log('  Updated data.camera1_from:', updated?.data?.camera1_from);
         console.log('  Updated data.camera1_to:', updated?.data?.camera1_to);
         console.log('  Updated data.cameraFile:', updated?.data?.cameraFile);
+        console.log('  Updated cameraFile1:', (updated as any)?.data?.cameraFile1);
+        console.log('  Updated cameraFile2:', (updated as any)?.data?.cameraFile2);
+        console.log('  Updated cameraFile3:', (updated as any)?.data?.cameraFile3);
       },
       
       updateLogSheetName: (id: string, name: string) => {

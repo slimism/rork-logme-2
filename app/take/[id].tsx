@@ -148,10 +148,10 @@ export default function EditTakeScreen() {
           const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
           const desired = (prev || 0) + 1;
           if (current !== desired) {
-            const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
-            // Ensure any lingering range fields for this camera are cleared to avoid UI/cleanup overwrites
-            delete newData[`camera${i}_from`];
-            delete newData[`camera${i}_to`];
+          const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
+          // Ensure any lingering range fields for this camera are cleared (explicit null => delete in store)
+          newData[`camera${i}_from`] = null;
+          newData[`camera${i}_to`] = null;
             updates.push({ id: sheet.id, data: newData });
             console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev, keySet: key });
             camChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
