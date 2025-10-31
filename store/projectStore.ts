@@ -192,6 +192,26 @@ export const useProjectStore = create<ProjectState>()(
             if (target && scene && shot) {
               const projectId = target.projectId;
               const cameraConfiguration = ((state.projects.find(p => p.id === projectId)?.settings)?.cameraConfiguration || 1);
+              // Log a project sound timeline for visibility in logs
+              try {
+                const projectSoundTimeline = mergedLogSheets
+                  .filter(s => s.projectId === projectId)
+                  .map(s => ({
+                    id: s.id,
+                    createdAt: s.createdAt,
+                    updatedAt: s.updatedAt,
+                    classification: (s.data as any)?.classification || '',
+                    scene: (s.data as any)?.sceneNumber,
+                    shot: (s.data as any)?.shotNumber,
+                    take: (s.data as any)?.takeNumber,
+                    sound: (s.data as any)?.soundFile,
+                  }))
+                  .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+                console.log('[store] project sound timeline (createdAt order)');
+                for (const e of projectSoundTimeline) {
+                  console.log('  TL:', { id: e.id, createdAt: e.createdAt, class: e.classification, scene: e.scene, shot: e.shot, take: e.take, sound: e.sound });
+                }
+              } catch {}
               const sameShot = mergedLogSheets
                 .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot && (s.data as any)?.classification !== 'Ambience' && (s.data as any)?.classification !== 'SFX')
                 .sort((a, b) => (parseInt(String((a.data as any)?.takeNumber || '0'), 10) - parseInt(String((b.data as any)?.takeNumber || '0'), 10)));
@@ -230,13 +250,13 @@ export const useProjectStore = create<ProjectState>()(
                   .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
                   .reduce((m, a) => Math.max(m, a.sound), 0);
                 const prevBeforeAnchor = prevSound;
-
                 const dataAny = (s.data as any) || {};
                 const classification = (dataAny.classification || '').toString();
                 const sf = dataAny.soundFile as string | undefined;
                 const sFrom = dataAny.sound_from as string | undefined;
                 const sTo = dataAny.sound_to as string | undefined;
                 const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
+                console.log('[store] sound seq (pre)', { id: s.id, take: (s.data as any)?.takeNumber, cls: classification, prevBeforeAnchor, anchorMax, sf, sFrom, sTo });
                 if (hasSoundRange) {
                   const upper = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
                   console.log('[store] sound seq (range)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, rangeFrom: sFrom, rangeTo: sTo, setPrevTo: Math.max(prevSound, upper) });
@@ -257,15 +277,22 @@ export const useProjectStore = create<ProjectState>()(
                   desiredBase = anchorMax;
                 }
                 const desired = (desiredBase || 0) + 1;
-                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
+                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, cls: classification, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
                 if (desired > 0) {
                   // Only change when current does not match expected in-shot sequence
                   if (current !== desired) {
                     dataAny.soundFile = String(desired).padStart(4, '0');
+                    console.log('[store] sound seq (apply)', { id: s.id, take: (s.data as any)?.takeNumber, from: current, to: desired });
                   }
                   prevSound = desired;
                 }
               }
+
+              // Post-normalization snapshot for sound
+              try {
+                const soundSnapshot = sameShot.map(s => ({ id: s.id, take: (s.data as any)?.takeNumber, sound: (s.data as any)?.soundFile, cls: (s.data as any)?.classification || '' }));
+                console.log('[store] sound seq (post snapshot)', soundSnapshot);
+              } catch {}
 
               // Per-camera sequential normalize
               for (let i = 1; i <= cameraConfiguration; i++) {
@@ -505,12 +532,14 @@ export const useProjectStore = create<ProjectState>()(
               }
 
               if (fieldId === 'soundFile') {
-                // Preserve Waste blank sounds; allow SFX/Ambience to shift
+                // Preserve Waste blank sounds; allow SFX/Ambience to shift; log decisions
                 const cls = (data as any)?.classification;
                 const sfVal = (data as any)?.soundFile as string | undefined;
                 if (cls === 'Waste' && (!sfVal || sfVal.trim().length === 0)) {
+                  console.log('[updateFileNumbers] sound skip (waste blank)', { logId: logSheet.id });
                   return logSheet;
                 }
+                console.log('[updateFileNumbers] sound process', { logId: logSheet.id, cls, fromNumber, increment, hasRange: typeof (data as any)['sound_from'] === 'string' && typeof (data as any)['sound_to'] === 'string', soundFile: (data as any)?.soundFile });
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
@@ -518,6 +547,7 @@ export const useProjectStore = create<ProjectState>()(
                   const sToNum = parseInt(soundTo, 10);
                   if (!Number.isNaN(sFromNum) && !Number.isNaN(sToNum)) {
                     if (!skippedTarget && isTargetInRange(sFromNum, sToNum)) {
+                      console.log('[updateFileNumbers] sound-range skip target', { logId: logSheet.id, range: `${sFromNum}-${sToNum}` });
                       skippedTarget = true;
                     } else if (sFromNum >= fromNumber || sToNum >= fromNumber) {
                       newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
