@@ -55,6 +55,8 @@ export default function EditTakeScreen() {
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
+      // Allow any prior store updates (range shifts) to settle
+      await new Promise(resolve => setTimeout(resolve, 20));
       const latestSheets = useProjectStore.getState().logSheets;
       const allInShot = latestSheets
         .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
@@ -67,48 +69,42 @@ export default function EditTakeScreen() {
         const v = sheet.data?.[toKey];
         return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
       };
-      const getSingleValue = (sheet: any, idx: number) => {
-        const key = cameraConfiguration === 1 && idx === 1 ? 'cameraFile' : `cameraFile${idx}`;
-        const v = sheet.data?.[key];
-        return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
-      };
       const hasRangeFor = (sheet: any, idx: number) => {
         const fromKey = `camera${idx}_from`;
         const toKey = `camera${idx}_to`;
         return typeof sheet.data?.[fromKey] === 'string' && typeof sheet.data?.[toKey] === 'string';
       };
 
-      const basePerCam: number[] = new Array(cameraConfiguration).fill(0);
-      for (let i = 1; i <= cameraConfiguration; i++) {
-        let base = 0;
-        allInShot.forEach(s => {
-          const ub = getRangeUpperBound(s, i);
-          base = Math.max(base, ub);
-        });
-        basePerCam[i - 1] = base;
-        console.log('SEQ NORMALIZE - base per cam', { i, base });
-      }
-
-      const cursorPerCam: number[] = basePerCam.map(b => (b || 0) + 1);
       const updates: Array<{ id: string; data: Record<string, any> }> = [];
 
-      for (const sheet of allInShot) {
-        const newData: Record<string, any> = { ...sheet.data };
-        let changed = false;
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          if (hasRangeFor(sheet, i)) continue; // keep ranges as-is
-          const key = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
-          const current = getSingleValue(sheet, i);
-          const nextVal = cursorPerCam[i - 1];
-          if (nextVal > 0 && current !== nextVal) {
-            newData[key] = String(nextVal).padStart(4, '0');
-            changed = true;
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        // Find the last take that has a range for this camera
+        let lastRangeIdx = -1;
+        let lastRangeUpper = 0;
+        for (let idx = 0; idx < allInShot.length; idx++) {
+          const sheet = allInShot[idx];
+          if (hasRangeFor(sheet, i)) {
+            lastRangeIdx = idx;
+            lastRangeUpper = Math.max(lastRangeUpper, getRangeUpperBound(sheet, i));
           }
-          cursorPerCam[i - 1] = nextVal + 1;
         }
-        if (changed) {
-          console.log('SEQ NORMALIZE - applying for sheet', { id: sheet.id, take: sheet.data?.takeNumber, newData });
-          updates.push({ id: sheet.id, data: newData });
+        // Start cursor strictly after the last range upper bound (or 0 if none)
+        let cursor = (lastRangeUpper || 0) + 1;
+        console.log('SEQ NORMALIZE - camera cursor start', { camera: i, lastRangeIdx, lastRangeUpper, cursor });
+
+        // Normalize only the singles AFTER the last range
+        for (let idx = Math.max(0, lastRangeIdx + 1); idx < allInShot.length; idx++) {
+          const sheet = allInShot[idx];
+          if (hasRangeFor(sheet, i)) continue; // keep ranges
+          const key = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
+          const currentStr = sheet.data?.[key];
+          const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
+          if (cursor > 0 && current !== cursor) {
+            const newData: Record<string, any> = { ...sheet.data, [key]: String(cursor).padStart(4, '0') };
+            updates.push({ id: sheet.id, data: newData });
+            console.log('SEQ NORMALIZE - update single', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: cursor });
+          }
+          cursor += 1;
         }
       }
 
