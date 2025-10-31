@@ -2180,6 +2180,7 @@ This would break the logging logic and create inconsistencies in the file number
     await tailNormalizeLastTake();
     // Ensure last take is normalized before exit
     await tailNormalizeLastTake();
+    await tailNormalizeLastTake();
     router.back();
   };
 
@@ -3715,6 +3716,7 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
+    await tailNormalizeLastTake();
     router.back();
   };
 
