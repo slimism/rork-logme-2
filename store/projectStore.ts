@@ -214,7 +214,8 @@ export const useProjectStore = create<ProjectState>()(
                 .filter(s => s.projectId === projectId)
                 .map(s => ({
                   id: s.id,
-                  ts: s.updatedAt || s.createdAt || '',
+                  // Use createdAt for ordering to avoid reordering due to edits
+                  ts: s.createdAt || s.updatedAt || '',
                   type: ((s.data as any)?.classification || '').toString(),
                   sound: typeof (s.data as any)?.soundFile === 'string' ? (parseInt((s.data as any)?.soundFile, 10) || 0) : 0,
                 }));
@@ -223,7 +224,8 @@ export const useProjectStore = create<ProjectState>()(
               // Loop by takeNumber; maintain shot-local prev only. Use anchors ONLY to seed blanks when there is no prior in-shot sound.
               let prevSound = 0; // shot-local previous (range upper or single)
               for (const s of sameShot) {
-                const currentTs = (s.updatedAt || s.createdAt || '');
+                // Use createdAt for ordering relative to anchors
+                const currentTs = (s.createdAt || s.updatedAt || '');
                 const anchorMax = anchors
                   .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
                   .reduce((m, a) => Math.max(m, a.sound), 0);
@@ -503,9 +505,10 @@ export const useProjectStore = create<ProjectState>()(
               }
 
               if (fieldId === 'soundFile') {
-                // Do not shift SFX/Ambience/Waste sound values here; they act as anchors or preserved blanks
+                // Preserve Waste blank sounds; allow SFX/Ambience to shift
                 const cls = (data as any)?.classification;
-                if (cls === 'SFX' || cls === 'Ambience' || cls === 'Waste') {
+                const sfVal = (data as any)?.soundFile as string | undefined;
+                if (cls === 'Waste' && (!sfVal || sfVal.trim().length === 0)) {
                   return logSheet;
                 }
                 const soundFrom = data['sound_from'];
