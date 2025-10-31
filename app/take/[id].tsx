@@ -3053,7 +3053,7 @@ This would break the logging logic and create inconsistencies in the file number
     router.back();
   };
 
-  const saveNormally = () => {
+  const saveNormally = async () => {
     console.log('========== SAVE INITIATED: saveNormally ==========');
     if (!logSheet || !project) return;
     try {
