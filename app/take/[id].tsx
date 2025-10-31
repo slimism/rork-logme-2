@@ -49,6 +49,33 @@ export default function EditTakeScreen() {
   const didCameraShiftRef = useRef(false);
   const shiftedCamerasRef = useRef<Set<string>>(new Set());
 
+  // Helper: snapshot current shot file numbers for debug
+  const logShotSnapshot = React.useCallback((label: string) => {
+    try {
+      const scene = takeData.sceneNumber;
+      const shot = takeData.shotNumber;
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      const sheets = useProjectStore.getState().logSheets
+        .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
+        .sort((a, b) => (parseInt(String(a.data?.takeNumber || '0'), 10) - parseInt(String(b.data?.takeNumber || '0'), 10)));
+      const rows = sheets.map(s => {
+        const sound = s.data?.soundFile || `${s.data?.sound_from ?? ''}-${s.data?.sound_to ?? ''}`;
+        const cams: string[] = [];
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const k = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
+          const fromK = `camera${i}_from`;
+          const toK = `camera${i}_to`;
+          const val = (s.data?.[k] as string) || (s.data?.[fromK] && s.data?.[toK] ? `${s.data?.[fromK]}-${s.data?.[toK]}` : '');
+          cams.push(val || '');
+        }
+        return { id: s.id, take: s.data?.takeNumber, sound, cams };
+      });
+      console.log('SNAPSHOT - ' + label, { rows });
+    } catch (e) {
+      console.log('SNAPSHOT error', e);
+    }
+  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber]);
+
   // After shifting ranges, normalize all subsequent single camera files to be strictly sequential
   const normalizeSequentialSinglesAfterRanges = React.useCallback(async () => {
     try {
@@ -77,6 +104,7 @@ export default function EditTakeScreen() {
       };
 
       const updates: Array<{ id: string; data: Record<string, any> }> = [];
+      const soundChanges: Array<{ id: string; take?: string; from: number; to: number }> = [];
 
       // Sound normalization: walk forward, set to prev (range upper or single)+1
       let prevSound = 0;
@@ -98,6 +126,7 @@ export default function EditTakeScreen() {
           const newData: Record<string, any> = { ...sheet.data, soundFile: String(desired).padStart(4, '0') };
           updates.push({ id: sheet.id, data: newData });
           console.log('SEQ NORMALIZE (sound) - update single (prev-based)', { id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev: prevSound });
+          soundChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
         }
         prevSound = desired;
       }
@@ -105,6 +134,7 @@ export default function EditTakeScreen() {
       // New approach: strictly walk forward and base next single on the previous record
       for (let i = 1; i <= cameraConfiguration; i++) {
         let prev = 0; // previous effective value (range upper or single)
+        const camChanges: Array<{ id: string; take?: string; from: number; to: number }> = [];
         for (let idx = 0; idx < allInShot.length; idx++) {
           const sheet = allInShot[idx];
           if (hasRangeFor(sheet, i)) {
@@ -121,14 +151,22 @@ export default function EditTakeScreen() {
             const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
             updates.push({ id: sheet.id, data: newData });
             console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev });
+            camChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
           }
           prev = desired;
+        }
+        if (camChanges.length) {
+          console.log('SEQ NORMALIZE - summary (camera ' + i + ')', { camChanges });
         }
       }
 
       for (const u of updates) {
         await updateLogSheet(u.id, u.data);
       }
+      if (soundChanges.length) {
+        console.log('SEQ NORMALIZE - summary (sound)', { soundChanges });
+      }
+      logShotSnapshot('AFTER SEQ NORMALIZE');
     } catch (e) {
       console.log('SEQ NORMALIZE error', e);
     }
@@ -2266,7 +2304,9 @@ This would break the logging logic and create inconsistencies in the file number
     // Ensure last take is normalized before exit
     await tailNormalizeLastTake();
     await normalizeSequentialSinglesAfterRanges();
+    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithSelectiveDuplicateHandling)');
     console.log('SEQ NORMALIZE - INVOKE (handleSaveWithSelectiveDuplicateHandling:beforeBack)');
+    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithDuplicateHandling)');
     console.log('SEQ NORMALIZE - INVOKE (handleSaveWithDuplicateHandling:beforeBack)');
     await normalizeSequentialSinglesAfterRanges();
     await tailNormalizeLastTake();
