@@ -3740,6 +3740,7 @@ This would break the logging logic and create inconsistencies in the file number
     
     // Use Promise to ensure Zustand state has propagated
     await new Promise(resolve => setTimeout(resolve, 0));
+    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithDuplicatePair)');
     
     // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
@@ -3829,6 +3830,9 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
+    await tailNormalizeLastTake();
+    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithDuplicatePair:beforeBack)');
+    await normalizeSequentialSinglesAfterRanges();
     await tailNormalizeLastTake();
     router.back();
   };
