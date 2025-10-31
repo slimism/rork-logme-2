@@ -207,23 +207,32 @@ export const useProjectStore = create<ProjectState>()(
                 return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
               };
 
-              // Sound sequential normalize with classification awareness and SFX ceiling
-              const sfxMax = mergedLogSheets.reduce((m, s) => {
-                const d: any = s.data || {};
-                if (d.sceneNumber === scene && d.shotNumber === shot && d.classification === 'SFX') {
-                  const n = typeof d.soundFile === 'string' ? (parseInt(d.soundFile, 10) || 0) : 0;
-                  return Math.max(m, n);
-                }
-                return m;
-              }, 0);
-              let prevSound = sfxMax;
-              for (const s of sameShot) {
+              // Sound sequential normalize with classification awareness and SFX order baseline
+              // Build ordered list including SFX/Ambience by createdAt (or id fallback)
+              const sameShotAll = mergedLogSheets
+                .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot)
+                .sort((a, b) => {
+                  const aT = a.updatedAt || a.createdAt || '';
+                  const bT = b.updatedAt || b.createdAt || '';
+                  if (aT && bT) return aT.localeCompare(bT);
+                  return (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0);
+                });
+
+              let prevSound = 0;
+              for (const s of sameShotAll) {
                 const dataAny = (s.data as any) || {};
                 const classification = (dataAny.classification || '').toString();
                 const sf = dataAny.soundFile as string | undefined;
                 const sFrom = dataAny.sound_from as string | undefined;
                 const sTo = dataAny.sound_to as string | undefined;
                 const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
+
+                // SFX and Ambience act as anchors; if they have a sound, set prevSound to that
+                if ((classification === 'SFX' || classification === 'Ambience')) {
+                  const n = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
+                  if (n > 0) prevSound = Math.max(prevSound, n);
+                  continue;
+                }
 
                 if (hasSoundRange) {
                   prevSound = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
@@ -232,11 +241,9 @@ export const useProjectStore = create<ProjectState>()(
 
                 const isBlank = !sf || sf.trim().length === 0;
                 const isWaste = classification === 'Waste';
-                // If Waste and blank, preserve blank and do not advance prevSound
                 if (isWaste && isBlank) {
-                  continue;
+                  continue; // preserve blank
                 }
-
                 const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
                 const desired = (prevSound || 0) + 1;
                 if (desired > 0 && current !== desired) {
