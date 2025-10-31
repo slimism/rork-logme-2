@@ -89,9 +89,9 @@ export default function EditTakeScreen() {
         return highest;
       };
 
+      // Do not modify sound here; sound shifting already handled earlier
       const highestSound = highestForField('soundFile');
-      console.log('TAIL NORMALIZE - highestSound', { highestSound });
-      updatedTail.soundFile = String((highestSound || 0) + 1).padStart(4, '0');
+      console.log('TAIL NORMALIZE - highestSound (no change applied here)', { highestSound });
 
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
       if (cameraConfiguration === 1) {
