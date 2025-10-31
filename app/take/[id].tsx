@@ -83,8 +83,7 @@ export default function EditTakeScreen() {
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
-      // Allow any prior store updates (range shifts) to settle
-      await new Promise(resolve => setTimeout(resolve, 80));
+      // Removed settle delay; normalization now relies on store-level invariants
       const latestSheets = useProjectStore.getState().logSheets;
       const allInShot = latestSheets
         .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
@@ -179,7 +178,6 @@ export default function EditTakeScreen() {
   const tailNormalizeLastTake = React.useCallback(async () => {
     try {
       console.log('TAIL NORMALIZE - START');
-      await new Promise(resolve => setTimeout(resolve, 120));
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
       const latestSheets = useProjectStore.getState().logSheets;
@@ -2195,8 +2193,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Save the current logSheet with edited values FIRST
     await updateLogSheet(logSheet.id, updatedData);
     
-    // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
-    await new Promise(resolve => setTimeout(resolve, 0));
+    // Removed microtask settle; store now merges atomically
     
     // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
     // This ensures the current logSheet (with edited values) gets skipped
@@ -2216,8 +2213,6 @@ This would break the logging logic and create inconsistencies in the file number
     // Normalize tail (last take) to next sequential single numbers after shifts
     try {
       console.log('TAIL NORMALIZE - START');
-      // small delay to ensure prior shifts propagated
-      await new Promise(resolve => setTimeout(resolve, 120));
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
       // Fetch latest state to avoid stale capture
@@ -3741,8 +3736,7 @@ This would break the logging logic and create inconsistencies in the file number
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
     
-    // Use Promise to ensure Zustand state has propagated
-    await new Promise(resolve => setTimeout(resolve, 0));
+    // Removed microtask settle; store now merges atomically
     logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithDuplicatePair)');
     
     // Call updateFileNumbers to shift subsequent entries if needed
