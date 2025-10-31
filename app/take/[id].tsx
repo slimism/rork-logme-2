@@ -79,7 +79,8 @@ export default function EditTakeScreen() {
             const i = camIdx || 1;
             const fromKey = `camera${i}_from`;
             const toKey = `camera${i}_to`;
-            const singleKey = i === 1 && (camCount || 1) === 1 ? 'cameraFile' : `cameraFile${i}`;
+            const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+            const singleKey = i === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${i}`;
             if (typeof data[fromKey] === 'string') highest = Math.max(highest, parseInt(data[fromKey], 10) || 0);
             if (typeof data[toKey] === 'string') highest = Math.max(highest, parseInt(data[toKey], 10) || 0);
             if (typeof data[singleKey] === 'string') highest = Math.max(highest, parseInt(data[singleKey], 10) || 0);
@@ -115,7 +116,7 @@ export default function EditTakeScreen() {
     } catch (e) {
       console.log('TAIL NORMALIZE error', e);
     }
-  }, [camCount, logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
+  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
   const savedFieldValues = useRef<Record<string, string>>({});
 
   const { width, height } = useWindowDimensions();
