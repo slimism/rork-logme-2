@@ -2043,7 +2043,9 @@ This would break the logging logic and create inconsistencies in the file number
       await new Promise(resolve => setTimeout(resolve, 20));
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
-      const allInShot = logSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+      // Fetch latest state to avoid stale capture
+      const latestSheets = useProjectStore.getState().logSheets;
+      const allInShot = latestSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
       const maxTake = allInShot.reduce((m, s) => {
         const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
         return Number.isNaN(tn) ? m : Math.max(m, tn);
