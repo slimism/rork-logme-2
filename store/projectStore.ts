@@ -207,43 +207,38 @@ export const useProjectStore = create<ProjectState>()(
                 return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
               };
 
-              // Sound sequential normalize with classification awareness and SFX order baseline
-              // Build ordered list including SFX/Ambience by createdAt (or id fallback)
-              const sameShotAll = mergedLogSheets
+              // Sound sequential normalize with classification awareness and SFX anchors by time
+              // Prepare SFX/Ambience anchors with timestamps
+              const anchors = mergedLogSheets
                 .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot)
-                .sort((a, b) => {
-                  const aT = a.updatedAt || a.createdAt || '';
-                  const bT = b.updatedAt || b.createdAt || '';
-                  if (aT && bT) return aT.localeCompare(bT);
-                  return (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0);
-                });
-
+                .map(s => ({
+                  id: s.id,
+                  ts: s.updatedAt || s.createdAt || '',
+                  type: ((s.data as any)?.classification || '').toString(),
+                  sound: typeof (s.data as any)?.soundFile === 'string' ? (parseInt((s.data as any)?.soundFile, 10) || 0) : 0,
+                }));
+              // Loop normals by takeNumber, but before each, set baseline to max anchor ts <= current ts
               let prevSound = 0;
-              for (const s of sameShotAll) {
+              for (const s of sameShot) {
+                const currentTs = (s.updatedAt || s.createdAt || '');
+                const anchorMax = anchors
+                  .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
+                  .reduce((m, a) => Math.max(m, a.sound), 0);
+                prevSound = Math.max(prevSound, anchorMax);
+
                 const dataAny = (s.data as any) || {};
                 const classification = (dataAny.classification || '').toString();
                 const sf = dataAny.soundFile as string | undefined;
                 const sFrom = dataAny.sound_from as string | undefined;
                 const sTo = dataAny.sound_to as string | undefined;
                 const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
-
-                // SFX and Ambience act as anchors; if they have a sound, set prevSound to that
-                if ((classification === 'SFX' || classification === 'Ambience')) {
-                  const n = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
-                  if (n > 0) prevSound = Math.max(prevSound, n);
-                  continue;
-                }
-
                 if (hasSoundRange) {
-                  prevSound = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
+                  prevSound = Math.max(prevSound, Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0));
                   continue;
                 }
-
                 const isBlank = !sf || sf.trim().length === 0;
                 const isWaste = classification === 'Waste';
-                if (isWaste && isBlank) {
-                  continue; // preserve blank
-                }
+                if (isWaste && isBlank) continue; // preserve blank
                 const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
                 const desired = (prevSound || 0) + 1;
                 if (desired > 0 && current !== desired) {
