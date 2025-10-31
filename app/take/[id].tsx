@@ -52,11 +52,12 @@ export default function EditTakeScreen() {
   // After shifting ranges, normalize all subsequent single camera files to be strictly sequential
   const normalizeSequentialSinglesAfterRanges = React.useCallback(async () => {
     try {
+      console.log('SEQ NORMALIZE - START');
       const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
       // Allow any prior store updates (range shifts) to settle
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, 80));
       const latestSheets = useProjectStore.getState().logSheets;
       const allInShot = latestSheets
         .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
@@ -76,6 +77,30 @@ export default function EditTakeScreen() {
       };
 
       const updates: Array<{ id: string; data: Record<string, any> }> = [];
+
+      // Sound normalization: walk forward, set to prev (range upper or single)+1
+      let prevSound = 0;
+      for (let idx = 0; idx < allInShot.length; idx++) {
+        const sheet = allInShot[idx];
+        const sFrom = sheet.data?.sound_from;
+        const sTo = sheet.data?.sound_to;
+        const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
+        if (hasSoundRange) {
+          const upper = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
+          prevSound = upper;
+          console.log('SEQ NORMALIZE (sound) - seen range (sets prev)', { id: sheet.id, take: sheet.data?.takeNumber, upper });
+          continue;
+        }
+        const raw = sheet.data?.soundFile;
+        const current = typeof raw === 'string' ? (parseInt(raw, 10) || 0) : 0;
+        const desired = (prevSound || 0) + 1;
+        if (desired > 0 && current !== desired) {
+          const newData: Record<string, any> = { ...sheet.data, soundFile: String(desired).padStart(4, '0') };
+          updates.push({ id: sheet.id, data: newData });
+          console.log('SEQ NORMALIZE (sound) - update single (prev-based)', { id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev: prevSound });
+        }
+        prevSound = desired;
+      }
 
       // New approach: strictly walk forward and base next single on the previous record
       for (let i = 1; i <= cameraConfiguration; i++) {
