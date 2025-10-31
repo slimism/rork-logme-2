@@ -2252,6 +2252,8 @@ This would break the logging logic and create inconsistencies in the file number
     // Ensure last take is normalized before exit
     await tailNormalizeLastTake();
     await normalizeSequentialSinglesAfterRanges();
+    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithSelectiveDuplicateHandling:beforeBack)');
+    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithDuplicateHandling:beforeBack)');
     await normalizeSequentialSinglesAfterRanges();
     await tailNormalizeLastTake();
     router.back();
@@ -3267,6 +3269,8 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       updateLogSheet(logSheet.id, updatedData);
+      console.log('SEQ NORMALIZE - INVOKE (saveNormally:beforeBack)');
+      await normalizeSequentialSinglesAfterRanges();
       await tailNormalizeLastTake();
       router.back();
     } catch (error) {
