@@ -3193,6 +3193,7 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       updateLogSheet(logSheet.id, updatedData);
+      await tailNormalizeLastTake();
       router.back();
     } catch (error) {
       console.error('Error saving take:', error);
