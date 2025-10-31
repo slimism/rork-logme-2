@@ -195,6 +195,7 @@ export const useProjectStore = create<ProjectState>()(
               const sameShot = mergedLogSheets
                 .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot && (s.data as any)?.classification !== 'Ambience' && (s.data as any)?.classification !== 'SFX')
                 .sort((a, b) => (parseInt(String((a.data as any)?.takeNumber || '0'), 10) - parseInt(String((b.data as any)?.takeNumber || '0'), 10)));
+              console.log('[store] sameShot list', { ids: sameShot.map(s => s.id), takes: sameShot.map(s => (s.data as any)?.takeNumber) });
 
               const hasRangeFor = (sheet: any, i: number) => {
                 const fromKey = `camera${i}_from`;
@@ -217,6 +218,8 @@ export const useProjectStore = create<ProjectState>()(
                   type: ((s.data as any)?.classification || '').toString(),
                   sound: typeof (s.data as any)?.soundFile === 'string' ? (parseInt((s.data as any)?.soundFile, 10) || 0) : 0,
                 }));
+              const anchorSummary = anchors.filter(a => a.type === 'SFX' || a.type === 'Ambience').sort((a,b)=> (a.ts||'').localeCompare(b.ts||''));
+              console.log('[store] anchors SFX/Ambience', { anchors: anchorSummary });
               // Loop normals by takeNumber, but before each, set baseline to max anchor ts <= current ts
               let prevSound = 0;
               for (const s of sameShot) {
@@ -224,6 +227,7 @@ export const useProjectStore = create<ProjectState>()(
                 const anchorMax = anchors
                   .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
                   .reduce((m, a) => Math.max(m, a.sound), 0);
+                const prevBeforeAnchor = prevSound;
                 prevSound = Math.max(prevSound, anchorMax);
 
                 const dataAny = (s.data as any) || {};
@@ -233,14 +237,20 @@ export const useProjectStore = create<ProjectState>()(
                 const sTo = dataAny.sound_to as string | undefined;
                 const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
                 if (hasSoundRange) {
-                  prevSound = Math.max(prevSound, Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0));
+                  const upper = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
+                  console.log('[store] sound seq (range)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, rangeFrom: sFrom, rangeTo: sTo, setPrevTo: Math.max(prevSound, upper) });
+                  prevSound = Math.max(prevSound, upper);
                   continue;
                 }
                 const isBlank = !sf || sf.trim().length === 0;
                 const isWaste = classification === 'Waste';
-                if (isWaste && isBlank) continue; // preserve blank
+                if (isWaste && isBlank) {
+                  console.log('[store] sound seq (waste blank preserved)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound });
+                  continue; // preserve blank
+                }
                 const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
                 const desired = (prevSound || 0) + 1;
+                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
                 if (desired > 0 && current !== desired) {
                   dataAny.soundFile = String(desired).padStart(4, '0');
                 }
