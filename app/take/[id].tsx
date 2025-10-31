@@ -49,6 +49,77 @@ export default function EditTakeScreen() {
   const didCameraShiftRef = useRef(false);
   const shiftedCamerasRef = useRef<Set<string>>(new Set());
 
+  // After shifting ranges, normalize all subsequent single camera files to be strictly sequential
+  const normalizeSequentialSinglesAfterRanges = React.useCallback(async () => {
+    try {
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      const scene = takeData.sceneNumber;
+      const shot = takeData.shotNumber;
+      const latestSheets = useProjectStore.getState().logSheets;
+      const allInShot = latestSheets
+        .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
+        .sort((a, b) => (parseInt(String(a.data?.takeNumber || '0'), 10) - parseInt(String(b.data?.takeNumber || '0'), 10)));
+
+      console.log('SEQ NORMALIZE - snapshot', { ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
+
+      const getRangeUpperBound = (sheet: any, idx: number) => {
+        const toKey = `camera${idx}_to`;
+        const v = sheet.data?.[toKey];
+        return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
+      };
+      const getSingleValue = (sheet: any, idx: number) => {
+        const key = cameraConfiguration === 1 && idx === 1 ? 'cameraFile' : `cameraFile${idx}`;
+        const v = sheet.data?.[key];
+        return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
+      };
+      const hasRangeFor = (sheet: any, idx: number) => {
+        const fromKey = `camera${idx}_from`;
+        const toKey = `camera${idx}_to`;
+        return typeof sheet.data?.[fromKey] === 'string' && typeof sheet.data?.[toKey] === 'string';
+      };
+
+      const basePerCam: number[] = new Array(cameraConfiguration).fill(0);
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        let base = 0;
+        allInShot.forEach(s => {
+          const ub = getRangeUpperBound(s, i);
+          base = Math.max(base, ub);
+        });
+        basePerCam[i - 1] = base;
+        console.log('SEQ NORMALIZE - base per cam', { i, base });
+      }
+
+      const cursorPerCam: number[] = basePerCam.map(b => (b || 0) + 1);
+      const updates: Array<{ id: string; data: Record<string, any> }> = [];
+
+      for (const sheet of allInShot) {
+        const newData: Record<string, any> = { ...sheet.data };
+        let changed = false;
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          if (hasRangeFor(sheet, i)) continue; // keep ranges as-is
+          const key = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
+          const current = getSingleValue(sheet, i);
+          const nextVal = cursorPerCam[i - 1];
+          if (nextVal > 0 && current !== nextVal) {
+            newData[key] = String(nextVal).padStart(4, '0');
+            changed = true;
+          }
+          cursorPerCam[i - 1] = nextVal + 1;
+        }
+        if (changed) {
+          console.log('SEQ NORMALIZE - applying for sheet', { id: sheet.id, take: sheet.data?.takeNumber, newData });
+          updates.push({ id: sheet.id, data: newData });
+        }
+      }
+
+      for (const u of updates) {
+        await updateLogSheet(u.id, u.data);
+      }
+    } catch (e) {
+      console.log('SEQ NORMALIZE error', e);
+    }
+  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
+
   // Normalize the last take in the current Scene/Shot so single camera files advance to next numbers
   const tailNormalizeLastTake = React.useCallback(async () => {
     try {
@@ -2180,6 +2251,8 @@ This would break the logging logic and create inconsistencies in the file number
     await tailNormalizeLastTake();
     // Ensure last take is normalized before exit
     await tailNormalizeLastTake();
+    await normalizeSequentialSinglesAfterRanges();
+    await normalizeSequentialSinglesAfterRanges();
     await tailNormalizeLastTake();
     router.back();
   };
