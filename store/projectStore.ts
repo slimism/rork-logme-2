@@ -207,10 +207,10 @@ export const useProjectStore = create<ProjectState>()(
                 return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
               };
 
-              // Sound sequential normalize with classification awareness and SFX anchors by time
-              // Prepare SFX/Ambience anchors with timestamps
+              // Sound sequential normalize with classification awareness and SFX/Ambience anchors across the entire project timeline
+              // Prepare SFX/Ambience anchors (project-wide), use timestamps for ordering
               const anchors = mergedLogSheets
-                .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot)
+                .filter(s => s.projectId === projectId)
                 .map(s => ({
                   id: s.id,
                   ts: s.updatedAt || s.createdAt || '',
