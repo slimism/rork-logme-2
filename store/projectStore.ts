@@ -207,8 +207,16 @@ export const useProjectStore = create<ProjectState>()(
                 return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
               };
 
-              // Sound sequential normalize with classification awareness
-              let prevSound = 0;
+              // Sound sequential normalize with classification awareness and SFX ceiling
+              const sfxMax = mergedLogSheets.reduce((m, s) => {
+                const d: any = s.data || {};
+                if (d.sceneNumber === scene && d.shotNumber === shot && d.classification === 'SFX') {
+                  const n = typeof d.soundFile === 'string' ? (parseInt(d.soundFile, 10) || 0) : 0;
+                  return Math.max(m, n);
+                }
+                return m;
+              }, 0);
+              let prevSound = sfxMax;
               for (const s of sameShot) {
                 const dataAny = (s.data as any) || {};
                 const classification = (dataAny.classification || '').toString();
