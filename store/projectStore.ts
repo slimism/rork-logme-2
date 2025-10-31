@@ -331,7 +331,10 @@ export const useProjectStore = create<ProjectState>()(
                 logId: logSheet.id,
                 raw,
                 rangeFrom: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_from`],
-                rangeTo: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_to`]
+                rangeTo: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_to`],
+                cameraFile1: (data as any)['cameraFile1'],
+                cameraFile2: (data as any)['cameraFile2'],
+                cameraFile3: (data as any)['cameraFile3']
               });
               if (typeof raw === 'string' && raw.length > 0) {
                 if (raw.includes('-')) {

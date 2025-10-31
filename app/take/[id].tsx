@@ -149,8 +149,11 @@ export default function EditTakeScreen() {
           const desired = (prev || 0) + 1;
           if (current !== desired) {
             const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
+            // Ensure any lingering range fields for this camera are cleared to avoid UI/cleanup overwrites
+            delete newData[`camera${i}_from`];
+            delete newData[`camera${i}_to`];
             updates.push({ id: sheet.id, data: newData });
-            console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev });
+            console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev, keySet: key });
             camChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
           }
           prev = desired;
