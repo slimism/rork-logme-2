@@ -207,23 +207,34 @@ export const useProjectStore = create<ProjectState>()(
                 return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
               };
 
-              // Sound sequential normalize
+              // Sound sequential normalize with classification awareness
               let prevSound = 0;
               for (const s of sameShot) {
-                const sf = (s.data as any)?.soundFile;
-                const sFrom = (s.data as any)?.sound_from;
-                const sTo = (s.data as any)?.sound_to;
+                const dataAny = (s.data as any) || {};
+                const classification = (dataAny.classification || '').toString();
+                const sf = dataAny.soundFile as string | undefined;
+                const sFrom = dataAny.sound_from as string | undefined;
+                const sTo = dataAny.sound_to as string | undefined;
                 const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
+
                 if (hasSoundRange) {
                   prevSound = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
-                } else {
-                  const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
-                  const desired = (prevSound || 0) + 1;
-                  if (desired > 0 && current !== desired) {
-                    (s.data as any).soundFile = String(desired).padStart(4, '0');
-                  }
-                  prevSound = desired;
+                  continue;
                 }
+
+                const isBlank = !sf || sf.trim().length === 0;
+                const isWaste = classification === 'Waste';
+                // If Waste and blank, preserve blank and do not advance prevSound
+                if (isWaste && isBlank) {
+                  continue;
+                }
+
+                const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
+                const desired = (prevSound || 0) + 1;
+                if (desired > 0 && current !== desired) {
+                  dataAny.soundFile = String(desired).padStart(4, '0');
+                }
+                prevSound = desired;
               }
 
               // Per-camera sequential normalize

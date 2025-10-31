@@ -103,32 +103,6 @@ export default function EditTakeScreen() {
       };
 
       const updates: Array<{ id: string; data: Record<string, any> }> = [];
-      const soundChanges: Array<{ id: string; take?: string; from: number; to: number }> = [];
-
-      // Sound normalization: walk forward, set to prev (range upper or single)+1
-      let prevSound = 0;
-      for (let idx = 0; idx < allInShot.length; idx++) {
-        const sheet = allInShot[idx];
-        const sFrom = sheet.data?.sound_from;
-        const sTo = sheet.data?.sound_to;
-        const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
-        if (hasSoundRange) {
-          const upper = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
-          prevSound = upper;
-          console.log('SEQ NORMALIZE (sound) - seen range (sets prev)', { id: sheet.id, take: sheet.data?.takeNumber, upper });
-          continue;
-        }
-        const raw = sheet.data?.soundFile;
-        const current = typeof raw === 'string' ? (parseInt(raw, 10) || 0) : 0;
-        const desired = (prevSound || 0) + 1;
-        if (desired > 0 && current !== desired) {
-          const newData: Record<string, any> = { ...sheet.data, soundFile: String(desired).padStart(4, '0') };
-          updates.push({ id: sheet.id, data: newData });
-          console.log('SEQ NORMALIZE (sound) - update single (prev-based)', { id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev: prevSound });
-          soundChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
-        }
-        prevSound = desired;
-      }
 
       // New approach: strictly walk forward and base next single on the previous record
       for (let i = 1; i <= cameraConfiguration; i++) {
@@ -165,9 +139,7 @@ export default function EditTakeScreen() {
       for (const u of updates) {
         await updateLogSheet(u.id, u.data);
       }
-      if (soundChanges.length) {
-        console.log('SEQ NORMALIZE - summary (sound)', { soundChanges });
-      }
+      // Sound normalization is handled at store level to respect classification (e.g., Waste blank)
       logShotSnapshot('AFTER SEQ NORMALIZE');
     } catch (e) {
       console.log('SEQ NORMALIZE error', e);
