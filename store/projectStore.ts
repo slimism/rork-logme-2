@@ -170,22 +170,90 @@ export const useProjectStore = create<ProjectState>()(
         console.log('  data.cameraFile3:', (data as any)?.cameraFile3);
         console.log('  data.classification:', data.classification);
         
-        set((state) => ({
-          logSheets: state.logSheets.map((logSheet) => {
+        set((state) => {
+          // First pass: merge payload into target logSheet
+          const mergedLogSheets = state.logSheets.map((logSheet) => {
             if (logSheet.id !== id) return logSheet;
-            // Merge strategy: combine existing data with incoming; explicit null deletes the key
             const merged: Record<string, any> = { ...(logSheet.data || {}), ...(data || {}) };
             Object.keys(data || {}).forEach((k) => {
-              if (data[k] === null) {
-                delete merged[k];
-              }
+              if (data[k] === null) delete merged[k];
             });
             console.log('=== Merged updateLogSheet ===');
             console.log('  incoming keys:', Object.keys(data || {}));
             console.log('  resulting keys:', Object.keys(merged));
             return { ...logSheet, data: merged, updatedAt: new Date().toISOString() };
-          }),
-        }));
+          });
+
+          // Second pass: enforce sequential singles across the entire shot (store-level invariant)
+          try {
+            const target = mergedLogSheets.find(s => s.id === id);
+            const scene = (target?.data as any)?.sceneNumber;
+            const shot = (target?.data as any)?.shotNumber;
+            if (target && scene && shot) {
+              const projectId = target.projectId;
+              const cameraConfiguration = ((state.projects.find(p => p.id === projectId)?.settings)?.cameraConfiguration || 1);
+              const sameShot = mergedLogSheets
+                .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot && (s.data as any)?.classification !== 'Ambience' && (s.data as any)?.classification !== 'SFX')
+                .sort((a, b) => (parseInt(String((a.data as any)?.takeNumber || '0'), 10) - parseInt(String((b.data as any)?.takeNumber || '0'), 10)));
+
+              const hasRangeFor = (sheet: any, i: number) => {
+                const fromKey = `camera${i}_from`;
+                const toKey = `camera${i}_to`;
+                return typeof sheet.data?.[fromKey] === 'string' && typeof sheet.data?.[toKey] === 'string';
+              };
+              const getRangeUpper = (sheet: any, i: number) => {
+                const toKey = `camera${i}_to`;
+                const v = sheet.data?.[toKey];
+                return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
+              };
+
+              // Sound sequential normalize
+              let prevSound = 0;
+              for (const s of sameShot) {
+                const sf = (s.data as any)?.soundFile;
+                const sFrom = (s.data as any)?.sound_from;
+                const sTo = (s.data as any)?.sound_to;
+                const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
+                if (hasSoundRange) {
+                  prevSound = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
+                } else {
+                  const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
+                  const desired = (prevSound || 0) + 1;
+                  if (desired > 0 && current !== desired) {
+                    (s.data as any).soundFile = String(desired).padStart(4, '0');
+                  }
+                  prevSound = desired;
+                }
+              }
+
+              // Per-camera sequential normalize
+              for (let i = 1; i <= cameraConfiguration; i++) {
+                let prev = 0;
+                const key = (i === 1 && cameraConfiguration === 1) ? 'cameraFile' : `cameraFile${i}`;
+                for (const s of sameShot) {
+                  if (hasRangeFor(s, i)) {
+                    prev = Math.max(prev, getRangeUpper(s, i));
+                    continue;
+                  }
+                  const currentStr = (s.data as any)?.[key];
+                  const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
+                  const desired = (prev || 0) + 1;
+                  if (desired > 0 && current !== desired) {
+                    (s.data as any)[key] = String(desired).padStart(4, '0');
+                    // ensure lingering range keys cleared
+                    delete (s.data as any)[`camera${i}_from`];
+                    delete (s.data as any)[`camera${i}_to`];
+                  }
+                  prev = desired;
+                }
+              }
+            }
+          } catch (e) {
+            console.log('[store] sequential normalize error', e);
+          }
+
+          return { logSheets: mergedLogSheets };
+        });
         
         const updated = get().logSheets.find(sheet => sheet.id === id);
         console.log('=== After store update ===');
