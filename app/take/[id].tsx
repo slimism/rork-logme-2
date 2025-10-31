@@ -216,26 +216,8 @@ export default function EditTakeScreen() {
       const highestSound = highestForField('soundFile');
       console.log('TAIL NORMALIZE - highestSound (no change applied here)', { highestSound });
 
-      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-      if (cameraConfiguration === 1) {
-        const highestCam = highestForField('camera', 1);
-        console.log('TAIL NORMALIZE - highestCam1', { highestCam });
-        updatedTail.cameraFile = String((highestCam || 0) + 1).padStart(4, '0');
-        delete updatedTail.camera1_from;
-        delete updatedTail.camera1_to;
-      } else {
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          const highestCam = highestForField('camera', i);
-          console.log('TAIL NORMALIZE - highestCam', { i, highestCam });
-          const key = `cameraFile${i}`;
-          updatedTail[key] = String((highestCam || 0) + 1).padStart(4, '0');
-          delete updatedTail[`camera${i}_from`];
-          delete updatedTail[`camera${i}_to`];
-        }
-      }
-
-      console.log('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
-      await updateLogSheet(last.id, updatedTail);
+      // Skip modifying cameras here to avoid overriding sequenced values
+      console.log('TAIL NORMALIZE - no-op for camera updates');
     } catch (e) {
       console.log('TAIL NORMALIZE error', e);
     }
