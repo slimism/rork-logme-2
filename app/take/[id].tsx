@@ -2040,12 +2040,13 @@ This would break the logging logic and create inconsistencies in the file number
     try {
       console.log('TAIL NORMALIZE - START');
       // small delay to ensure prior shifts propagated
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, 120));
       const scene = takeData.sceneNumber;
       const shot = takeData.shotNumber;
       // Fetch latest state to avoid stale capture
       const latestSheets = useProjectStore.getState().logSheets;
       const allInShot = latestSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+      console.log('TAIL NORMALIZE - snapshot', { count: allInShot.length, ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
       const maxTake = allInShot.reduce((m, s) => {
         const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
         return Number.isNaN(tn) ? m : Math.max(m, tn);
@@ -2078,17 +2079,20 @@ This would break the logging logic and create inconsistencies in the file number
 
         // sound
         const highestSound = highestForField('soundFile');
+        console.log('TAIL NORMALIZE - highestSound', { highestSound });
         updatedTail.soundFile = String((highestSound || 0) + 1).padStart(4, '0');
 
         // cameras
         if (camCount === 1) {
           const highestCam = highestForField('camera', 1);
+          console.log('TAIL NORMALIZE - highestCam1', { highestCam });
           updatedTail.cameraFile = String((highestCam || 0) + 1).padStart(4, '0');
           // clear any range keys if present for tail to enforce single
           delete updatedTail.camera1_from; delete updatedTail.camera1_to;
         } else {
           for (let i = 1; i <= camCount; i++) {
             const highestCam = highestForField('camera', i);
+            console.log('TAIL NORMALIZE - highestCam', { i, highestCam });
             const key = `cameraFile${i}`;
             updatedTail[key] = String((highestCam || 0) + 1).padStart(4, '0');
             delete updatedTail[`camera${i}_from`];
