@@ -1889,8 +1889,8 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
         didSoundShiftRef.current = true;
         // Always use soundStart (the beginning of the duplicate), not the end of the range
-        // updateFileNumbers will skip the first occurrence and shift everything else
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+        // Skipped: rely on store-level normalization for sound sequencing
+        console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2471,8 +2471,8 @@ This would break the logging logic and create inconsistencies in the file number
           })();
           if (!disabledFields.has('soundFile') && !didSoundShiftRef.current) {
             didSoundShiftRef.current = true;
-            // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+            // Skipped: rely on store-level normalization for sound sequencing
+            console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2544,14 +2544,15 @@ This would break the logging logic and create inconsistencies in the file number
               didSoundShiftRef.current = true;
               const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
               const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
-              console.debug('SHIFT soundFile', {
+              console.debug('SHIFT soundFile (skipped direct shift)', {
                 start,
                 soundDelta,
                 targetRange,
                 editedRange: rangeData['soundFile'],
                 showRange: showRangeMode['soundFile']
               });
-              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, existingEntry.id);
+              // Skipped: rely on store-level normalization for sound sequencing
+              console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
             }
           }
         }
@@ -2884,8 +2885,8 @@ This would break the logging logic and create inconsistencies in the file number
           })();
           if (!disabledFields.has('soundFile') && !didSoundShiftRef.current) {
             didSoundShiftRef.current = true;
-            // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+            // Skipped: rely on store-level normalization for sound sequencing
+            console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2938,7 +2939,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              { if (!didSoundShiftRef.current) { didSoundShiftRef.current = true; const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, existingEntry.id); } }
+              { if (!didSoundShiftRef.current) { didSoundShiftRef.current = true; const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.', { start, soundDelta, targetRange }); } }
             }
           }
         }
@@ -3714,8 +3715,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
       didSoundShiftRef.current = true;
-      // Always use soundStart (the beginning of the duplicate), not the end of the range
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+      console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
     }
     
     if (camCount === 1) {

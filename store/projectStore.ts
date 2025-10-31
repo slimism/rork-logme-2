@@ -220,15 +220,14 @@ export const useProjectStore = create<ProjectState>()(
                 }));
               const anchorSummary = anchors.filter(a => a.type === 'SFX' || a.type === 'Ambience').sort((a,b)=> (a.ts||'').localeCompare(b.ts||''));
               console.log('[store] anchors SFX/Ambience', { anchors: anchorSummary });
-              // Loop normals by takeNumber, but before each, set baseline to max anchor ts <= current ts
-              let prevSound = 0;
+              // Loop by takeNumber; maintain shot-local prev only. Use anchors ONLY to seed blanks when there is no prior in-shot sound.
+              let prevSound = 0; // shot-local previous (range upper or single)
               for (const s of sameShot) {
                 const currentTs = (s.updatedAt || s.createdAt || '');
                 const anchorMax = anchors
                   .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
                   .reduce((m, a) => Math.max(m, a.sound), 0);
                 const prevBeforeAnchor = prevSound;
-                prevSound = Math.max(prevSound, anchorMax);
 
                 const dataAny = (s.data as any) || {};
                 const classification = (dataAny.classification || '').toString();
@@ -249,12 +248,21 @@ export const useProjectStore = create<ProjectState>()(
                   continue; // preserve blank
                 }
                 const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
-                const desired = (prevSound || 0) + 1;
-                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
-                if (desired > 0 && current !== desired) {
-                  dataAny.soundFile = String(desired).padStart(4, '0');
+                // Base desired solely on in-shot previous; use anchor only to seed when no in-shot previous and current is blank
+                let desiredBase = prevSound;
+                if (desiredBase === 0 && isBlank && anchorMax > 0) {
+                  console.log('[store] sound seq (seed from anchor for blank)', { id: s.id, take: (s.data as any)?.takeNumber, anchorMax });
+                  desiredBase = anchorMax;
                 }
-                prevSound = desired;
+                const desired = (desiredBase || 0) + 1;
+                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
+                if (desired > 0) {
+                  // Only change when current does not match expected in-shot sequence
+                  if (current !== desired) {
+                    dataAny.soundFile = String(desired).padStart(4, '0');
+                  }
+                  prevSound = desired;
+                }
               }
 
               // Per-camera sequential normalize
@@ -495,6 +503,11 @@ export const useProjectStore = create<ProjectState>()(
               }
 
               if (fieldId === 'soundFile') {
+                // Do not shift SFX/Ambience/Waste sound values here; they act as anchors or preserved blanks
+                const cls = (data as any)?.classification;
+                if (cls === 'SFX' || cls === 'Ambience' || cls === 'Waste') {
+                  return logSheet;
+                }
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
