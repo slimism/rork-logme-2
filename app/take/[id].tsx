@@ -48,6 +48,74 @@ export default function EditTakeScreen() {
   const didSoundShiftRef = useRef(false);
   const didCameraShiftRef = useRef(false);
   const shiftedCamerasRef = useRef<Set<string>>(new Set());
+
+  // Normalize the last take in the current Scene/Shot so single camera files advance to next numbers
+  const tailNormalizeLastTake = React.useCallback(async () => {
+    try {
+      console.log('TAIL NORMALIZE - START');
+      await new Promise(resolve => setTimeout(resolve, 120));
+      const scene = takeData.sceneNumber;
+      const shot = takeData.shotNumber;
+      const latestSheets = useProjectStore.getState().logSheets;
+      const allInShot = latestSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
+      console.log('TAIL NORMALIZE - snapshot', { count: allInShot.length, ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
+      const maxTake = allInShot.reduce((m, s) => {
+        const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
+        return Number.isNaN(tn) ? m : Math.max(m, tn);
+      }, 0);
+      const last = allInShot.find(s => String(s.data?.takeNumber) === String(maxTake));
+      if (!last) return;
+      console.log('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
+      const updatedTail: Record<string, any> = { ...last.data };
+      const highestForField = (fieldId: string, camIdx?: number) => {
+        let highest = 0;
+        allInShot.forEach(s => {
+          const data = s.data || {} as any;
+          if (fieldId === 'soundFile') {
+            if (typeof data.sound_from === 'string') highest = Math.max(highest, parseInt(data.sound_from, 10) || 0);
+            if (typeof data.sound_to === 'string') highest = Math.max(highest, parseInt(data.sound_to, 10) || 0);
+            if (typeof data.soundFile === 'string') highest = Math.max(highest, parseInt(data.soundFile, 10) || 0);
+          } else if (fieldId === 'camera') {
+            const i = camIdx || 1;
+            const fromKey = `camera${i}_from`;
+            const toKey = `camera${i}_to`;
+            const singleKey = i === 1 && (camCount || 1) === 1 ? 'cameraFile' : `cameraFile${i}`;
+            if (typeof data[fromKey] === 'string') highest = Math.max(highest, parseInt(data[fromKey], 10) || 0);
+            if (typeof data[toKey] === 'string') highest = Math.max(highest, parseInt(data[toKey], 10) || 0);
+            if (typeof data[singleKey] === 'string') highest = Math.max(highest, parseInt(data[singleKey], 10) || 0);
+          }
+        });
+        return highest;
+      };
+
+      const highestSound = highestForField('soundFile');
+      console.log('TAIL NORMALIZE - highestSound', { highestSound });
+      updatedTail.soundFile = String((highestSound || 0) + 1).padStart(4, '0');
+
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      if (cameraConfiguration === 1) {
+        const highestCam = highestForField('camera', 1);
+        console.log('TAIL NORMALIZE - highestCam1', { highestCam });
+        updatedTail.cameraFile = String((highestCam || 0) + 1).padStart(4, '0');
+        delete updatedTail.camera1_from;
+        delete updatedTail.camera1_to;
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const highestCam = highestForField('camera', i);
+          console.log('TAIL NORMALIZE - highestCam', { i, highestCam });
+          const key = `cameraFile${i}`;
+          updatedTail[key] = String((highestCam || 0) + 1).padStart(4, '0');
+          delete updatedTail[`camera${i}_from`];
+          delete updatedTail[`camera${i}_to`];
+        }
+      }
+
+      console.log('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
+      await updateLogSheet(last.id, updatedTail);
+    } catch (e) {
+      console.log('TAIL NORMALIZE error', e);
+    }
+  }, [camCount, logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
   const savedFieldValues = useRef<Record<string, string>>({});
 
   const { width, height } = useWindowDimensions();
@@ -2107,6 +2175,10 @@ This would break the logging logic and create inconsistencies in the file number
       console.log('TAIL NORMALIZE error', e);
     }
 
+    // Ensure last take is normalized before exit
+    await tailNormalizeLastTake();
+    // Ensure last take is normalized before exit
+    await tailNormalizeLastTake();
     router.back();
   };
 
