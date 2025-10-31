@@ -77,34 +77,27 @@ export default function EditTakeScreen() {
 
       const updates: Array<{ id: string; data: Record<string, any> }> = [];
 
+      // New approach: strictly walk forward and base next single on the previous record
       for (let i = 1; i <= cameraConfiguration; i++) {
-        // Find the last take that has a range for this camera
-        let lastRangeIdx = -1;
-        let lastRangeUpper = 0;
+        let prev = 0; // previous effective value (range upper or single)
         for (let idx = 0; idx < allInShot.length; idx++) {
           const sheet = allInShot[idx];
           if (hasRangeFor(sheet, i)) {
-            lastRangeIdx = idx;
-            lastRangeUpper = Math.max(lastRangeUpper, getRangeUpperBound(sheet, i));
+            const ub = getRangeUpperBound(sheet, i);
+            prev = ub;
+            console.log('SEQ NORMALIZE - seen range (sets prev)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, upper: ub });
+            continue;
           }
-        }
-        // Start cursor strictly after the last range upper bound (or 0 if none)
-        let cursor = (lastRangeUpper || 0) + 1;
-        console.log('SEQ NORMALIZE - camera cursor start', { camera: i, lastRangeIdx, lastRangeUpper, cursor });
-
-        // Normalize only the singles AFTER the last range
-        for (let idx = Math.max(0, lastRangeIdx + 1); idx < allInShot.length; idx++) {
-          const sheet = allInShot[idx];
-          if (hasRangeFor(sheet, i)) continue; // keep ranges
           const key = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
           const currentStr = sheet.data?.[key];
           const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
-          if (cursor > 0 && current !== cursor) {
-            const newData: Record<string, any> = { ...sheet.data, [key]: String(cursor).padStart(4, '0') };
+          const desired = (prev || 0) + 1;
+          if (current !== desired) {
+            const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
             updates.push({ id: sheet.id, data: newData });
-            console.log('SEQ NORMALIZE - update single', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: cursor });
+            console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev });
           }
-          cursor += 1;
+          prev = desired;
         }
       }
 
