@@ -388,6 +388,13 @@ export const useProjectStore = create<ProjectState>()(
               if (!data) return null;
               
               if (fid === 'soundFile') {
+                // Check single value first (soundFile takes precedence)
+                const raw = data[fid] as unknown;
+                if (typeof raw === 'string' && raw.length > 0 && !raw.includes('-')) {
+                  const num = parseInt(raw, 10);
+                  if (!isNaN(num)) return { lower: num, upper: num, delta: 1 };
+                }
+                // Check range second
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
@@ -396,11 +403,6 @@ export const useProjectStore = create<ProjectState>()(
                   if (!isNaN(lower) && !isNaN(upper)) {
                     return { lower, upper, delta: upper - lower + 1 };
                   }
-                }
-                const raw = data[fid] as unknown;
-                if (typeof raw === 'string' && raw.length > 0 && !raw.includes('-')) {
-                  const num = parseInt(raw, 10);
-                  if (!isNaN(num)) return { lower: num, upper: num, delta: 1 };
                 }
               } else if (fid.startsWith('cameraFile')) {
                 const cameraNum = fid === 'cameraFile' ? 1 : (parseInt(fid.replace('cameraFile', ''), 10) || 1);
