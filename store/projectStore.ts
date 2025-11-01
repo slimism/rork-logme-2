@@ -388,11 +388,15 @@ export const useProjectStore = create<ProjectState>()(
               if (!data) return null;
               
               if (fid === 'soundFile') {
+                console.log(`[SOUND getFileBounds] Processing sheet ${sheet.id}, uniqueId: ${sheet.data?.uniqueId}, take: ${sheet.data?.takeNumber}`);
                 // Check single value first (soundFile takes precedence)
                 const raw = data[fid] as unknown;
                 if (typeof raw === 'string' && raw.length > 0 && !raw.includes('-')) {
                   const num = parseInt(raw, 10);
-                  if (!isNaN(num)) return { lower: num, upper: num, delta: 1 };
+                  if (!isNaN(num)) {
+                    console.log(`[SOUND getFileBounds] Found single soundFile: ${raw} → ${num}, delta: 1`);
+                    return { lower: num, upper: num, delta: 1 };
+                  }
                 }
                 // Check range second
                 const soundFrom = data['sound_from'];
@@ -401,9 +405,12 @@ export const useProjectStore = create<ProjectState>()(
                   const lower = parseInt(soundFrom, 10);
                   const upper = parseInt(soundTo, 10);
                   if (!isNaN(lower) && !isNaN(upper)) {
-                    return { lower, upper, delta: upper - lower + 1 };
+                    const delta = upper - lower + 1;
+                    console.log(`[SOUND getFileBounds] Found range sound_from/to: ${soundFrom}-${soundTo} → ${lower}-${upper}, delta: ${delta}`);
+                    return { lower, upper, delta };
                   }
                 }
+                console.log(`[SOUND getFileBounds] No sound file data found for sheet ${sheet.id}`);
               } else if (fid.startsWith('cameraFile')) {
                 const cameraNum = fid === 'cameraFile' ? 1 : (parseInt(fid.replace('cameraFile', ''), 10) || 1);
                 const cameraFrom = data[`camera${cameraNum}_from`];
@@ -467,7 +474,9 @@ export const useProjectStore = create<ProjectState>()(
               
               // Use stored delta if available (more accurate), otherwise calculate it
               if (fieldId === 'soundFile' && sheet.data.sound_delta) {
+                const oldDelta = delta;
                 delta = parseInt(sheet.data.sound_delta, 10) || delta;
+                console.log(`[SOUND delta] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): using stored sound_delta ${sheet.data.sound_delta}, delta changed from ${oldDelta} to ${delta}`);
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
                 const storedDelta = sheet.data[`camera${cameraNum}_delta`];
@@ -479,7 +488,7 @@ export const useProjectStore = create<ProjectState>()(
               // Only consider sheets where the lower bound is >= fromNumber
               // These are the sheets that come after the inserted log
               if (lower >= fromNumber) {
-                console.log(`  -> Found sheet to shift: ${sheet.id} (uniqueId: ${sheet.data?.uniqueId}) with bounds ${lower}-${upper}`);
+                console.log(`  -> Found sheet to shift: ${sheet.id} (uniqueId: ${sheet.data?.uniqueId}) with bounds ${lower}-${upper}, delta: ${delta}`);
                 sheetsToShift.push({ sheet, bounds: { lower, upper, delta } });
               } else {
                 updatedSheets.set(sheet.id, sheet);
@@ -494,6 +503,9 @@ export const useProjectStore = create<ProjectState>()(
             });
             
             console.log(`  -> Found ${sheetsToShift.length} sheets to shift`);
+            if (fieldId === 'soundFile') {
+              console.log('[SOUND] Sheets to shift:', sheetsToShift.map(s => `Sheet ${s.sheet.id} (take ${s.sheet.data?.takeNumber}, uid ${s.sheet.data?.uniqueId}): bounds ${s.bounds.lower}-${s.bounds.upper}, delta ${s.bounds.delta}`).join('; '));
+            }
             
             // Find the target log (the one that originally had fromNumber)
             // This should be the first in the sorted list (by uniqueId)
@@ -512,6 +524,9 @@ export const useProjectStore = create<ProjectState>()(
             let previousUpper = insertedLogUpperBound !== null ? insertedLogUpperBound : (fromNumber - 1);
             
             console.log(`  -> Starting consecutive shifts from index ${startIndex}, previousUpper: ${previousUpper}`);
+            if (fieldId === 'soundFile') {
+              console.log(`[SOUND] Starting cascade: startIndex=${startIndex}, previousUpper=${previousUpper}, insertedLogUpperBound=${insertedLogUpperBound}, fromNumber=${fromNumber}, increment=${increment}`);
+            }
             
             for (let i = startIndex; i < sheetsToShift.length; i++) {
               const { sheet, bounds } = sheetsToShift[i];
@@ -523,6 +538,9 @@ export const useProjectStore = create<ProjectState>()(
               
               console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
               console.log(`     UniqueId: ${sheet.data?.uniqueId}, Previous upper was: ${previousUpper}`);
+              if (fieldId === 'soundFile') {
+                console.log(`[SOUND] Shifting sheet ${sheet.id} (take ${sheet.data?.takeNumber}): previousUpper=${previousUpper} + 1 = newLower ${newLower}, newLower ${newLower} + delta ${delta} - 1 = newUpper ${newUpper}`);
+              }
               
               const newData: Record<string, any> = { ...sheet.data };
               
@@ -531,6 +549,7 @@ export const useProjectStore = create<ProjectState>()(
                 const hadRange = typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-');
                 const hadFromTo = sheet.data.sound_from && sheet.data.sound_to;
                 
+                console.log(`[SOUND assignment] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): hadRange=${hadRange}, hadFromTo=${!!hadFromTo}`);
                 if (hadRange || hadFromTo) {
                   // Entry had a range - preserve range format
                   newData['sound_from'] = String(newLower).padStart(4, '0');
@@ -538,12 +557,14 @@ export const useProjectStore = create<ProjectState>()(
                   if (hadRange) {
                     newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
                   }
+                  console.log(`[SOUND assignment] Set range: sound_from=${newData['sound_from']}, sound_to=${newData['sound_to']}, soundFile=${newData['soundFile'] || 'N/A'}`);
                 } else {
                   // Entry was a single value - keep as single value
                   newData['soundFile'] = String(newLower).padStart(4, '0');
                   // Delete any stale range fields
                   delete newData['sound_from'];
                   delete newData['sound_to'];
+                  console.log(`[SOUND assignment] Set single value: soundFile=${newData['soundFile']}`);
                 }
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
@@ -560,6 +581,9 @@ export const useProjectStore = create<ProjectState>()(
               // Update previousUpper for the next iteration
               previousUpper = newUpper;
               updatedSheets.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
+              if (fieldId === 'soundFile') {
+                console.log(`[SOUND] Updated previousUpper to ${previousUpper} for next iteration`);
+              }
             }
             
             // Keep all other sheets that weren't shifted
