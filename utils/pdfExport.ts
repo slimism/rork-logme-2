@@ -43,7 +43,9 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
 // Mobile PDF generation using HTML to PDF
 const generatePDFMobile = async (htmlContent: string, filename: string): Promise<boolean> => {
   try {
+    console.log('[PDF Export Mobile] Starting export...');
     const file = new File(Paths.cache, `${filename}.html`);
+    console.log('[PDF Export Mobile] File path:', file.uri);
     
     const fullHtml = `
       <!DOCTYPE html>
@@ -157,20 +159,36 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
       </html>
     `;
     
+    console.log('[PDF Export Mobile] Creating file...');
     file.create({ overwrite: true });
+    console.log('[PDF Export Mobile] Writing content...');
     file.write(fullHtml);
+    console.log('[PDF Export Mobile] Content written successfully');
     
     // Share the HTML file
-    if (await Sharing.isAvailableAsync()) {
+    const sharingAvailable = await Sharing.isAvailableAsync();
+    console.log('[PDF Export Mobile] Sharing available:', sharingAvailable);
+    
+    if (sharingAvailable) {
+      console.log('[PDF Export Mobile] Attempting to share...');
       await Sharing.shareAsync(file.uri, {
         mimeType: 'text/html',
         dialogTitle: `Share ${filename}`,
+        UTI: 'public.html',
       });
+      console.log('[PDF Export Mobile] Share dialog shown successfully');
+    } else {
+      console.error('[PDF Export Mobile] Sharing is not available on this device');
+      return false;
     }
     
     return true;
   } catch (error) {
-    console.error('Mobile PDF generation error:', error);
+    console.error('[PDF Export Mobile] Error:', error);
+    if (error instanceof Error) {
+      console.error('[PDF Export Mobile] Error message:', error.message);
+      console.error('[PDF Export Mobile] Error stack:', error.stack);
+    }
     return false;
   }
 };
@@ -375,6 +393,8 @@ const generateFilmLogHTML = (
         ambienceTakes.push(logSheet);
         return;
       }
+      // Skip any other takes without scene numbers (prevents "Unknown" entries)
+      return;
     }
     
     const sceneKey = scene || 'Unknown';
