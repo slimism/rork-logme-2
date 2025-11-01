@@ -5359,8 +5359,3 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginLeft: 8,
   },
 });
-});
-});
-});
-});
-});
