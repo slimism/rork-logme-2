@@ -428,29 +428,29 @@ export const useProjectStore = create<ProjectState>()(
               });
             
             // Track cascade state
-            let skippedFirstOccurrence = false;
-            let previousUpper = fromNumber - 1;
+            let insertedLogUpperBound: number | null = null;
+            const updatedSheets = new Map<string, LogSheet>();
             
             console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
             
-            const updatedSheets = new Map<string, LogSheet>();
-            
-            // First pass: find the excluded log and get its upper bound
+            // First pass: find the excluded log (inserted/edited log) and get its upper bound
             if (excludeLogId) {
               const excludedLog = projectSheets.find(s => s.id === excludeLogId);
               if (excludedLog) {
                 const excludedBounds = getFileBounds(excludedLog, fieldId);
                 if (excludedBounds) {
                   console.log(`  -> Found excluded log ${excludeLogId} with bounds ${excludedBounds.lower}-${excludedBounds.upper}`);
-                  // If the excluded log is the first occurrence (contains fromNumber), use its upper as previousUpper
+                  // If the excluded log is the inserted log (contains fromNumber), save its upper bound
                   if (isTargetInRange(excludedBounds.lower, excludedBounds.upper)) {
-                    previousUpper = excludedBounds.upper;
-                    skippedFirstOccurrence = true;
-                    console.log(`  -> Excluded log is the inserted log, setting previousUpper to ${previousUpper}`);
+                    insertedLogUpperBound = excludedBounds.upper;
+                    console.log(`  -> Excluded log is the inserted log, upper bound: ${insertedLogUpperBound}`);
                   }
                 }
               }
             }
+            
+            // Group sheets that need shifting (all sheets with lower >= fromNumber, excluding inserted log)
+            const sheetsToShift: Array<{ sheet: LogSheet; bounds: { lower: number; upper: number; delta: number } }> = [];
             
             for (const sheet of projectSheets) {
               // Skip the excluded log (the edited log that was just saved)
@@ -479,52 +479,86 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
               
-              // Skip the first occurrence that contains fromNumber (only if we haven't already handled excluded log)
-              if (!skippedFirstOccurrence && isTargetInRange(lower, upper)) {
-                console.log(`  -> Skipping first occurrence at ${lower}-${upper} (contains fromNumber ${fromNumber})`);
-                skippedFirstOccurrence = true;
-                // DON'T update previousUpper here - keep using the excluded log's upper bound
-                updatedSheets.set(sheet.id, sheet);
-                continue;
-              }
-              
-              // Only shift entries after we've skipped the first occurrence
-              // Shift ALL subsequent entries in cascade order
-              if (skippedFirstOccurrence) {
-                // Calculate new position: previous upper + 1
-                const newLower = previousUpper + 1;
-                const newUpper = newLower + delta - 1;
-                
-                console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
-                console.log(`     UniqueId: ${sheet.data?.uniqueId}, Previous upper: ${previousUpper}`);
-                
-                const newData: Record<string, any> = { ...sheet.data };
-                
-                if (fieldId === 'soundFile') {
-                  newData['sound_from'] = String(newLower).padStart(4, '0');
-                  newData['sound_to'] = String(newUpper).padStart(4, '0');
-                  // Update inline string if it exists
-                  if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
-                    newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                  } else {
-                    newData['soundFile'] = String(newLower).padStart(4, '0');
-                  }
-                } else if (fieldId.startsWith('cameraFile')) {
-                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                  newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
-                  newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
-                  // Update inline string if it exists
-                  if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
-                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                  } else {
-                    newData[fieldId] = String(newLower).padStart(4, '0');
-                  }
-                }
-                
-                previousUpper = newUpper;
-                updatedSheets.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
+              // Only consider sheets where the lower bound is >= fromNumber
+              // These are the sheets that come after the inserted log
+              if (lower >= fromNumber) {
+                console.log(`  -> Found sheet to shift: ${sheet.id} (uniqueId: ${sheet.data?.uniqueId}) with bounds ${lower}-${upper}`);
+                sheetsToShift.push({ sheet, bounds: { lower, upper, delta } });
               } else {
                 updatedSheets.set(sheet.id, sheet);
+              }
+            }
+            
+            // Sort sheets to shift by uniqueId to ensure correct order
+            sheetsToShift.sort((a, b) => {
+              const uidA = parseInt(a.sheet.data?.uniqueId || '0', 10) || 0;
+              const uidB = parseInt(b.sheet.data?.uniqueId || '0', 10) || 0;
+              return uidA - uidB;
+            });
+            
+            console.log(`  -> Found ${sheetsToShift.length} sheets to shift`);
+            
+            // Find the target log (the one that originally had fromNumber)
+            // This should be the first in the sorted list (by uniqueId)
+            let targetLogIndex = -1;
+            for (let i = 0; i < sheetsToShift.length; i++) {
+              const { lower, upper } = sheetsToShift[i].bounds;
+              if (isTargetInRange(lower, upper)) {
+                targetLogIndex = i;
+                console.log(`  -> Target log (original duplicate) found at index ${i}: ${sheetsToShift[i].sheet.id}`);
+                break;
+              }
+            }
+            
+            // Start shifting from the target log (if found), otherwise shift all
+            const startIndex = targetLogIndex >= 0 ? targetLogIndex : 0;
+            let previousUpper = insertedLogUpperBound !== null ? insertedLogUpperBound : (fromNumber - 1);
+            
+            console.log(`  -> Starting consecutive shifts from index ${startIndex}, previousUpper: ${previousUpper}`);
+            
+            for (let i = startIndex; i < sheetsToShift.length; i++) {
+              const { sheet, bounds } = sheetsToShift[i];
+              const { lower, upper, delta } = bounds;
+              
+              // Calculate new position based on previous upper bound
+              const newLower = previousUpper + 1;
+              const newUpper = newLower + delta - 1;
+              
+              console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
+              console.log(`     UniqueId: ${sheet.data?.uniqueId}, Previous upper was: ${previousUpper}`);
+              
+              const newData: Record<string, any> = { ...sheet.data };
+              
+              if (fieldId === 'soundFile') {
+                newData['sound_from'] = String(newLower).padStart(4, '0');
+                newData['sound_to'] = String(newUpper).padStart(4, '0');
+                // Update inline string if it exists
+                if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
+                  newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                } else {
+                  newData['soundFile'] = String(newLower).padStart(4, '0');
+                }
+              } else if (fieldId.startsWith('cameraFile')) {
+                const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                // Update inline string if it exists
+                if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
+                  newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                } else {
+                  newData[fieldId] = String(newLower).padStart(4, '0');
+                }
+              }
+              
+              // Update previousUpper for the next iteration
+              previousUpper = newUpper;
+              updatedSheets.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
+            }
+            
+            // Keep all other sheets that weren't shifted
+            for (let i = 0; i < startIndex; i++) {
+              if (i < sheetsToShift.length) {
+                updatedSheets.set(sheetsToShift[i].sheet.id, sheetsToShift[i].sheet);
               }
             }
             
