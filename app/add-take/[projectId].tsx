@@ -1485,6 +1485,12 @@ This would break the logging logic and create inconsistencies in the file number
     const existingEntry = duplicateInfo.existingEntry;
 
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+    
+    // Helper function to call updateFileNumbers with excludeIds
+    const callUpdateFileNumbers = (fieldId: string, existingEntry: any, fromNumber: number, increment: number) => {
+      const excludeIds = [existingEntry.id];
+      updateFileNumbers(projectId, fieldId, fromNumber, increment, excludeIds);
+    };
 
     const conflictsWithOtherTakes = (): boolean => {
       const conflicts: string[] = [];
@@ -1755,7 +1761,7 @@ This would break the logging logic and create inconsistencies in the file number
                 const newTo = parseInt(newLogRange.to, 10) || 0;
                 camIncrement = Math.abs(newTo - newFrom) + 1;
               }
-              updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+              callUpdateFileNumbers('cameraFile', existingEntry, camStart, camIncrement);
 
               const targetRangeCam = getRangeFromData(existingEntry.data, 'cameraFile');
               if (targetRangeCam && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
@@ -1841,7 +1847,7 @@ This would break the logging logic and create inconsistencies in the file number
                   const newTo = parseInt(newLogRange.to, 10) || 0;
                   camIncrement = Math.abs(newTo - newFrom) + 1;
                 }
-                updateFileNumbers(projectId, fieldId, camStart, camIncrement);
+                callUpdateFileNumbers(fieldId, existingEntry, camStart, camIncrement);
 
                 const targetRangeCam = getRangeFromData(existingEntry.data, fieldId);
                 if (targetRangeCam && showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
@@ -1931,7 +1937,7 @@ This would break the logging logic and create inconsistencies in the file number
             camIncrement = Math.abs(newTo - newFrom) + 1;
           }
           
-          updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
+          callUpdateFileNumbers('cameraFile', existingEntry, camStart, camIncrement);
 
           const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
           if (targetRange) {
@@ -2032,7 +2038,7 @@ This would break the logging logic and create inconsistencies in the file number
               camIncrement = Math.abs(newTo - newFrom) + 1;
             }
             
-            updateFileNumbers(projectId, fieldId, camStart, camIncrement);
+            callUpdateFileNumbers(fieldId, existingEntry, camStart, camIncrement);
 
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
             if (targetRange) {
@@ -2287,6 +2293,12 @@ This would break the logging logic and create inconsistencies in the file number
         updateTakeNumbers(projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1);
       }
     }
+    
+    // Helper function to call updateFileNumbers with excludeIds
+    const callUpdateFileNumbersSelective = (fieldId: string, fromNumber: number, increment: number) => {
+      const excludeIds = [existingEntry.id];
+      updateFileNumbers(projectId, fieldId, fromNumber, increment, excludeIds);
+    };
 
     // Only shift the target field (not both)
     if (targetFieldId === 'soundFile') {
@@ -2317,7 +2329,7 @@ This would break the logging logic and create inconsistencies in the file number
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
         // Always use soundStart (the beginning of the duplicate), not the end of the range
         // updateFileNumbers will skip the first occurrence and shift everything else
-        updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
+        callUpdateFileNumbersSelective('soundFile', soundStart, soundDelta);
         
         // If target has a range, adjust it
         if (targetRange) {
@@ -2394,7 +2406,7 @@ This would break the logging logic and create inconsistencies in the file number
         if (targetRange) {
           // Always use camStart (the beginning of the duplicate), not the end of the range
           // updateFileNumbers will skip the first occurrence and shift everything else
-          updateFileNumbers(projectId, targetFieldId, camStart, camDelta);
+          callUpdateFileNumbersSelective(targetFieldId, camStart, camDelta);
           
           const insertedFrom = showRangeMode[targetFieldId] && rangeData[targetFieldId]?.from 
             ? parseInt(rangeData[targetFieldId].from, 10) || 0 
@@ -2422,7 +2434,7 @@ This would break the logging logic and create inconsistencies in the file number
           }
           updateLogSheet(existingEntry.id, updated);
         } else {
-          updateFileNumbers(projectId, targetFieldId, camStart, camDelta);
+          callUpdateFileNumbersSelective(targetFieldId, camStart, camDelta);
           
           const targetHasSingleCamera = typeof existingEntry.data?.[targetFieldId] === 'string' && !existingEntry.data[targetFieldId].includes('-');
           if (targetHasSingleCamera) {
@@ -2648,6 +2660,12 @@ This would break the logging logic and create inconsistencies in the file number
     if (sameSceneShot && !Number.isNaN(tTake)) {
       updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
     }
+    
+    // Helper function to call updateFileNumbers with excludeIds
+    const callUpdateFileNumbersPair = (fieldId: string, fromNumber: number, increment: number) => {
+      const excludeIds = [existingEntry.id];
+      updateFileNumbers(projectId, fieldId, fromNumber, increment, excludeIds);
+    };
 
     // Shift subsequent sound and camera files for ALL relevant cameras, not just one
     // Only shift if the target duplicate has that file (not blank)
@@ -2683,7 +2701,7 @@ This would break the logging logic and create inconsistencies in the file number
         soundDelta = 0;
       }
 
-      updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
+      callUpdateFileNumbersPair('soundFile', soundStart, soundDelta);
 
       const targetRange = (() => {
         const from = existingEntry.data?.sound_from;
@@ -2757,7 +2775,7 @@ This would break the logging logic and create inconsistencies in the file number
         } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
           camDelta = 0;
         }
-        updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
+        callUpdateFileNumbersPair('cameraFile', camStart, camDelta);
 
         const targetRange = (() => {
           const from = existingEntry.data?.camera1_from;
@@ -2866,7 +2884,7 @@ This would break the logging logic and create inconsistencies in the file number
           } else if (!takeData[fieldId] || !String(takeData[fieldId]).trim()) {
             cameraDelta = 0;
           }
-          updateFileNumbers(projectId, fieldId, camStart, cameraDelta);
+          callUpdateFileNumbersPair(fieldId, camStart, cameraDelta);
 
           // Update the range for this camera if it exists
           const targetRange = (fromVal && toVal) ? { from: fromVal, to: toVal } : null;
