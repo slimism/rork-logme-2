@@ -3,137 +3,36 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Project, LogSheet } from '@/types';
 
-// Web-compatible PDF generation
+// Web-compatible PDF generation with iOS Safari-safe flow
 const generatePDFWeb = async (htmlContent: string, filename: string): Promise<boolean> => {
   try {
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return false;
+    const html = `<!DOCTYPE html><html><head><title>${filename}</title><style>@page{size:landscape;margin:15mm}body{font-family:Arial,sans-serif;margin:0;font-size:11px;line-height:1.3}.page{page-break-after:always;margin-bottom:40px}.page:last-child{page-break-after:avoid}table{width:100%;border-collapse:collapse;margin:15px 0;font-size:11px}th,td{border:1px solid #333;padding:4px 6px;text-align:center;vertical-align:middle}td:empty::before{content:"-"}th{background-color:#f0f0f0;font-weight:bold;text-align:center}h1{color:#000;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:20px;font-size:24px}h2{color:#333;margin-top:25px;margin-bottom:15px;font-size:18px;border-bottom:1px solid #ccc;padding-bottom:5px}.project-header{background:#f9f9f9;padding:15px;border:2px solid #333;margin-bottom:25px;text-align:center}.project-title{font-size:20px;font-weight:bold;margin-bottom:10px}.project-info{display:flex;justify-content:space-between;margin-top:10px}.personnel-info{margin-top:10px;text-align:left}.personnel-info div{margin-bottom:4px}.page-number{position:fixed;bottom:10mm;right:15mm;font-size:10px;color:#666}.scene-header{background:#e8e8e8;padding:8px;margin:20px 0 10px 0;border:1px solid #333;font-weight:bold;text-align:center}.take-row:nth-child(even){background-color:#f9f9f9}.field-label{font-weight:bold;min-width:80px}.notes-cell{max-width:200px;word-wrap:break-word}.page-break{page-break-before:always}</style></head><body>${htmlContent}</body></html>`;
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${filename}</title>
-          <style>
-            @page {
-              size: landscape;
-              margin: 15mm;
-            }
-            body { 
-              font-family: Arial, sans-serif; 
-              margin: 0; 
-              font-size: 11px;
-              line-height: 1.3;
-            }
-            .page { 
-              page-break-after: always; 
-              margin-bottom: 40px; 
-            }
-            .page:last-child { 
-              page-break-after: avoid; 
-            }
-            table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin: 15px 0; 
-              font-size: 11px;
-            }
-            th, td { 
-              border: 1px solid #333; 
-              padding: 4px 6px; 
-              text-align: center; 
-              vertical-align: middle;
-            }
-            td:empty::before {
-              content: "-";
-            }
-            th { 
-              background-color: #f0f0f0; 
-              font-weight: bold; 
-              text-align: center;
-            }
-            h1 { 
-              color: #000; 
-              border-bottom: 3px solid #000; 
-              padding-bottom: 10px; 
-              margin-bottom: 20px;
-              font-size: 24px;
-            }
-            h2 { 
-              color: #333; 
-              margin-top: 25px; 
-              margin-bottom: 15px;
-              font-size: 18px;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 5px;
-            }
-            .project-header { 
-              background: #f9f9f9; 
-              padding: 15px; 
-              border: 2px solid #333;
-              margin-bottom: 25px; 
-              text-align: center;
-            }
-            .project-title {
-              font-size: 20px;
-              font-weight: bold;
-              margin-bottom: 10px;
-            }
-            .project-info {
-              display: flex;
-              justify-content: space-between;
-              margin-top: 10px;
-            }
-            .personnel-info {
-              margin-top: 10px;
-              text-align: left;
-            }
-            .personnel-info div {
-              margin-bottom: 4px;
-            }
-            .page-number {
-              position: fixed;
-              bottom: 10mm;
-              right: 15mm;
-              font-size: 10px;
-              color: #666;
-            }
-            .scene-header {
-              background: #e8e8e8;
-              padding: 8px;
-              margin: 20px 0 10px 0;
-              border: 1px solid #333;
-              font-weight: bold;
-              text-align: center;
-            }
-            .take-row:nth-child(even) {
-              background-color: #f9f9f9;
-            }
-            .field-label {
-              font-weight: bold;
-              min-width: 80px;
-            }
-            .notes-cell {
-              max-width: 200px;
-              word-wrap: break-word;
-            }
-            .page-break { page-break-before: always; }
-          </style>
-        </head>
-        <body>
-          ${htmlContent}
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    
-    // Wait a bit for content to load, then trigger print dialog
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
-    
+    // Prefer blob URL to avoid popup blockers on iOS Safari
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+
+    const win = window.open(url, '_blank');
+    if (win) {
+      win.addEventListener('load', () => {
+        try {
+          win.focus();
+          win.print();
+        } catch (e) {
+          console.log('Print failed, fallback to download', e);
+        }
+      });
+      return true;
+    }
+
+    // Fallback: trigger a download of the HTML file
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     return true;
   } catch (error) {
     console.error('Web PDF generation error:', error);
