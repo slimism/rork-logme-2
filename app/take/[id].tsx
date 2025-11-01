@@ -709,59 +709,6 @@ export default function EditTakeScreen() {
     return null;
   };
 
-  const rangesAreCompatible = (a: { min: number; max: number } | null, b: { min: number; max: number } | null): boolean => {
-    if (!a || !b) return false;
-    const overlaps = !(a.max < b.min || a.min > b.max);
-    const touches = a.max + 1 === b.min || b.max + 1 === a.min;
-    return overlaps || touches;
-  };
-
-  const getIncomingCamBounds = (camIndex: number): { min: number; max: number } | null => {
-    const fieldId = camIndex === 1 && (project?.settings?.cameraConfiguration || 1) === 1 ? 'cameraFile' : `cameraFile${camIndex}`;
-    const r = rangeData[fieldId];
-    const inRange = showRangeMode[fieldId] && !!r?.from && !!r?.to;
-    if (inRange) {
-      const a = parseInt(r!.from, 10) || 0;
-      const b = parseInt(r!.to, 10) || 0;
-      return { min: Math.min(a, b), max: Math.max(a, b) };
-    }
-    const v = takeData[fieldId] as string | undefined;
-    if (v && v.trim()) {
-      const n = parseInt(v, 10) || 0;
-      return { min: n, max: n };
-    }
-    return null;
-  };
-
-  const getExistingCamBounds = (existingEntry: any, camIndex: number): { min: number; max: number } | null => {
-    const fieldId = camIndex === 1 && (project?.settings?.cameraConfiguration || 1) === 1 ? 'cameraFile' : `cameraFile${camIndex}`;
-    const r = getRangeFromData(existingEntry.data, fieldId);
-    if (r) {
-      const a = parseInt(r.from, 10) || 0;
-      const b = parseInt(r.to, 10) || 0;
-      return { min: Math.min(a, b), max: Math.max(a, b) };
-    }
-    const raw = existingEntry.data?.[fieldId];
-    if (typeof raw === 'string' && raw.trim().length > 0 && !raw.includes('-')) {
-      const n = parseInt(raw, 10) || 0;
-      return { min: n, max: n };
-    }
-    return null;
-  };
-
-  const isCameraOnlyOverlapAllowed = (incoming: any, existingEntry: any): boolean => {
-    const incomingHasNoSound = !(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) && !(incoming.soundFile && String(incoming.soundFile).trim());
-    const existingHasSound = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || !!(existingEntry.data?.sound_from && existingEntry.data?.sound_to);
-    if (!incomingHasNoSound || !existingHasSound) return false;
-    const camCount = project?.settings?.cameraConfiguration || 1;
-    for (let i = 1; i <= camCount; i++) {
-      const inc = getIncomingCamBounds(i);
-      const ex = getExistingCamBounds(existingEntry, i);
-      if (!rangesAreCompatible(inc, ex)) return false;
-    }
-    return true;
-  };
-
   const findFirstDuplicateFile = () => {
     if (!logSheet) return null;
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId && sheet.id !== logSheet.id);
@@ -1280,16 +1227,12 @@ export default function EditTakeScreen() {
           ? 'SFX'
           : (classification === 'Ambience' ? 'Ambience' :
              `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
-      const isCameraField = typeof (generalConflict as any).fieldId === 'string' && (generalConflict as any).fieldId.startsWith('cameraFile');
-      const allowCameraOnly = isCameraField && isCameraOnlyOverlapAllowed(takeData, e);
-      if (!allowCameraOnly) {
-        Alert.alert(
-          'Part of Ranged Take',
-          `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
-          [{ text: 'OK', style: 'default' }]
-        );
-        return;
-      }
+      Alert.alert(
+        'Part of Ranged Take',
+        `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
     }
 
     const getEligibleDuplicateForField = (fieldId: string) => {
@@ -1369,13 +1312,6 @@ export default function EditTakeScreen() {
           const d = getEligibleDuplicateForField(fid);
           if (d) { cameraDup = d; break; }
         }
-      }
-    }
-
-    if (!soundDup && cameraDup) {
-      if (isCameraOnlyOverlapAllowed(takeData, cameraDup.existingEntry)) {
-        handleSaveWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: cameraDup.existingEntry, number: cameraDup.number });
-        return;
       }
     }
 
