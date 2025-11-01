@@ -459,13 +459,16 @@ export const useProjectStore = create<ProjectState>()(
             for (const sheet of projectSheets) {
               // Skip excluded logs
               if (excludeIds.includes(sheet.id)) {
-                console.log(`  -> Skipping excluded log: ${sheet.id}`);
+                console.log(`  -> Skipping excluded log: ${sheet.id} (take ${sheet.data?.takeNumber})`);
                 updatedSheets.set(sheet.id, sheet);
                 continue;
               }
               
               const bounds = getFileBounds(sheet, fieldId);
               if (!bounds) {
+                if (fieldId === 'soundFile') {
+                  console.log(`[SOUND] Skipping sheet ${sheet.id} (take ${sheet.data?.takeNumber}) - no bounds found`);
+                }
                 updatedSheets.set(sheet.id, sheet);
                 continue;
               }
