@@ -2761,7 +2761,7 @@ This would break the logging logic and create inconsistencies in the file number
         } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
           camDelta = 0;
         }
-        if ((currentProject?.settings?.cameraConfiguration || 1) === 1) {
+        if (camCount === 1) {
           updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
         }
 
