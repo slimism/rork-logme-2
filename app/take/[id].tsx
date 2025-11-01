@@ -45,156 +45,6 @@ export default function EditTakeScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const writingProgrammaticallyRef = useRef(false);
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
-  const didSoundShiftRef = useRef(false);
-  const didCameraShiftRef = useRef(false);
-  const shiftedCamerasRef = useRef<Set<string>>(new Set());
-
-  // Helper: snapshot current shot file numbers for debug
-  const logShotSnapshot = React.useCallback((label: string) => {
-    try {
-      const scene = takeData.sceneNumber;
-      const shot = takeData.shotNumber;
-      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-      const sheets = useProjectStore.getState().logSheets
-        .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
-        .sort((a, b) => (parseInt(String(a.data?.takeNumber || '0'), 10) - parseInt(String(b.data?.takeNumber || '0'), 10)));
-      const rows = sheets.map(s => {
-        const sound = s.data?.soundFile || `${s.data?.sound_from ?? ''}-${s.data?.sound_to ?? ''}`;
-        const cams: string[] = [];
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          const k = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
-          const fromK = `camera${i}_from`;
-          const toK = `camera${i}_to`;
-          const val = (s.data?.[k] as string) || (s.data?.[fromK] && s.data?.[toK] ? `${s.data?.[fromK]}-${s.data?.[toK]}` : '');
-          cams.push(val || '');
-        }
-        return { id: s.id, take: s.data?.takeNumber, sound, cams };
-      });
-      console.log('SNAPSHOT - ' + label, { rows });
-    } catch (e) {
-      console.log('SNAPSHOT error', e);
-    }
-  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber]);
-
-  // After shifting ranges, normalize all subsequent single camera files to be strictly sequential
-  const normalizeSequentialSinglesAfterRanges = React.useCallback(async () => {
-    try {
-      console.log('SEQ NORMALIZE - START');
-      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-      const scene = takeData.sceneNumber;
-      const shot = takeData.shotNumber;
-      // Removed settle delay; normalization now relies on store-level invariants
-      const latestSheets = useProjectStore.getState().logSheets;
-      const allInShot = latestSheets
-        .filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX')
-        .sort((a, b) => (parseInt(String(a.data?.takeNumber || '0'), 10) - parseInt(String(b.data?.takeNumber || '0'), 10)));
-
-      console.log('SEQ NORMALIZE - snapshot', { ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
-
-      const getRangeUpperBound = (sheet: any, idx: number) => {
-        const toKey = `camera${idx}_to`;
-        const v = sheet.data?.[toKey];
-        return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
-      };
-      const hasRangeFor = (sheet: any, idx: number) => {
-        const fromKey = `camera${idx}_from`;
-        const toKey = `camera${idx}_to`;
-        return typeof sheet.data?.[fromKey] === 'string' && typeof sheet.data?.[toKey] === 'string';
-      };
-
-      const updates: Array<{ id: string; data: Record<string, any> }> = [];
-
-      // New approach: strictly walk forward and base next single on the previous record
-      for (let i = 1; i <= cameraConfiguration; i++) {
-        let prev = 0; // previous effective value (range upper or single)
-        const camChanges: Array<{ id: string; take?: string; from: number; to: number }> = [];
-        for (let idx = 0; idx < allInShot.length; idx++) {
-          const sheet = allInShot[idx];
-          if (hasRangeFor(sheet, i)) {
-            const ub = getRangeUpperBound(sheet, i);
-            prev = ub;
-            console.log('SEQ NORMALIZE - seen range (sets prev)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, upper: ub });
-            continue;
-          }
-          const key = cameraConfiguration === 1 && i === 1 ? 'cameraFile' : `cameraFile${i}`;
-          const currentStr = sheet.data?.[key];
-          const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
-          const desired = (prev || 0) + 1;
-          if (current !== desired) {
-          const newData: Record<string, any> = { ...sheet.data, [key]: String(desired).padStart(4, '0') };
-          // Ensure any lingering range fields for this camera are cleared (explicit null => delete in store)
-          newData[`camera${i}_from`] = null;
-          newData[`camera${i}_to`] = null;
-            updates.push({ id: sheet.id, data: newData });
-            console.log('SEQ NORMALIZE - update single (prev-based)', { camera: i, id: sheet.id, take: sheet.data?.takeNumber, from: current, to: desired, prev, keySet: key });
-            camChanges.push({ id: sheet.id, take: sheet.data?.takeNumber as string, from: current, to: desired });
-          }
-          prev = desired;
-        }
-        if (camChanges.length) {
-          console.log('SEQ NORMALIZE - summary (camera ' + i + ')', { camChanges });
-        }
-      }
-
-      for (const u of updates) {
-        await updateLogSheet(u.id, u.data);
-      }
-      // Sound normalization is handled at store level to respect classification (e.g., Waste blank)
-      logShotSnapshot('AFTER SEQ NORMALIZE');
-    } catch (e) {
-      console.log('SEQ NORMALIZE error', e);
-    }
-  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
-
-  // Normalize the last take in the current Scene/Shot so single camera files advance to next numbers
-  const tailNormalizeLastTake = React.useCallback(async () => {
-    try {
-      console.log('TAIL NORMALIZE - START');
-      const scene = takeData.sceneNumber;
-      const shot = takeData.shotNumber;
-      const latestSheets = useProjectStore.getState().logSheets;
-      const allInShot = latestSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
-      console.log('TAIL NORMALIZE - snapshot', { count: allInShot.length, ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
-      const maxTake = allInShot.reduce((m, s) => {
-        const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
-        return Number.isNaN(tn) ? m : Math.max(m, tn);
-      }, 0);
-      const last = allInShot.find(s => String(s.data?.takeNumber) === String(maxTake));
-      if (!last) return;
-      console.log('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
-      const updatedTail: Record<string, any> = { ...last.data };
-      const highestForField = (fieldId: string, camIdx?: number) => {
-        let highest = 0;
-        allInShot.forEach(s => {
-          const data = s.data || {} as any;
-          if (fieldId === 'soundFile') {
-            if (typeof data.sound_from === 'string') highest = Math.max(highest, parseInt(data.sound_from, 10) || 0);
-            if (typeof data.sound_to === 'string') highest = Math.max(highest, parseInt(data.sound_to, 10) || 0);
-            if (typeof data.soundFile === 'string') highest = Math.max(highest, parseInt(data.soundFile, 10) || 0);
-          } else if (fieldId === 'camera') {
-            const i = camIdx || 1;
-            const fromKey = `camera${i}_from`;
-            const toKey = `camera${i}_to`;
-            const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-            const singleKey = i === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${i}`;
-            if (typeof data[fromKey] === 'string') highest = Math.max(highest, parseInt(data[fromKey], 10) || 0);
-            if (typeof data[toKey] === 'string') highest = Math.max(highest, parseInt(data[toKey], 10) || 0);
-            if (typeof data[singleKey] === 'string') highest = Math.max(highest, parseInt(data[singleKey], 10) || 0);
-          }
-        });
-        return highest;
-      };
-
-      // Do not modify sound here; sound shifting already handled earlier
-      const highestSound = highestForField('soundFile');
-      console.log('TAIL NORMALIZE - highestSound (no change applied here)', { highestSound });
-
-      // Skip modifying cameras here to avoid overriding sequenced values
-      console.log('TAIL NORMALIZE - no-op for camera updates');
-    } catch (e) {
-      console.log('TAIL NORMALIZE error', e);
-    }
-  }, [logSheet.projectId, project?.settings?.cameraConfiguration, takeData.sceneNumber, takeData.shotNumber, updateLogSheet]);
   const savedFieldValues = useRef<Record<string, string>>({});
 
   const { width, height } = useWindowDimensions();
@@ -1363,9 +1213,6 @@ export default function EditTakeScreen() {
 
   const handleSaveTake = () => {
     console.log('========== SAVE INITIATED: handleSaveTake ==========');
-    // reset per-save shift guards
-    didSoundShiftRef.current = false;
-    didCameraShiftRef.current = false;
     if (!logSheet) return;
     if (!validateMandatoryFields()) {
       return;
@@ -1880,13 +1727,16 @@ This would break the logging logic and create inconsistencies in the file number
           const b = parseInt(r.to, 10) || 0;
           return Math.abs(b - a) + 1;
         }
-        // Always shift by 1 for insert-before even if input is blank
+        // If input sound field is blank, don't shift sound files
+        if (!takeData.soundFile || !takeData.soundFile.trim()) {
+          return 0;
+        }
         return 1;
       })();
-      if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
-        didSoundShiftRef.current = true;
+      if (!disabledFields.has('soundFile') && soundDelta > 0) {
         // Always use soundStart (the beginning of the duplicate), not the end of the range
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+        // updateFileNumbers will skip the first occurrence and shift everything else
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2161,7 +2011,8 @@ This would break the logging logic and create inconsistencies in the file number
     // Save the current logSheet with edited values FIRST
     await updateLogSheet(logSheet.id, updatedData);
     
-    // Removed microtask settle; store now merges atomically
+    // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
+    await new Promise(resolve => setTimeout(resolve, 0));
     
     // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
     // This ensures the current logSheet (with edited values) gets skipped
@@ -2178,86 +2029,6 @@ This would break the logging logic and create inconsistencies in the file number
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
-    // Normalize tail (last take) to next sequential single numbers after shifts
-    try {
-      console.log('TAIL NORMALIZE - START');
-      const scene = takeData.sceneNumber;
-      const shot = takeData.shotNumber;
-      // Fetch latest state to avoid stale capture
-      const latestSheets = useProjectStore.getState().logSheets;
-      const allInShot = latestSheets.filter(s => s.projectId === logSheet.projectId && s.data?.sceneNumber === scene && s.data?.shotNumber === shot && s.data?.classification !== 'Ambience' && s.data?.classification !== 'SFX');
-      console.log('TAIL NORMALIZE - snapshot', { count: allInShot.length, ids: allInShot.map(s => s.id), takes: allInShot.map(s => s.data?.takeNumber) });
-      const maxTake = allInShot.reduce((m, s) => {
-        const tn = parseInt(String(s.data?.takeNumber || '0'), 10);
-        return Number.isNaN(tn) ? m : Math.max(m, tn);
-      }, 0);
-      const last = allInShot.find(s => String(s.data?.takeNumber) === String(maxTake));
-      if (last) {
-        console.log('TAIL NORMALIZE - last take before normalize', { id: last.id, take: last.data?.takeNumber });
-        const updatedTail: Record<string, any> = { ...last.data };
-        // compute next per field
-        const highestForField = (fieldId: string, camIdx?: number) => {
-          let highest = 0;
-          allInShot.forEach(s => {
-            const data = s.data || {} as any;
-            if (fieldId === 'soundFile') {
-              if (typeof data.sound_from === 'string') highest = Math.max(highest, parseInt(data.sound_from, 10) || 0);
-              if (typeof data.sound_to === 'string') highest = Math.max(highest, parseInt(data.sound_to, 10) || 0);
-              if (typeof data.soundFile === 'string') highest = Math.max(highest, parseInt(data.soundFile, 10) || 0);
-            } else if (fieldId === 'camera') {
-              const i = camIdx || 1;
-              const fromKey = `camera${i}_from`;
-              const toKey = `camera${i}_to`;
-              const singleKey = i === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${i}`;
-              if (typeof data[fromKey] === 'string') highest = Math.max(highest, parseInt(data[fromKey], 10) || 0);
-              if (typeof data[toKey] === 'string') highest = Math.max(highest, parseInt(data[toKey], 10) || 0);
-              if (typeof data[singleKey] === 'string') highest = Math.max(highest, parseInt(data[singleKey], 10) || 0);
-            }
-          });
-          return highest;
-        };
-
-        // sound
-        const highestSound = highestForField('soundFile');
-        console.log('TAIL NORMALIZE - highestSound', { highestSound });
-        updatedTail.soundFile = String((highestSound || 0) + 1).padStart(4, '0');
-
-        // cameras
-        if (camCount === 1) {
-          const highestCam = highestForField('camera', 1);
-          console.log('TAIL NORMALIZE - highestCam1', { highestCam });
-          updatedTail.cameraFile = String((highestCam || 0) + 1).padStart(4, '0');
-          // clear any range keys if present for tail to enforce single
-          delete updatedTail.camera1_from; delete updatedTail.camera1_to;
-        } else {
-          for (let i = 1; i <= camCount; i++) {
-            const highestCam = highestForField('camera', i);
-            console.log('TAIL NORMALIZE - highestCam', { i, highestCam });
-            const key = `cameraFile${i}`;
-            updatedTail[key] = String((highestCam || 0) + 1).padStart(4, '0');
-            delete updatedTail[`camera${i}_from`];
-            delete updatedTail[`camera${i}_to`];
-          }
-        }
-
-        console.log('TAIL NORMALIZE - applying', { id: last.id, take: last.data?.takeNumber, updatedTail });
-        await updateLogSheet(last.id, updatedTail);
-      }
-    } catch (e) {
-      console.log('TAIL NORMALIZE error', e);
-    }
-
-    // Ensure last take is normalized before exit
-    await tailNormalizeLastTake();
-    // Ensure last take is normalized before exit
-    await tailNormalizeLastTake();
-    await normalizeSequentialSinglesAfterRanges();
-    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithSelectiveDuplicateHandling)');
-    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithSelectiveDuplicateHandling:beforeBack)');
-    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithDuplicateHandling)');
-    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithDuplicateHandling:beforeBack)');
-    await normalizeSequentialSinglesAfterRanges();
-    await tailNormalizeLastTake();
     router.back();
   };
 
@@ -2459,13 +2230,15 @@ This would break the logging logic and create inconsistencies in the file number
               const b = parseInt(r.to, 10) || 0;
               return Math.abs(b - a) + 1;
             }
-            // Always shift by 1 on insert-before
+            // If input sound field is blank, don't shift sound files
+            if (!takeData.soundFile || !takeData.soundFile.trim()) {
+              return 0;
+            }
             return 1;
           })();
-          if (!disabledFields.has('soundFile') && !didSoundShiftRef.current) {
-            didSoundShiftRef.current = true;
+          if (!disabledFields.has('soundFile')) {
             // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, existingEntry.id);
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2509,43 +2282,17 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
           if (soundStart != null) {
-            const computeSoundDelta = () => {
+            const soundDelta = (() => {
               const r = rangeData['soundFile'];
-              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-              const targetTo = targetRange ? (parseInt(targetRange.to, 10) || 0) : null;
               if (showRangeMode['soundFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
                 const b = parseInt(r.to, 10) || 0;
-                const insertedMax = Math.max(a, b);
-                if (targetTo != null) {
-                  return Math.max(0, insertedMax - targetTo);
-                }
                 return Math.abs(b - a) + 1;
               }
-              // single value
-              const singleVal = (() => {
-                const v = typeof newLogData.soundFile === 'string' ? parseInt(newLogData.soundFile, 10) : parseInt(String(takeData.soundFile ?? ''), 10);
-                return Number.isNaN(v) ? null : v;
-              })();
-              if (targetTo != null && singleVal != null) {
-                return singleVal > targetTo ? 1 : 0;
-              }
               return 1;
-            };
-            const soundDelta = computeSoundDelta();
-            if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
-              didSoundShiftRef.current = true;
-              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-              const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
-              console.debug('SHIFT soundFile (skipped direct shift)', {
-                start,
-                soundDelta,
-                targetRange,
-                editedRange: rangeData['soundFile'],
-                showRange: showRangeMode['soundFile']
-              });
-              // Skipped: rely on store-level normalization for sound sequencing
-              console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
+            })();
+            if (!disabledFields.has('soundFile')) {
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id); }
             }
           }
         }
@@ -2561,30 +2308,19 @@ This would break the logging logic and create inconsistencies in the file number
           {
             const camDelta = (() => {
               const r = rangeData['cameraFile'];
-              const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
-              const targetTo = targetRange ? (parseInt(targetRange.to, 10) || 0) : null;
               if (showRangeMode['cameraFile'] && r?.from && r?.to) {
                 const a = parseInt(r.from, 10) || 0;
                 const b = parseInt(r.to, 10) || 0;
-                const insertedMax = Math.max(a, b);
-                if (targetTo != null) {
-                  return Math.max(0, insertedMax - targetTo);
-                }
                 return Math.abs(b - a) + 1;
               }
               // If input camera field is blank, don't shift camera files
               if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
                 return 0;
               }
-              if (targetTo != null) {
-                const singleVal = parseInt(String(takeData.cameraFile), 10);
-                if (!Number.isNaN(singleVal)) return singleVal > targetTo ? 1 : 0;
-              }
               return 1;
             })();
-            if (!disabledFields.has('cameraFile') && camDelta > 0 && !didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) {
-              didCameraShiftRef.current = true;
-              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; console.debug('SHIFT cameraFile (single-cam)', { start, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] }); updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, existingEntry.id); }
+            if (!disabledFields.has('cameraFile')) {
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -2876,10 +2612,9 @@ This would break the logging logic and create inconsistencies in the file number
             }
             return 1;
           })();
-          if (!disabledFields.has('soundFile') && !didSoundShiftRef.current) {
-            didSoundShiftRef.current = true;
-            // Skipped: rely on store-level normalization for sound sequencing
-            console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
+          if (!disabledFields.has('soundFile')) {
+            // Always use soundStart (the beginning of the duplicate), not the end of the range
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2932,7 +2667,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              { if (!didSoundShiftRef.current) { didSoundShiftRef.current = true; const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, existingEntry.id); } }
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id); }
             }
           }
         }
@@ -2963,8 +2698,6 @@ This would break the logging logic and create inconsistencies in the file number
             })();
             if (!disabledFields.has('cameraFile')) {
               { 
-                if (!didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) {
-                  didCameraShiftRef.current = true;
                 const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
                 const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
                 console.log('====> Calling updateFileNumbers for cameraFile:', {
@@ -2975,8 +2708,7 @@ This would break the logging logic and create inconsistencies in the file number
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
                   'editedLogId_ToExclude': logSheet.id
                 });
-                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, existingEntry.id); 
-                }
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
               }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
@@ -3129,7 +2861,7 @@ This would break the logging logic and create inconsistencies in the file number
     router.back();
   };
 
-  const saveNormally = async () => {
+  const saveNormally = () => {
     console.log('========== SAVE INITIATED: saveNormally ==========');
     if (!logSheet || !project) return;
     try {
@@ -3269,9 +3001,6 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       updateLogSheet(logSheet.id, updatedData);
-      console.log('SEQ NORMALIZE - INVOKE (saveNormally:beforeBack)');
-      await normalizeSequentialSinglesAfterRanges();
-      await tailNormalizeLastTake();
       router.back();
     } catch (error) {
       console.error('Error saving take:', error);
@@ -3488,7 +3217,6 @@ This would break the logging logic and create inconsistencies in the file number
       }
 
     } else {
-      shiftedCamerasRef.current.clear();
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
@@ -3702,13 +3430,13 @@ This would break the logging logic and create inconsistencies in the file number
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
     
-    // Removed microtask settle; store now merges atomically
-    logShotSnapshot('BEFORE SEQ NORMALIZE (handleSaveWithDuplicatePair)');
+    // Use Promise to ensure Zustand state has propagated
+    await new Promise(resolve => setTimeout(resolve, 0));
     
     // Call updateFileNumbers to shift subsequent entries if needed
-    if (!disabledFields.has('soundFile') && soundDelta > 0 && !didSoundShiftRef.current) {
-      didSoundShiftRef.current = true;
-      console.log('[save] Skipping direct sound shift; store-level normalization will adjust singles.');
+    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+      // Always use soundStart (the beginning of the duplicate), not the end of the range
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
     }
     
     if (camCount === 1) {
@@ -3741,8 +3469,7 @@ This would break the logging logic and create inconsistencies in the file number
           if (!Number.isNaN(n)) camStart = n;
         }
         const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
-        console.debug('SHIFT cameraFile (single-cam consolidated)', { camStartShift, camDelta, targetRange, editedRange: rangeData['cameraFile'], showRange: showRangeMode['cameraFile'] });
-        if (!didCameraShiftRef.current && (project?.settings?.cameraConfiguration || 1) === 1) { didCameraShiftRef.current = true; updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, existingEntry.id); }
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3751,26 +3478,16 @@ This would break the logging logic and create inconsistencies in the file number
           const camDelta = (() => {
             if (disabledFields.has(fieldId)) return 0;
             const r = rangeData[fieldId];
-            const targetRangeLocal = getRangeFromData(existingEntry.data, fieldId);
-            const targetToLocal = targetRangeLocal ? (parseInt(targetRangeLocal.to, 10) || 0) : null;
             if (showRangeMode[fieldId] && r?.from && r?.to) {
               const a = parseInt(r.from, 10) || 0;
               const b = parseInt(r.to, 10) || 0;
-              const insertedMax = Math.max(a, b);
-              if (targetToLocal != null) {
-                return Math.max(0, insertedMax - targetToLocal);
-              }
               return Math.abs(b - a) + 1;
             }
             if (!takeData[fieldId]?.trim()) return 0;
-            if (targetToLocal != null) {
-              const singleVal = parseInt(String(takeData[fieldId]), 10);
-              if (!Number.isNaN(singleVal)) return singleVal > targetToLocal ? 1 : 0;
-            }
             return 1;
           })();
           
-          if (!disabledFields.has(fieldId) && camDelta > 0 && !shiftedCamerasRef.current.has(fieldId)) {
+          if (!disabledFields.has(fieldId) && camDelta > 0) {
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
             let camStartForField = cameraFromNumber;
             const fromKey = `camera${i}_from` as const;
@@ -3784,18 +3501,12 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStartForField = n;
             }
             const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
-            console.debug('SHIFT camera multi', { fieldId, camStartShift, camDelta, targetRange, editedRange: rangeData[fieldId], showRange: showRangeMode[fieldId], excludeId: existingEntry.id, editedLogId: logSheet.id, existingEntryTake: existingEntry.data?.takeNumber, currentEditedTake: takeData.takeNumber });
-            shiftedCamerasRef.current.add(fieldId);
-            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, existingEntry.id);
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, logSheet.id);
           }
         }
       }
     }
 
-    await tailNormalizeLastTake();
-    console.log('SEQ NORMALIZE - INVOKE (handleSaveWithDuplicatePair:beforeBack)');
-    await normalizeSequentialSinglesAfterRanges();
-    await tailNormalizeLastTake();
     router.back();
   };
 

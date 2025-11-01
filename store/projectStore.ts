@@ -165,172 +165,21 @@ export const useProjectStore = create<ProjectState>()(
         console.log('  data.camera1_from:', data.camera1_from);
         console.log('  data.camera1_to:', data.camera1_to);
         console.log('  data.cameraFile:', data.cameraFile);
-        console.log('  data.cameraFile1:', (data as any)?.cameraFile1);
-        console.log('  data.cameraFile2:', (data as any)?.cameraFile2);
-        console.log('  data.cameraFile3:', (data as any)?.cameraFile3);
         console.log('  data.classification:', data.classification);
         
-        set((state) => {
-          // First pass: merge payload into target logSheet
-          const mergedLogSheets = state.logSheets.map((logSheet) => {
-            if (logSheet.id !== id) return logSheet;
-            const merged: Record<string, any> = { ...(logSheet.data || {}), ...(data || {}) };
-            Object.keys(data || {}).forEach((k) => {
-              if (data[k] === null) delete merged[k];
-            });
-            console.log('=== Merged updateLogSheet ===');
-            console.log('  incoming keys:', Object.keys(data || {}));
-            console.log('  resulting keys:', Object.keys(merged));
-            return { ...logSheet, data: merged, updatedAt: new Date().toISOString() };
-          });
-
-          // Second pass: enforce sequential singles across the entire shot (store-level invariant)
-          try {
-            const target = mergedLogSheets.find(s => s.id === id);
-            const scene = (target?.data as any)?.sceneNumber;
-            const shot = (target?.data as any)?.shotNumber;
-            if (target && scene && shot) {
-              const projectId = target.projectId;
-              const cameraConfiguration = ((state.projects.find(p => p.id === projectId)?.settings)?.cameraConfiguration || 1);
-              // Log a project sound timeline for visibility in logs
-              try {
-                const projectSoundTimeline = mergedLogSheets
-                  .filter(s => s.projectId === projectId)
-                  .map(s => ({
-                    id: s.id,
-                    createdAt: s.createdAt,
-                    updatedAt: s.updatedAt,
-                    classification: (s.data as any)?.classification || '',
-                    scene: (s.data as any)?.sceneNumber,
-                    shot: (s.data as any)?.shotNumber,
-                    take: (s.data as any)?.takeNumber,
-                    sound: (s.data as any)?.soundFile,
-                  }))
-                  .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-                console.log('[store] project sound timeline (createdAt order)');
-                for (const e of projectSoundTimeline) {
-                  console.log('  TL:', { id: e.id, createdAt: e.createdAt, class: e.classification, scene: e.scene, shot: e.shot, take: e.take, sound: e.sound });
-                }
-              } catch {}
-              const sameShot = mergedLogSheets
-                .filter(s => s.projectId === projectId && (s.data as any)?.sceneNumber === scene && (s.data as any)?.shotNumber === shot && (s.data as any)?.classification !== 'Ambience' && (s.data as any)?.classification !== 'SFX')
-                .sort((a, b) => (parseInt(String((a.data as any)?.takeNumber || '0'), 10) - parseInt(String((b.data as any)?.takeNumber || '0'), 10)));
-              console.log('[store] sameShot list', { ids: sameShot.map(s => s.id), takes: sameShot.map(s => (s.data as any)?.takeNumber) });
-
-              const hasRangeFor = (sheet: any, i: number) => {
-                const fromKey = `camera${i}_from`;
-                const toKey = `camera${i}_to`;
-                return typeof sheet.data?.[fromKey] === 'string' && typeof sheet.data?.[toKey] === 'string';
-              };
-              const getRangeUpper = (sheet: any, i: number) => {
-                const toKey = `camera${i}_to`;
-                const v = sheet.data?.[toKey];
-                return typeof v === 'string' ? (parseInt(v, 10) || 0) : 0;
-              };
-
-              // Sound sequential normalize with classification awareness and SFX/Ambience anchors across the entire project timeline
-              // Prepare SFX/Ambience anchors (project-wide), use timestamps for ordering
-              const anchors = mergedLogSheets
-                .filter(s => s.projectId === projectId)
-                .map(s => ({
-                  id: s.id,
-                  // Use createdAt for ordering to avoid reordering due to edits
-                  ts: s.createdAt || s.updatedAt || '',
-                  type: ((s.data as any)?.classification || '').toString(),
-                  sound: typeof (s.data as any)?.soundFile === 'string' ? (parseInt((s.data as any)?.soundFile, 10) || 0) : 0,
-                }));
-              const anchorSummary = anchors.filter(a => a.type === 'SFX' || a.type === 'Ambience').sort((a,b)=> (a.ts||'').localeCompare(b.ts||''));
-              console.log('[store] anchors SFX/Ambience', { anchors: anchorSummary });
-              // Loop by takeNumber; maintain shot-local prev only. Use anchors ONLY to seed blanks when there is no prior in-shot sound.
-              let prevSound = 0; // shot-local previous (range upper or single)
-              for (const s of sameShot) {
-                // Use createdAt for ordering relative to anchors
-                const currentTs = (s.createdAt || s.updatedAt || '');
-                const anchorMax = anchors
-                  .filter(a => (a.type === 'SFX' || a.type === 'Ambience') && a.ts && currentTs && a.ts <= currentTs)
-                  .reduce((m, a) => Math.max(m, a.sound), 0);
-                const prevBeforeAnchor = prevSound;
-                const dataAny = (s.data as any) || {};
-                const classification = (dataAny.classification || '').toString();
-                const sf = dataAny.soundFile as string | undefined;
-                const sFrom = dataAny.sound_from as string | undefined;
-                const sTo = dataAny.sound_to as string | undefined;
-                const hasSoundRange = typeof sFrom === 'string' && typeof sTo === 'string';
-                console.log('[store] sound seq (pre)', { id: s.id, take: (s.data as any)?.takeNumber, cls: classification, prevBeforeAnchor, anchorMax, sf, sFrom, sTo });
-                if (hasSoundRange) {
-                  const upper = Math.max(parseInt(sFrom, 10) || 0, parseInt(sTo, 10) || 0);
-                  console.log('[store] sound seq (range)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, rangeFrom: sFrom, rangeTo: sTo, setPrevTo: Math.max(prevSound, upper) });
-                  prevSound = Math.max(prevSound, upper);
-                  continue;
-                }
-                const isBlank = !sf || sf.trim().length === 0;
-                const isWaste = classification === 'Waste';
-                if (isWaste && isBlank) {
-                  console.log('[store] sound seq (waste blank preserved)', { id: s.id, take: (s.data as any)?.takeNumber, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound });
-                  continue; // preserve blank
-                }
-                const current = typeof sf === 'string' ? (parseInt(sf, 10) || 0) : 0;
-                // Base desired solely on in-shot previous; use anchor only to seed when no in-shot previous and current is blank
-                let desiredBase = prevSound;
-                if (desiredBase === 0 && isBlank && anchorMax > 0) {
-                  console.log('[store] sound seq (seed from anchor for blank)', { id: s.id, take: (s.data as any)?.takeNumber, anchorMax });
-                  desiredBase = anchorMax;
-                }
-                const desired = (desiredBase || 0) + 1;
-                console.log('[store] sound seq (single)', { id: s.id, take: (s.data as any)?.takeNumber, cls: classification, prevBeforeAnchor, anchorMax, prevAfterAnchor: prevSound, current, desired });
-                if (desired > 0) {
-                  // Only change when current does not match expected in-shot sequence
-                  if (current !== desired) {
-                    dataAny.soundFile = String(desired).padStart(4, '0');
-                    console.log('[store] sound seq (apply)', { id: s.id, take: (s.data as any)?.takeNumber, from: current, to: desired });
-                  }
-                  prevSound = desired;
-                }
-              }
-
-              // Post-normalization snapshot for sound
-              try {
-                const soundSnapshot = sameShot.map(s => ({ id: s.id, take: (s.data as any)?.takeNumber, sound: (s.data as any)?.soundFile, cls: (s.data as any)?.classification || '' }));
-                console.log('[store] sound seq (post snapshot)', soundSnapshot);
-              } catch {}
-
-              // Per-camera sequential normalize
-              for (let i = 1; i <= cameraConfiguration; i++) {
-                let prev = 0;
-                const key = (i === 1 && cameraConfiguration === 1) ? 'cameraFile' : `cameraFile${i}`;
-                for (const s of sameShot) {
-                  if (hasRangeFor(s, i)) {
-                    prev = Math.max(prev, getRangeUpper(s, i));
-                    continue;
-                  }
-                  const currentStr = (s.data as any)?.[key];
-                  const current = typeof currentStr === 'string' ? (parseInt(currentStr, 10) || 0) : 0;
-                  const desired = (prev || 0) + 1;
-                  if (desired > 0 && current !== desired) {
-                    (s.data as any)[key] = String(desired).padStart(4, '0');
-                    // ensure lingering range keys cleared
-                    delete (s.data as any)[`camera${i}_from`];
-                    delete (s.data as any)[`camera${i}_to`];
-                  }
-                  prev = desired;
-                }
-              }
-            }
-          } catch (e) {
-            console.log('[store] sequential normalize error', e);
-          }
-
-          return { logSheets: mergedLogSheets };
-        });
+        set((state) => ({
+          logSheets: state.logSheets.map((logSheet) => 
+            logSheet.id === id 
+              ? { ...logSheet, data, updatedAt: new Date().toISOString() } 
+              : logSheet
+          ),
+        }));
         
         const updated = get().logSheets.find(sheet => sheet.id === id);
         console.log('=== After store update ===');
         console.log('  Updated data.camera1_from:', updated?.data?.camera1_from);
         console.log('  Updated data.camera1_to:', updated?.data?.camera1_to);
         console.log('  Updated data.cameraFile:', updated?.data?.cameraFile);
-        console.log('  Updated cameraFile1:', (updated as any)?.data?.cameraFile1);
-        console.log('  Updated cameraFile2:', (updated as any)?.data?.cameraFile2);
-        console.log('  Updated cameraFile3:', (updated as any)?.data?.cameraFile3);
       },
       
       updateLogSheetName: (id: string, name: string) => {
@@ -477,16 +326,6 @@ export const useProjectStore = create<ProjectState>()(
               const newData: Record<string, any> = { ...data };
 
               const raw = data[fieldId] as unknown;
-              console.debug('[updateFileNumbers] inspecting', {
-                fieldId,
-                logId: logSheet.id,
-                raw,
-                rangeFrom: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_from`],
-                rangeTo: (data as any)[`${fieldId === 'soundFile' ? 'sound' : fieldId.replace('cameraFile', 'camera')}_to`],
-                cameraFile1: (data as any)['cameraFile1'],
-                cameraFile2: (data as any)['cameraFile2'],
-                cameraFile3: (data as any)['cameraFile3']
-              });
               if (typeof raw === 'string' && raw.length > 0) {
                 if (raw.includes('-')) {
                   const [startStr, endStr] = raw.split('-');
@@ -500,46 +339,22 @@ export const useProjectStore = create<ProjectState>()(
                       const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
                       newData[fieldId] = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
                       updated = true;
-                      console.debug('[updateFileNumbers] inline-range-shift', {
-                        fieldId,
-                        logId: logSheet.id,
-                        from: `${startNum}-${endNum}`,
-                        to: newData[fieldId]
-                      });
                     }
                   }
                 } else {
                   const currentNum = parseInt(raw as string, 10);
                   if (!Number.isNaN(currentNum)) {
-                    // Do NOT consume the skippedTarget for camera fields' single values.
-                    // We want the skip to apply to the first RANGE that contains fromNumber (the target),
-                    // not to a single-value equal to fromNumber (e.g., the immediate next take like 0008).
-                    const isCameraField = fieldId.startsWith('cameraFile');
-                    if (!isCameraField && !skippedTarget && currentNum === fromNumber) {
+                    if (!skippedTarget && currentNum === fromNumber) {
                       skippedTarget = true;
                     } else if (currentNum >= fromNumber) {
                       newData[fieldId] = String(currentNum + increment).padStart(4, '0');
                       updated = true;
-                      console.debug('[updateFileNumbers] single-shift', {
-                        fieldId,
-                        logId: logSheet.id,
-                        from: currentNum,
-                        to: newData[fieldId]
-                      });
                     }
                   }
                 }
               }
 
               if (fieldId === 'soundFile') {
-                // Preserve Waste blank sounds; allow SFX/Ambience to shift; log decisions
-                const cls = (data as any)?.classification;
-                const sfVal = (data as any)?.soundFile as string | undefined;
-                if (cls === 'Waste' && (!sfVal || sfVal.trim().length === 0)) {
-                  console.log('[updateFileNumbers] sound skip (waste blank)', { logId: logSheet.id });
-                  return logSheet;
-                }
-                console.log('[updateFileNumbers] sound process', { logId: logSheet.id, cls, fromNumber, increment, hasRange: typeof (data as any)['sound_from'] === 'string' && typeof (data as any)['sound_to'] === 'string', soundFile: (data as any)?.soundFile });
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
@@ -547,17 +362,11 @@ export const useProjectStore = create<ProjectState>()(
                   const sToNum = parseInt(soundTo, 10);
                   if (!Number.isNaN(sFromNum) && !Number.isNaN(sToNum)) {
                     if (!skippedTarget && isTargetInRange(sFromNum, sToNum)) {
-                      console.log('[updateFileNumbers] sound-range skip target', { logId: logSheet.id, range: `${sFromNum}-${sToNum}` });
                       skippedTarget = true;
                     } else if (sFromNum >= fromNumber || sToNum >= fromNumber) {
                       newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
                       newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
                       updated = true;
-                      console.debug('[updateFileNumbers] sound-range-shift', {
-                        logId: logSheet.id,
-                        from: `${sFromNum}-${sToNum}`,
-                        to: `${newData['sound_from']}-${newData['sound_to']}`
-                      });
                     }
                   }
                 }
@@ -589,19 +398,12 @@ export const useProjectStore = create<ProjectState>()(
                       newData[`camera${cameraNum}_to`] = String(newEnd).padStart(4, '0');
                       console.log(`  -> Shifting from ${cFromNum}-${cToNum} to ${newStart}-${newEnd}`);
                       updated = true;
-                      console.debug('[updateFileNumbers] camera-range-shift', {
-                        fieldId,
-                        logId: logSheet.id,
-                        from: `${cFromNum}-${cToNum}`,
-                        to: `${newStart}-${newEnd}`
-                      });
                     }
                   }
                 }
               }
 
               if (updated) {
-                console.debug('[updateFileNumbers] applying update', { logId: logSheet.id, fieldId });
                 return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
               }
               return logSheet;

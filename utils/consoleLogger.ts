@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
-// Use legacy API for compatibility with current SDK version
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 interface LogEntry {
@@ -128,14 +127,9 @@ End of Logs`;
         URL.revokeObjectURL(url);
         return true;
       } else {
-        let fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
-        try {
-          await FileSystem.writeAsStringAsync(fileUri, content);
-        } catch (e) {
-          // Fallback to cache directory if documentDirectory fails
-          fileUri = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}${filename}.txt`;
-          await FileSystem.writeAsStringAsync(fileUri, content);
-        }
+        const fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
+        await FileSystem.writeAsStringAsync(fileUri, content);
+        
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
             mimeType: 'text/plain',
