@@ -185,6 +185,43 @@ export const useProjectStore = create<ProjectState>()(
             }, 0);
             data.uniqueId = (maxUniqueId + 1).toString();
           }
+          
+          // Calculate and store delta for camera and sound files
+          // Sound file delta
+          if (data.sound_from && data.sound_to) {
+            const from = parseInt(data.sound_from, 10) || 0;
+            const to = parseInt(data.sound_to, 10) || 0;
+            data.sound_delta = Math.abs(to - from) + 1;
+          } else {
+            data.sound_delta = 1;
+          }
+          
+          // Camera file delta - need to get camera configuration from project
+          const project = state.projects.find(p => p.id === existingSheet.projectId);
+          const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+          
+          if (cameraConfiguration === 1) {
+            if (data.camera1_from && data.camera1_to) {
+              const from = parseInt(data.camera1_from, 10) || 0;
+              const to = parseInt(data.camera1_to, 10) || 0;
+              data.camera_delta = Math.abs(to - from) + 1;
+            } else {
+              data.camera_delta = 1;
+            }
+          } else {
+            // Multi-camera: calculate delta for each camera
+            for (let i = 1; i <= cameraConfiguration; i++) {
+              const fromKey = `camera${i}_from`;
+              const toKey = `camera${i}_to`;
+              if (data[fromKey] && data[toKey]) {
+                const from = parseInt(data[fromKey], 10) || 0;
+                const to = parseInt(data[toKey], 10) || 0;
+                data[`camera${i}_delta`] = Math.abs(to - from) + 1;
+              } else {
+                data[`camera${i}_delta`] = 1;
+              }
+            }
+          }
         }
         
         console.log('=== STORE updateLogSheet called ===');
@@ -194,6 +231,8 @@ export const useProjectStore = create<ProjectState>()(
         console.log('  data.cameraFile:', data.cameraFile);
         console.log('  data.classification:', data.classification);
         console.log('  data.uniqueId:', data.uniqueId);
+        console.log('  data.sound_delta:', data.sound_delta);
+        console.log('  data.camera_delta:', data.camera_delta);
         
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => 
