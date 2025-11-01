@@ -427,35 +427,18 @@ export const useProjectStore = create<ProjectState>()(
                 return uidA - uidB;
               });
             
-            // Track cascade state
-            let insertedLogUpperBound: number | null = null;
             const updatedSheets = new Map<string, LogSheet>();
             
-            console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
+            console.log('[updateFileNumbers] Starting shift from', fromNumber, 'with increment (delta):', increment);
             
-            // First pass: find the excluded log (inserted/edited log) and get its upper bound
-            if (excludeLogId) {
-              const excludedLog = projectSheets.find(s => s.id === excludeLogId);
-              if (excludedLog) {
-                const excludedBounds = getFileBounds(excludedLog, fieldId);
-                if (excludedBounds) {
-                  console.log(`  -> Found excluded log ${excludeLogId} with bounds ${excludedBounds.lower}-${excludedBounds.upper}`);
-                  // If the excluded log is the inserted log (contains fromNumber), save its upper bound
-                  if (isTargetInRange(excludedBounds.lower, excludedBounds.upper)) {
-                    insertedLogUpperBound = excludedBounds.upper;
-                    console.log(`  -> Excluded log is the inserted log, upper bound: ${insertedLogUpperBound}`);
-                  }
-                }
-              }
-            }
-            
-            // Group sheets that need shifting (all sheets with lower >= fromNumber, excluding inserted log)
+            // Group sheets that need shifting: all logs that overlap with or come after fromNumber
+            // (excluding the inserted log itself which is identified by excludeLogId)
             const sheetsToShift: Array<{ sheet: LogSheet; bounds: { lower: number; upper: number; delta: number } }> = [];
             
             for (const sheet of projectSheets) {
-              // Skip the excluded log (the edited log that was just saved)
+              // Skip the excluded log (the inserted/edited log that was just saved)
               if (excludeLogId && sheet.id === excludeLogId) {
-                console.log(`  -> Skipping excluded log: ${sheet.id}`);
+                console.log(`  -> Skipping excluded log (inserted log): ${sheet.id}`);
                 updatedSheets.set(sheet.id, sheet);
                 continue;
               }
@@ -479,17 +462,18 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
               
-              // Only consider sheets where the lower bound is >= fromNumber
-              // These are the sheets that come after the inserted log
-              if (lower >= fromNumber) {
-                console.log(`  -> Found sheet to shift: ${sheet.id} (uniqueId: ${sheet.data?.uniqueId}) with bounds ${lower}-${upper}`);
+              // Shift logs that overlap with or come after fromNumber (the insertion point)
+              const shouldShift = lower >= fromNumber || (lower <= fromNumber && upper >= fromNumber);
+              
+              if (shouldShift) {
+                console.log(`  -> Found sheet to shift: ${sheet.id} (uniqueId: ${sheet.data?.uniqueId}) with bounds ${lower}-${upper} (delta=${delta})`);
                 sheetsToShift.push({ sheet, bounds: { lower, upper, delta } });
               } else {
                 updatedSheets.set(sheet.id, sheet);
               }
             }
             
-            // Sort sheets to shift by uniqueId to ensure correct order
+            // Sort sheets to shift by uniqueId to ensure correct order (maintains relative positioning)
             sheetsToShift.sort((a, b) => {
               const uidA = parseInt(a.sheet.data?.uniqueId || '0', 10) || 0;
               const uidB = parseInt(b.sheet.data?.uniqueId || '0', 10) || 0;
@@ -498,68 +482,60 @@ export const useProjectStore = create<ProjectState>()(
             
             console.log(`  -> Found ${sheetsToShift.length} sheets to shift`);
             
-            // Find the target log (the one that originally had fromNumber)
-            // This should be the first in the sorted list (by uniqueId)
-            let targetLogIndex = -1;
+            // Simplified shifting: add the inserted log's delta (increment) to all subsequent ranges
+            // This preserves relative spacing and is much simpler than cascading
+            console.log(`  -> Starting shifts with increment (inserted log's delta): ${increment}`);
+            
             for (let i = 0; i < sheetsToShift.length; i++) {
-              const { lower, upper } = sheetsToShift[i].bounds;
-              if (isTargetInRange(lower, upper)) {
-                targetLogIndex = i;
-                console.log(`  -> Target log (original duplicate) found at index ${i}: ${sheetsToShift[i].sheet.id}`);
-                break;
-              }
-            }
-            
-            // Start shifting from the target log (if found), otherwise shift all
-            const startIndex = targetLogIndex >= 0 ? targetLogIndex : 0;
-            let previousUpper = insertedLogUpperBound !== null ? insertedLogUpperBound : (fromNumber - 1);
-            
-            console.log(`  -> Starting consecutive shifts from index ${startIndex}, previousUpper: ${previousUpper}`);
-            
-            for (let i = startIndex; i < sheetsToShift.length; i++) {
               const { sheet, bounds } = sheetsToShift[i];
               const { lower, upper, delta } = bounds;
               
-              // Calculate new position based on previous upper bound
-              const newLower = previousUpper + 1;
-              const newUpper = newLower + delta - 1;
+              // Simple: add increment to both lower and upper bounds
+              const newLower = lower + increment;
+              const newUpper = upper + increment;
               
-              console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
-              console.log(`     UniqueId: ${sheet.data?.uniqueId}, Previous upper was: ${previousUpper}`);
+              console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper} (added increment ${increment})`);
+              console.log(`     UniqueId: ${sheet.data?.uniqueId}`);
               
               const newData: Record<string, any> = { ...sheet.data };
               
+              // Determine if this was a range or single value
+              const wasRange = lower !== upper;
+              
               if (fieldId === 'soundFile') {
-                newData['sound_from'] = String(newLower).padStart(4, '0');
-                newData['sound_to'] = String(newUpper).padStart(4, '0');
-                // Update inline string if it exists
-                if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
-                  newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                if (wasRange) {
+                  newData['sound_from'] = String(newLower).padStart(4, '0');
+                  newData['sound_to'] = String(newUpper).padStart(4, '0');
+                  // Update inline string if it exists
+                  if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
+                    newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
                 } else {
+                  // Single value: keep as single value
                   newData['soundFile'] = String(newLower).padStart(4, '0');
+                  // Clear range fields if they exist
+                  delete newData['sound_from'];
+                  delete newData['sound_to'];
                 }
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
-                newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
-                // Update inline string if it exists
-                if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
-                  newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                if (wasRange) {
+                  newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                  newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                  // Update inline string if it exists
+                  if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
                 } else {
+                  // Single value: keep as single value
                   newData[fieldId] = String(newLower).padStart(4, '0');
+                  // Clear range fields if they exist
+                  delete newData[`camera${cameraNum}_from`];
+                  delete newData[`camera${cameraNum}_to`];
                 }
               }
               
-              // Update previousUpper for the next iteration
-              previousUpper = newUpper;
               updatedSheets.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
-            }
-            
-            // Keep all other sheets that weren't shifted
-            for (let i = 0; i < startIndex; i++) {
-              if (i < sheetsToShift.length) {
-                updatedSheets.set(sheetsToShift[i].sheet.id, sheetsToShift[i].sheet);
-              }
             }
             
             // Merge back into all logSheets
