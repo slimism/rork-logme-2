@@ -130,6 +130,13 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       addLogSheet: (name: string, type: string, folderId: string, projectId: string) => {
+        const state = get();
+        const projectLogSheets = state.logSheets.filter(s => s.projectId === projectId);
+        const maxUniqueId = projectLogSheets.reduce((max, sheet) => {
+          const uid = sheet.data?.uniqueId ? parseInt(sheet.data.uniqueId, 10) : 0;
+          return Math.max(max, isNaN(uid) ? 0 : uid);
+        }, 0);
+        
         const newLogSheet: LogSheet = {
           id: Date.now().toString(),
           name,
@@ -138,7 +145,9 @@ export const useProjectStore = create<ProjectState>()(
           projectId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          data: {},
+          data: {
+            uniqueId: (maxUniqueId + 1).toString(),
+          },
         };
         
         set((state) => ({
@@ -160,12 +169,31 @@ export const useProjectStore = create<ProjectState>()(
             }
           }
         });
+        
+        // Preserve uniqueId if it already exists, or create one if missing
+        const state = get();
+        const existingSheet = state.logSheets.find(sheet => sheet.id === id);
+        if (existingSheet) {
+          if (!data.uniqueId && existingSheet.data?.uniqueId) {
+            data.uniqueId = existingSheet.data.uniqueId;
+          } else if (!data.uniqueId) {
+            // Create uniqueId if missing (for backward compatibility)
+            const projectLogSheets = state.logSheets.filter(s => s.projectId === existingSheet.projectId);
+            const maxUniqueId = projectLogSheets.reduce((max, sheet) => {
+              const uid = sheet.data?.uniqueId ? parseInt(sheet.data.uniqueId, 10) : 0;
+              return Math.max(max, isNaN(uid) ? 0 : uid);
+            }, 0);
+            data.uniqueId = (maxUniqueId + 1).toString();
+          }
+        }
+        
         console.log('=== STORE updateLogSheet called ===');
         console.log('  id:', id);
         console.log('  data.camera1_from:', data.camera1_from);
         console.log('  data.camera1_to:', data.camera1_to);
         console.log('  data.cameraFile:', data.cameraFile);
         console.log('  data.classification:', data.classification);
+        console.log('  data.uniqueId:', data.uniqueId);
         
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => 
@@ -309,105 +337,128 @@ export const useProjectStore = create<ProjectState>()(
         
         set((state) => ({
           logSheets: (() => {
-            let skippedTarget = false;
             const isTargetInRange = (start: number, end: number) => fromNumber >= Math.min(start, end) && fromNumber <= Math.max(start, end);
-            return state.logSheets.map((logSheet) => {
-              if (logSheet.projectId !== projectId) return logSheet;
+            
+            // Helper to get file range bounds
+            const getFileBounds = (sheet: LogSheet, fid: string): { lower: number; upper: number; delta: number } | null => {
+              const data = sheet.data;
+              if (!data) return null;
               
-              // Skip the excluded log (the edited log that was just saved)
-              if (excludeLogId && logSheet.id === excludeLogId) {
-                console.log(`  -> Explicitly skipping excluded log: ${logSheet.id}`);
-                return logSheet;
-              }
-              const data = logSheet.data;
-              if (!data) return logSheet;
-
-              let updated = false;
-              const newData: Record<string, any> = { ...data };
-
-              const raw = data[fieldId] as unknown;
-              if (typeof raw === 'string' && raw.length > 0) {
-                if (raw.includes('-')) {
-                  const [startStr, endStr] = raw.split('-');
-                  const startNum = parseInt(startStr, 10);
-                  const endNum = parseInt(endStr, 10);
-                  if (!Number.isNaN(startNum) && !Number.isNaN(endNum)) {
-                    if (!skippedTarget && isTargetInRange(startNum, endNum)) {
-                      skippedTarget = true;
-                    } else {
-                      const newStart = startNum >= fromNumber ? startNum + increment : startNum;
-                      const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
-                      newData[fieldId] = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
-                      updated = true;
-                    }
-                  }
-                } else {
-                  const currentNum = parseInt(raw as string, 10);
-                  if (!Number.isNaN(currentNum)) {
-                    if (!skippedTarget && currentNum === fromNumber) {
-                      skippedTarget = true;
-                    } else if (currentNum >= fromNumber) {
-                      newData[fieldId] = String(currentNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
-                  }
-                }
-              }
-
-              if (fieldId === 'soundFile') {
+              if (fid === 'soundFile') {
                 const soundFrom = data['sound_from'];
                 const soundTo = data['sound_to'];
                 if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
-                  const sFromNum = parseInt(soundFrom, 10);
-                  const sToNum = parseInt(soundTo, 10);
-                  if (!Number.isNaN(sFromNum) && !Number.isNaN(sToNum)) {
-                    if (!skippedTarget && isTargetInRange(sFromNum, sToNum)) {
-                      skippedTarget = true;
-                    } else if (sFromNum >= fromNumber || sToNum >= fromNumber) {
-                      newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
-                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
+                  const lower = parseInt(soundFrom, 10);
+                  const upper = parseInt(soundTo, 10);
+                  if (!isNaN(lower) && !isNaN(upper)) {
+                    return { lower, upper, delta: upper - lower + 1 };
                   }
                 }
-              } else if (fieldId.startsWith('cameraFile')) {
-                const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                const raw = data[fid] as unknown;
+                if (typeof raw === 'string' && raw.length > 0 && !raw.includes('-')) {
+                  const num = parseInt(raw, 10);
+                  if (!isNaN(num)) return { lower: num, upper: num, delta: 1 };
+                }
+              } else if (fid.startsWith('cameraFile')) {
+                const cameraNum = fid === 'cameraFile' ? 1 : (parseInt(fid.replace('cameraFile', ''), 10) || 1);
                 const cameraFrom = data[`camera${cameraNum}_from`];
                 const cameraTo = data[`camera${cameraNum}_to`];
                 if (typeof cameraFrom === 'string' && typeof cameraTo === 'string') {
-                  const cFromNum = parseInt(cameraFrom, 10);
-                  const cToNum = parseInt(cameraTo, 10);
-                  if (!Number.isNaN(cFromNum) && !Number.isNaN(cToNum)) {
-                    console.log(`DEBUG updateFileNumbers - Checking log ${logSheet.id}:`, {
-                      fieldId,
-                      cFromNum,
-                      cToNum,
-                      fromNumber,
-                      increment,
-                      skippedTarget,
-                      'isTargetInRange': isTargetInRange(cFromNum, cToNum)
-                    });
-                    
-                    if (!skippedTarget && isTargetInRange(cFromNum, cToNum)) {
-                      console.log(`  -> Skipping target log (contains fromNumber ${fromNumber})`);
-                      skippedTarget = true;
-                    } else if (cFromNum >= fromNumber || cToNum >= fromNumber) {
-                      const newStart = cFromNum + increment;
-                      const newEnd = cToNum + increment;
-                      newData[`camera${cameraNum}_from`] = String(newStart).padStart(4, '0');
-                      newData[`camera${cameraNum}_to`] = String(newEnd).padStart(4, '0');
-                      console.log(`  -> Shifting from ${cFromNum}-${cToNum} to ${newStart}-${newEnd}`);
-                      updated = true;
-                    }
+                  const lower = parseInt(cameraFrom, 10);
+                  const upper = parseInt(cameraTo, 10);
+                  if (!isNaN(lower) && !isNaN(upper)) {
+                    return { lower, upper, delta: upper - lower + 1 };
                   }
                 }
+                const raw = data[fid] as unknown;
+                if (typeof raw === 'string' && raw.length > 0 && !raw.includes('-')) {
+                  const num = parseInt(raw, 10);
+                  if (!isNaN(num)) return { lower: num, upper: num, delta: 1 };
+                }
               }
-
-              if (updated) {
-                return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
+              return null;
+            };
+            
+            // Sort sheets by uniqueId to ensure correct cascade order
+            const projectSheets = state.logSheets
+              .filter(s => s.projectId === projectId)
+              .sort((a, b) => {
+                const uidA = parseInt(a.data?.uniqueId || '0', 10) || 0;
+                const uidB = parseInt(b.data?.uniqueId || '0', 10) || 0;
+                return uidA - uidB;
+              });
+            
+            // Track cascade state
+            let skippedFirstOccurrence = false;
+            let previousUpper = fromNumber - 1;
+            
+            const updatedSheets = new Map<string, LogSheet>();
+            
+            for (const sheet of projectSheets) {
+              // Skip the excluded log (the edited log that was just saved)
+              if (excludeLogId && sheet.id === excludeLogId) {
+                console.log(`  -> Skipping excluded log: ${sheet.id}`);
+                updatedSheets.set(sheet.id, sheet);
+                continue;
               }
-              return logSheet;
-            });
+              
+              const bounds = getFileBounds(sheet, fieldId);
+              if (!bounds) {
+                updatedSheets.set(sheet.id, sheet);
+                continue;
+              }
+              
+              const { lower, upper, delta } = bounds;
+              
+              // Skip the first occurrence that contains fromNumber
+              if (!skippedFirstOccurrence && isTargetInRange(lower, upper)) {
+                console.log(`  -> Skipping first occurrence at ${lower}-${upper} (contains fromNumber ${fromNumber})`);
+                skippedFirstOccurrence = true;
+                previousUpper = upper;
+                updatedSheets.set(sheet.id, sheet);
+                continue;
+              }
+              
+              // Only shift entries that come after fromNumber
+              if (lower >= fromNumber && skippedFirstOccurrence) {
+                // Calculate new position: previous upper + 1
+                const newLower = previousUpper + 1;
+                const newUpper = newLower + delta - 1;
+                
+                console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
+                
+                const newData: Record<string, any> = { ...sheet.data };
+                
+                if (fieldId === 'soundFile') {
+                  newData['sound_from'] = String(newLower).padStart(4, '0');
+                  newData['sound_to'] = String(newUpper).padStart(4, '0');
+                  // Update inline string if it exists
+                  if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
+                    newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  } else {
+                    newData['soundFile'] = String(newLower).padStart(4, '0');
+                  }
+                } else if (fieldId.startsWith('cameraFile')) {
+                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                  newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                  newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                  // Update inline string if it exists
+                  if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  } else {
+                    newData[fieldId] = String(newLower).padStart(4, '0');
+                  }
+                }
+                
+                previousUpper = newUpper;
+                updatedSheets.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
+              } else {
+                updatedSheets.set(sheet.id, sheet);
+              }
+            }
+            
+            // Merge back into all logSheets
+            return state.logSheets.map(sheet => updatedSheets.get(sheet.id) || sheet);
           })(),
         }));
       },
