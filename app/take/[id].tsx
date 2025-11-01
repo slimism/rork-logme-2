@@ -2660,6 +2660,30 @@ This would break the logging logic and create inconsistencies in the file number
           updateLogSheet(logSheet.id, updatedData);
         }
 
+        // Unified shift amount based on inserted camera input
+        const computeCameraGroupShift = (): number => {
+          if (camCount === 1) {
+            if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+              const a = parseInt(rangeData['cameraFile'].from, 10) || 0;
+              const b = parseInt(rangeData['cameraFile'].to, 10) || 0;
+              return Math.abs(b - a) + 1;
+            }
+            return takeData.cameraFile?.trim() ? 1 : 0;
+          }
+          let maxDelta = 0;
+          for (let i = 1; i <= camCount; i++) {
+            const fid = `cameraFile${i}`;
+            if (showRangeMode[fid] && rangeData[fid]?.from && rangeData[fid]?.to) {
+              const a = parseInt(rangeData[fid].from, 10) || 0;
+              const b = parseInt(rangeData[fid].to, 10) || 0;
+              maxDelta = Math.max(maxDelta, Math.abs(b - a) + 1);
+            } else if (takeData[fid]?.trim()) {
+              maxDelta = Math.max(maxDelta, 1);
+            }
+          }
+          return maxDelta;
+        };
+
         // Shift file numbers starting from target
         // Shift sound files starting from the correct number
         console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
