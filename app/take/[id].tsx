@@ -2447,6 +2447,9 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
         } else {
+          // Accumulate updates for the existing entry across all cameras to avoid overwrites
+          let aggregatedExistingEntry: Record<string, any> = { ...existingEntry.data };
+          let hasAggregatedUpdates = false;
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
             if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
@@ -2461,73 +2464,62 @@ This would break the logging logic and create inconsistencies in the file number
                 const n = parseInt(val, 10);
                 if (!Number.isNaN(n)) camStart = n;
               }
-              {
-                const camDelta = (() => {
-                  const r = rangeData[fieldId];
-                  if (showRangeMode[fieldId] && r?.from && r?.to) {
-                    const a = parseInt(r.from, 10) || 0;
-                    const b = parseInt(r.to, 10) || 0;
-                    return Math.abs(b - a) + 1;
+              const camDelta = (() => {
+                const r = rangeData[fieldId];
+                if (showRangeMode[fieldId] && r?.from && r?.to) {
+                  const a = parseInt(r.from, 10) || 0;
+                  const b = parseInt(r.to, 10) || 0;
+                  return Math.abs(b - a) + 1;
+                }
+                if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+                  return 0;
+                }
+                return 1;
+              })();
+              if (!disabledFields.has(fieldId)) {
+                const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
+                updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, Array.from(excludeIds));
+                if (targetRange) {
+                  const bounds = getInsertedBounds(fieldId);
+                  const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                  const oldToNum = parseInt(targetRange.to, 10) || 0;
+                  const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                  const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                  aggregatedExistingEntry[`camera${i}_from`] = newFrom;
+                  aggregatedExistingEntry[`camera${i}_to`] = newTo;
+                  const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+                  if (hadInline) {
+                    aggregatedExistingEntry[fieldId] = `${newFrom}-${newTo}`;
                   }
-                  // If input camera field is blank, don't shift camera files
-                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-                    return 0;
-                  }
-                  return 1;
-                })();
-                if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, Array.from(excludeIds)); }
-                  
-                  // If target has a range, adjust lower to end after inserted and extend upper by delta
-                  const targetRange = getRangeFromData(existingEntry.data, fieldId);
-                  if (targetRange) {
-                    const bounds = getInsertedBounds(fieldId);
-                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-                    const oldToNum = parseInt(targetRange.to, 10) || 0;
-                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
-                    const updated: Record<string, any> = {
-                      ...existingEntry.data,
-                      [`camera${i}_from`]: newFrom,
-                      [`camera${i}_to`]: newTo
-                    };
-                    const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
-                    if (hadInline) {
-                      updated[fieldId] = `${newFrom}-${newTo}`;
-                    }
-                    updateLogSheet(existingEntry.id, updated);
-                  } else {
-                    // Handle single camera value (not range) in type=file multi-camera scenario
-                    const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
-                    if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
-                      const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
-                      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                        const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-                        const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
-                        const min = Math.min(insFrom, insTo);
-                        const max = Math.max(insFrom, insTo);
-                        if (targetSingleNum >= min && targetSingleNum <= max) {
-                          const updated: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
-                          };
-                          updateLogSheet(existingEntry.id, updated);
-                        }
-                      } else if (takeData[fieldId]) {
-                        const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-                        if (newSingle === targetSingleNum) {
-                          const updated: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0')
-                          };
-                          updateLogSheet(existingEntry.id, updated);
-                        }
+                  hasAggregatedUpdates = true;
+                } else {
+                  const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+                  if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+                    const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                    if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                      const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                      const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                      const min = Math.min(insFrom, insTo);
+                      const max = Math.max(insFrom, insTo);
+                      if (targetSingleNum >= min && targetSingleNum <= max) {
+                        aggregatedExistingEntry[fieldId] = String(targetSingleNum + camDelta).padStart(4, '0');
+                        hasAggregatedUpdates = true;
+                      }
+                    } else if (takeData[fieldId]) {
+                      const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                      if (newSingle === targetSingleNum) {
+                        aggregatedExistingEntry[fieldId] = String(targetSingleNum + camDelta).padStart(4, '0');
+                        hasAggregatedUpdates = true;
                       }
                     }
                   }
                 }
               }
             }
+          }
+          if (hasAggregatedUpdates) {
+            updateLogSheet(existingEntry.id, aggregatedExistingEntry);
           }
         }
 
@@ -2864,6 +2856,9 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
         } else {
+          // Accumulate updates for the existing entry across all cameras to avoid overwrites
+          let aggregatedExistingEntry2: Record<string, any> = { ...existingEntry.data };
+          let hasAggregatedUpdates2 = false;
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
             if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
@@ -2878,77 +2873,65 @@ This would break the logging logic and create inconsistencies in the file number
                 const n = parseInt(val, 10);
                 if (!Number.isNaN(n)) camStart = n;
               }
-              {
-                const camDelta = (() => {
-                  const r = rangeData[fieldId];
-                  if (showRangeMode[fieldId] && r?.from && r?.to) {
-                    const a = parseInt(r.from, 10) || 0;
-                    const b = parseInt(r.to, 10) || 0;
-                    return Math.abs(b - a) + 1;
+              const camDelta = (() => {
+                const r = rangeData[fieldId];
+                if (showRangeMode[fieldId] && r?.from && r?.to) {
+                  const a = parseInt(r.from, 10) || 0;
+                  const b = parseInt(r.to, 10) || 0;
+                  return Math.abs(b - a) + 1;
+                }
+                if (!takeData[fieldId] || !takeData[fieldId].trim()) {
+                  return 0;
+                }
+                return 1;
+              })();
+              if (!disabledFields.has(fieldId)) {
+                const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
+                updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, Array.from(excludeIds));
+                if (targetRange) {
+                  const bounds = getInsertedBounds(fieldId);
+                  const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                  const oldToNum = parseInt(targetRange.to, 10) || 0;
+                  const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                  const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                  aggregatedExistingEntry2[`camera${i}_from`] = newFrom;
+                  aggregatedExistingEntry2[`camera${i}_to`] = newTo;
+                  const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+                  if (hadInline) {
+                    aggregatedExistingEntry2[fieldId] = `${newFrom}-${newTo}`;
                   }
-                  // If input camera field is blank, don't shift camera files
-                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-                    return 0;
-                  }
-                  return 1;
-                })();
-                if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, Array.from(excludeIds)); }
-                  
-                  // If target has a range, adjust lower to end after inserted and extend upper by delta
-                  const targetRange = getRangeFromData(existingEntry.data, fieldId);
-                  if (targetRange) {
-                    const bounds = getInsertedBounds(fieldId);
-                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-                    const oldToNum = parseInt(targetRange.to, 10) || 0;
-                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
-                    const updated: Record<string, any> = {
-                      ...existingEntry.data,
-                      [`camera${i}_from`]: newFrom,
-                      [`camera${i}_to`]: newTo
-                    };
-                    const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
-                    if (hadInline) {
-                      updated[fieldId] = `${newFrom}-${newTo}`;
-                    }
-                    updateLogSheet(existingEntry.id, updated);
-                  } else if (!targetRange) {
-                    // Handle single camera value (not range)
-                    const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
-                    if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
-                      const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
-                      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                        // New entry has range, target has single value
-                        const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-                        const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
-                        const min = Math.min(insFrom, insTo);
-                        const max = Math.max(insFrom, insTo);
-                        if (targetSingleNum >= min && targetSingleNum <= max) {
-                          const updatedData: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
-                            takeNumber: String(targetTakeNumber + 1)
-                          };
-                          updateLogSheet(existingEntry.id, updatedData);
-                        }
-                      } else if (takeData[fieldId]) {
-                        // Both have single values
-                        const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-                        if (newSingle === targetSingleNum) {
-                          const updatedData: Record<string, any> = { 
-                            ...existingEntry.data, 
-                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
-                            takeNumber: String(targetTakeNumber + 1)
-                          };
-                          updateLogSheet(existingEntry.id, updatedData);
-                        }
+                  aggregatedExistingEntry2.takeNumber = String(targetTakeNumber + 1);
+                  hasAggregatedUpdates2 = true;
+                } else {
+                  const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+                  if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+                    const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                    if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                      const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                      const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                      const min = Math.min(insFrom, insTo);
+                      const max = Math.max(insFrom, insTo);
+                      if (targetSingleNum >= min && targetSingleNum <= max) {
+                        aggregatedExistingEntry2[fieldId] = String(targetSingleNum + camDelta).padStart(4, '0');
+                        aggregatedExistingEntry2.takeNumber = String(targetTakeNumber + 1);
+                        hasAggregatedUpdates2 = true;
+                      }
+                    } else if (takeData[fieldId]) {
+                      const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                      if (newSingle === targetSingleNum) {
+                        aggregatedExistingEntry2[fieldId] = String(targetSingleNum + camDelta).padStart(4, '0');
+                        aggregatedExistingEntry2.takeNumber = String(targetTakeNumber + 1);
+                        hasAggregatedUpdates2 = true;
                       }
                     }
                   }
                 }
               }
             }
+          }
+          if (hasAggregatedUpdates2) {
+            updateLogSheet(existingEntry.id, aggregatedExistingEntry2);
           }
         }
       }
