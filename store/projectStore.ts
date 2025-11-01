@@ -483,13 +483,14 @@ export const useProjectStore = create<ProjectState>()(
               if (!skippedFirstOccurrence && isTargetInRange(lower, upper)) {
                 console.log(`  -> Skipping first occurrence at ${lower}-${upper} (contains fromNumber ${fromNumber})`);
                 skippedFirstOccurrence = true;
-                previousUpper = upper;
+                // DON'T update previousUpper here - keep using the excluded log's upper bound
                 updatedSheets.set(sheet.id, sheet);
                 continue;
               }
               
-              // Only shift entries that come after fromNumber
-              if (lower >= fromNumber && skippedFirstOccurrence) {
+              // Only shift entries after we've skipped the first occurrence
+              // Shift ALL subsequent entries in cascade order
+              if (skippedFirstOccurrence) {
                 // Calculate new position: previous upper + 1
                 const newLower = previousUpper + 1;
                 const newUpper = newLower + delta - 1;
