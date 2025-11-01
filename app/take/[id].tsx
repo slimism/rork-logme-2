@@ -1218,21 +1218,96 @@ export default function EditTakeScreen() {
       return;
     }
 
+    // Check for range conflicts, but only block if camera files are incompatible
     const generalConflict = findFirstDuplicateFile();
     if (generalConflict?.isRangeConflict && (generalConflict.conflictType === 'upper' || generalConflict.conflictType === 'within')) {
-      const e = generalConflict.existingEntry;
-      const classification = e?.data?.classification;
-      const loc =
-        classification === 'SFX'
-          ? 'SFX'
-          : (classification === 'Ambience' ? 'Ambience' :
-             `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
-      Alert.alert(
-        'Part of Ranged Take',
-        `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
-        [{ text: 'OK', style: 'default' }]
-      );
-      return;
+      // Check if this is a camera file conflict
+      const isCameraConflict = generalConflict.fieldId.includes('camera');
+      
+      if (isCameraConflict) {
+        // For camera conflicts, check if ALL camera files are compatible
+        const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+        let allCamerasCompatible = true;
+        
+        if (cameraConfiguration === 1) {
+          // Single camera - check if ranges align properly
+          const currentRange = rangeData['cameraFile'];
+          const isCurrentRange = showRangeMode['cameraFile'] && currentRange?.from && currentRange?.to;
+          
+          if (isCurrentRange && generalConflict.rangeInfo) {
+            const curFrom = parseInt(currentRange.from, 10) || 0;
+            const curTo = parseInt(currentRange.to, 10) || 0;
+            const curMin = Math.min(curFrom, curTo);
+            const exFrom = parseInt(generalConflict.rangeInfo.from, 10) || 0;
+            const exTo = parseInt(generalConflict.rangeInfo.to, 10) || 0;
+            const exMin = Math.min(exFrom, exTo);
+            
+            // Compatible if current range starts at existing range's lower bound
+            allCamerasCompatible = (curMin === exMin);
+          }
+        } else {
+          // Multi-camera - check all camera files
+          for (let i = 1; i <= cameraConfiguration; i++) {
+            const fieldId = `cameraFile${i}`;
+            const isRecActive = cameraRecState[fieldId] ?? true;
+            if (!isRecActive || disabledFields.has(fieldId)) continue;
+            
+            if (!takeData[fieldId]) continue;
+            
+            const currentRange = rangeData[fieldId];
+            const isCurrentRange = showRangeMode[fieldId] && currentRange?.from && currentRange?.to;
+            
+            // Check this specific camera's compatibility
+            if (isCurrentRange && fieldId === generalConflict.fieldId && generalConflict.rangeInfo) {
+              const curFrom = parseInt(currentRange.from, 10) || 0;
+              const curTo = parseInt(currentRange.to, 10) || 0;
+              const curMin = Math.min(curFrom, curTo);
+              const exFrom = parseInt(generalConflict.rangeInfo.from, 10) || 0;
+              const exTo = parseInt(generalConflict.rangeInfo.to, 10) || 0;
+              const exMin = Math.min(exFrom, exTo);
+              
+              // Compatible if current range starts at existing range's lower bound
+              if (curMin !== exMin) {
+                allCamerasCompatible = false;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Only block if cameras are NOT compatible
+        if (!allCamerasCompatible) {
+          const e = generalConflict.existingEntry;
+          const classification = e?.data?.classification;
+          const loc =
+            classification === 'SFX'
+              ? 'SFX'
+              : (classification === 'Ambience' ? 'Ambience' :
+                 `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
+          Alert.alert(
+            'Part of Ranged Take',
+            `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+        // If cameras ARE compatible, continue to show Insert Before modal
+      } else {
+        // Sound file conflict - block regardless
+        const e = generalConflict.existingEntry;
+        const classification = e?.data?.classification;
+        const loc =
+          classification === 'SFX'
+            ? 'SFX'
+            : (classification === 'Ambience' ? 'Ambience' :
+               `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
+        Alert.alert(
+          'Part of Ranged Take',
+          `${generalConflict.label} file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
     }
 
     const getEligibleDuplicateForField = (fieldId: string) => {
