@@ -446,11 +446,27 @@ export const useProjectStore = create<ProjectState>()(
             
             console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
             
-            // If we have excluded logs, the first one is the one that was just inserted/edited
-            // The inserted log's upper bound is fromNumber + increment - 1
+            // If we have excluded logs, find the maximum upper bound among them
+            // This will be the starting point for cascading shifts
             if (excludeIds.length > 0) {
-              insertedLogUpperBound = fromNumber + increment - 1;
-              console.log(`  -> Excluded logs ${excludeIds.join(', ')} (first is the inserted log), upper bound: ${insertedLogUpperBound} (fromNumber: ${fromNumber}, increment: ${increment})`);
+              let maxUpperBound = fromNumber + increment - 1;
+              const excludedBounds: Array<{ id: string; take: string; upper: number }> = [];
+              
+              for (const sheet of projectSheets) {
+                if (excludeIds.includes(sheet.id)) {
+                  const bounds = getFileBounds(sheet, fieldId);
+                  if (bounds) {
+                    excludedBounds.push({ id: sheet.id, take: sheet.data?.takeNumber || '?', upper: bounds.upper });
+                    if (bounds.upper > maxUpperBound) {
+                      maxUpperBound = bounds.upper;
+                    }
+                  }
+                }
+              }
+              
+              insertedLogUpperBound = maxUpperBound;
+              console.log(`  -> Excluded logs ${excludeIds.join(', ')}, found bounds:`, excludedBounds.map(b => `${b.take}=${b.upper}`).join(', '));
+              console.log(`  -> Using max upper bound: ${insertedLogUpperBound}`);
             }
             
             // Group sheets that need shifting (all sheets with lower >= fromNumber, excluding inserted log)
