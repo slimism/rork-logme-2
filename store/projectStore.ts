@@ -433,20 +433,11 @@ export const useProjectStore = create<ProjectState>()(
             
             console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
             
-            // First pass: find the excluded log (inserted/edited log) and get its upper bound
+            // If we have an excluded log, it's the one that was just inserted/edited
+            // The excluded log's upper bound is fromNumber + increment - 1
             if (excludeLogId) {
-              const excludedLog = projectSheets.find(s => s.id === excludeLogId);
-              if (excludedLog) {
-                const excludedBounds = getFileBounds(excludedLog, fieldId);
-                if (excludedBounds) {
-                  console.log(`  -> Found excluded log ${excludeLogId} with bounds ${excludedBounds.lower}-${excludedBounds.upper}`);
-                  // If the excluded log is the inserted log (contains fromNumber), save its upper bound
-                  if (isTargetInRange(excludedBounds.lower, excludedBounds.upper)) {
-                    insertedLogUpperBound = excludedBounds.upper;
-                    console.log(`  -> Excluded log is the inserted log, upper bound: ${insertedLogUpperBound}`);
-                  }
-                }
-              }
+              insertedLogUpperBound = fromNumber + increment - 1;
+              console.log(`  -> Excluded log ${excludeLogId} is the inserted log, upper bound: ${insertedLogUpperBound} (fromNumber: ${fromNumber}, increment: ${increment})`);
             }
             
             // Group sheets that need shifting (all sheets with lower >= fromNumber, excluding inserted log)
