@@ -431,6 +431,8 @@ export const useProjectStore = create<ProjectState>()(
             let skippedFirstOccurrence = false;
             let previousUpper = fromNumber - 1;
             
+            console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
+            
             const updatedSheets = new Map<string, LogSheet>();
             
             for (const sheet of projectSheets) {
@@ -447,7 +449,18 @@ export const useProjectStore = create<ProjectState>()(
                 continue;
               }
               
-              const { lower, upper, delta } = bounds;
+              let { lower, upper, delta } = bounds;
+              
+              // Use stored delta if available (more accurate), otherwise calculate it
+              if (fieldId === 'soundFile' && sheet.data.sound_delta) {
+                delta = parseInt(sheet.data.sound_delta, 10) || delta;
+              } else if (fieldId.startsWith('cameraFile')) {
+                const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                const storedDelta = sheet.data[`camera${cameraNum}_delta`];
+                if (storedDelta) {
+                  delta = parseInt(storedDelta, 10) || delta;
+                }
+              }
               
               // Skip the first occurrence that contains fromNumber
               if (!skippedFirstOccurrence && isTargetInRange(lower, upper)) {
@@ -465,6 +478,7 @@ export const useProjectStore = create<ProjectState>()(
                 const newUpper = newLower + delta - 1;
                 
                 console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper}`);
+                console.log(`     UniqueId: ${sheet.data?.uniqueId}, Previous upper: ${previousUpper}`);
                 
                 const newData: Record<string, any> = { ...sheet.data };
                 
