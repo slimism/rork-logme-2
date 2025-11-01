@@ -20,7 +20,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string | string[]) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -365,13 +365,17 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string | string[]) => {
+        // Convert excludeLogId to array if it's a single string
+        const excludeIds = Array.isArray(excludeLogId) ? excludeLogId : (excludeLogId ? [excludeLogId] : []);
+        
         console.log('=== updateFileNumbers called ===', {
           projectId,
           fieldId,
           fromNumber,
           increment,
-          excludeLogId
+          excludeLogId,
+          excludeIds
         });
         
         set((state) => ({
@@ -433,19 +437,19 @@ export const useProjectStore = create<ProjectState>()(
             
             console.log('[updateFileNumbers] Starting cascade shift from', fromNumber, 'with increment', increment);
             
-            // If we have an excluded log, it's the one that was just inserted/edited
-            // The excluded log's upper bound is fromNumber + increment - 1
-            if (excludeLogId) {
+            // If we have excluded logs, the first one is the one that was just inserted/edited
+            // The inserted log's upper bound is fromNumber + increment - 1
+            if (excludeIds.length > 0) {
               insertedLogUpperBound = fromNumber + increment - 1;
-              console.log(`  -> Excluded log ${excludeLogId} is the inserted log, upper bound: ${insertedLogUpperBound} (fromNumber: ${fromNumber}, increment: ${increment})`);
+              console.log(`  -> Excluded logs ${excludeIds.join(', ')} (first is the inserted log), upper bound: ${insertedLogUpperBound} (fromNumber: ${fromNumber}, increment: ${increment})`);
             }
             
             // Group sheets that need shifting (all sheets with lower >= fromNumber, excluding inserted log)
             const sheetsToShift: Array<{ sheet: LogSheet; bounds: { lower: number; upper: number; delta: number } }> = [];
             
             for (const sheet of projectSheets) {
-              // Skip the excluded log (the edited log that was just saved)
-              if (excludeLogId && sheet.id === excludeLogId) {
+              // Skip excluded logs
+              if (excludeIds.includes(sheet.id)) {
                 console.log(`  -> Skipping excluded log: ${sheet.id}`);
                 updatedSheets.set(sheet.id, sheet);
                 continue;
