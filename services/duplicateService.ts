@@ -189,8 +189,14 @@ export class DuplicateService {
       return 'both_same';
     }
 
-    // Cross-log conflict: sound and camera files exist in different logs
-    // This is the most critical conflict that should prevent insertion
+    if (blankFields.isSoundBlank || blankFields.targetSoundBlank) {
+      return 'camera_only';
+    }
+
+    if (blankFields.isCameraBlank || blankFields.targetCameraBlank) {
+      return 'sound_only';
+    }
+
     return 'cross_log_conflict';
   }
 
@@ -199,6 +205,11 @@ export class DuplicateService {
    */
   hasCrossLogConflict(soundDup: DuplicateInfo | null, cameraDup: DuplicateInfo | null): boolean {
     if (!soundDup || !cameraDup) return false;
+    const targetSoundBlank = this.isTargetSoundBlank(cameraDup);
+    const targetCameraBlank = this.isTargetCameraBlank(soundDup);
+
+    if (targetSoundBlank || targetCameraBlank) return false;
+
     return soundDup.existingEntry.id !== cameraDup.existingEntry.id;
   }
 
