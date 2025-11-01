@@ -2282,6 +2282,31 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
     finalTakeData = applyRangePersistence(finalTakeData);
 
+    {
+      const camCount = project?.settings?.cameraConfiguration || 1;
+      if (!disabledFields.has('soundFile')) {
+        delete (finalTakeData as any)['sound_from'];
+        delete (finalTakeData as any)['sound_to'];
+        finalTakeData['soundFile'] = newLogData['soundFile'];
+      }
+      if (camCount === 1) {
+        if (!disabledFields.has('cameraFile')) {
+          delete (finalTakeData as any)['camera1_from'];
+          delete (finalTakeData as any)['camera1_to'];
+          finalTakeData['cameraFile'] = newLogData['cameraFile'];
+        }
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fid = `cameraFile${i}`;
+          if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+            delete (finalTakeData as any)[`camera${i}_from`];
+            delete (finalTakeData as any)[`camera${i}_to`];
+            finalTakeData[fid] = newLogData[fid];
+          }
+        }
+      }
+    }
+
     logSheet.data = {
       ...finalTakeData,
       classification,
@@ -3043,6 +3068,31 @@ This would break the logging logic and create inconsistencies in the file number
 
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
     finalTakeData = applyRangePersistence(finalTakeData);
+
+    {
+      const camCount = project?.settings?.cameraConfiguration || 1;
+      if (!disabledFields.has('soundFile')) {
+        delete (finalTakeData as any)['sound_from'];
+        delete (finalTakeData as any)['sound_to'];
+        finalTakeData['soundFile'] = newLogData['soundFile'];
+      }
+      if (camCount === 1) {
+        if (!disabledFields.has('cameraFile')) {
+          delete (finalTakeData as any)['camera1_from'];
+          delete (finalTakeData as any)['camera1_to'];
+          finalTakeData['cameraFile'] = newLogData['cameraFile'];
+        }
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fid = `cameraFile${i}`;
+          if (!disabledFields.has(fid) && (cameraRecState[fid] ?? true)) {
+            delete (finalTakeData as any)[`camera${i}_from`];
+            delete (finalTakeData as any)[`camera${i}_to`];
+            finalTakeData[fid] = newLogData[fid];
+          }
+        }
+      }
+    }
 
     logSheet.data = {
       ...finalTakeData,
