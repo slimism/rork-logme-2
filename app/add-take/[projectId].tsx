@@ -2168,25 +2168,65 @@ This would break the logging logic and create inconsistencies in the file number
               soundIncrement = Math.abs(newTo - newFrom) + 1;
             }
             
-            // Calculate what existingEntry will be updated to (only if it has a single value, not a range)
+            // Calculate what existingEntry will be updated to
             const targetRangeLocal = getRangeFromData(existingEntry.data, 'soundFile');
             let existingEntrySoundUpdateLocal: Record<string, any> | null = null;
-            if (!targetRangeLocal) {
+            if (targetRangeLocal) {
+              // Target has a sound range - update it regardless of whether new entry is range or single
+              let insertedMax: number;
+              let deltaLocal: number;
+              
+              if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+                // New entry has range
+                const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+                const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+                insertedMax = Math.max(insertedFrom, insertedTo);
+                deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+              } else {
+                // New entry has single value
+                insertedMax = parseInt(String(takeData.soundFile), 10) || 0;
+                deltaLocal = 1;
+              }
+
+              const oldToNum = parseInt(targetRangeLocal.to, 10) || 0;
+              const newFromNum = insertedMax + 1;
+              const newToNum = oldToNum + deltaLocal;
+
+              existingEntrySoundUpdateLocal = { ...existingEntry.data };
+              existingEntrySoundUpdateLocal['sound_from'] = String(newFromNum).padStart(4, '0');
+              existingEntrySoundUpdateLocal['sound_to'] = String(newToNum).padStart(4, '0');
+
+              if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')) {
+                existingEntrySoundUpdateLocal['soundFile'] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+              }
+              existingEntrySoundUpdateLocal.takeNumber = String(tTake + 1);
+            } else {
+              // Handle single sound value (not range)
               const targetSingleStr = existingEntry.data?.soundFile as string | undefined;
-              if (typeof targetSingleStr === 'string') {
+              if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                 const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                 if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+                  // New entry has range, target has single value
                   const insFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
                   const insTo = parseInt(rangeData['soundFile'].to, 10) || 0;
                   const min = Math.min(insFrom, insTo);
                   const max = Math.max(insFrom, insTo);
                   if (targetSingleNum >= min && targetSingleNum <= max) {
-                    existingEntrySoundUpdateLocal = { ...existingEntry.data, soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0') };
+                    existingEntrySoundUpdateLocal = { 
+                      ...existingEntry.data, 
+                      soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0'),
+                      takeNumber: String(tTake + 1)
+                    };
                   }
                 } else if (takeData.soundFile) {
+                  // Both have single values
                   const newSingle = parseInt(String(takeData.soundFile), 10) || 0;
                   if (newSingle === targetSingleNum) {
-                    existingEntrySoundUpdateLocal = { ...existingEntry.data, soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0') };
+                    existingEntrySoundUpdateLocal = { 
+                      ...existingEntry.data, 
+                      soundFile: String(targetSingleNum + soundIncrement).padStart(4, '0'),
+                      takeNumber: String(tTake + 1)
+                    };
                   }
                 }
               }
