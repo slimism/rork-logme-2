@@ -435,6 +435,23 @@ export const useProjectStore = create<ProjectState>()(
             
             const updatedSheets = new Map<string, LogSheet>();
             
+            // First pass: find the excluded log and get its upper bound
+            if (excludeLogId) {
+              const excludedLog = projectSheets.find(s => s.id === excludeLogId);
+              if (excludedLog) {
+                const excludedBounds = getFileBounds(excludedLog, fieldId);
+                if (excludedBounds) {
+                  console.log(`  -> Found excluded log ${excludeLogId} with bounds ${excludedBounds.lower}-${excludedBounds.upper}`);
+                  // If the excluded log is the first occurrence (contains fromNumber), use its upper as previousUpper
+                  if (isTargetInRange(excludedBounds.lower, excludedBounds.upper)) {
+                    previousUpper = excludedBounds.upper;
+                    skippedFirstOccurrence = true;
+                    console.log(`  -> Excluded log is the inserted log, setting previousUpper to ${previousUpper}`);
+                  }
+                }
+              }
+            }
+            
             for (const sheet of projectSheets) {
               // Skip the excluded log (the edited log that was just saved)
               if (excludeLogId && sheet.id === excludeLogId) {
@@ -462,7 +479,7 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
               
-              // Skip the first occurrence that contains fromNumber
+              // Skip the first occurrence that contains fromNumber (only if we haven't already handled excluded log)
               if (!skippedFirstOccurrence && isTargetInRange(lower, upper)) {
                 console.log(`  -> Skipping first occurrence at ${lower}-${upper} (contains fromNumber ${fromNumber})`);
                 skippedFirstOccurrence = true;
