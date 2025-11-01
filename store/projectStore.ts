@@ -525,13 +525,23 @@ export const useProjectStore = create<ProjectState>()(
               const newData: Record<string, any> = { ...sheet.data };
               
               if (fieldId === 'soundFile') {
-                newData['sound_from'] = String(newLower).padStart(4, '0');
-                newData['sound_to'] = String(newUpper).padStart(4, '0');
-                // Update inline string if it exists
-                if (typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-')) {
-                  newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                // Check if the original entry had a range to determine what to update
+                const hadRange = typeof sheet.data.soundFile === 'string' && sheet.data.soundFile.includes('-');
+                const hadFromTo = sheet.data.sound_from && sheet.data.sound_to;
+                
+                if (hadRange || hadFromTo) {
+                  // Entry had a range - preserve range format
+                  newData['sound_from'] = String(newLower).padStart(4, '0');
+                  newData['sound_to'] = String(newUpper).padStart(4, '0');
+                  if (hadRange) {
+                    newData['soundFile'] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
                 } else {
+                  // Entry was a single value - keep as single value
                   newData['soundFile'] = String(newLower).padStart(4, '0');
+                  // Delete any stale range fields
+                  delete newData['sound_from'];
+                  delete newData['sound_to'];
                 }
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
