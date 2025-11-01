@@ -1,6 +1,7 @@
 import { LogSheet, Project } from '@/types';
 import { DuplicateService, DuplicateInfo, BlankFieldCheck } from './duplicateService';
 import { FileNumberService } from './fileNumberService';
+import { Platform } from 'react-native';
 
 export interface DuplicateHandlingParams {
   logSheet: LogSheet;
@@ -178,6 +179,11 @@ export class DuplicateHandlerService {
    */
   private handleCameraOnlyDuplicate(cameraDup: DuplicateInfo): boolean {
     const location = this.duplicateService.getLocationString(cameraDup.existingEntry);
+
+    if (this.isCameraOnlyOverlapAllowed(cameraDup)) {
+      this.mergeCameraOnlyOverlap(cameraDup);
+      return false;
+    }
     
     this.showAlert(
       'Duplicate Detected',
@@ -305,9 +311,124 @@ This would break the logging logic and create inconsistencies in the file number
    */
   private createUpdateFileNumbersHandler() {
     return (projectId: string, fieldId: string, fromNumber: number, increment: number) => {
-      // This would be connected to the actual updateFileNumbers function from the store
       console.log('Updating file numbers:', projectId, fieldId, fromNumber, increment);
     };
+  }
+
+  private isCameraOnlyOverlapAllowed(cameraDup: DuplicateInfo): boolean {
+    const incomingHasNoSound = !(this.params.takeData?.soundFile?.trim()) && !(this.params.rangeData?.soundFile?.from) && !(this.params.rangeData?.soundFile?.to);
+    const existingHasSound = (() => {
+      const d = cameraDup.existingEntry?.data ?? {};
+      const hasSingle = typeof d.soundFile === 'string' && d.soundFile.trim().length > 0;
+      const hasRange = typeof d.sound_from === 'string' || typeof d.sound_to === 'string';
+      return hasSingle || hasRange;
+    })();
+
+    if (!incomingHasNoSound || !existingHasSound) return false;
+
+    const camCount = this.params.project?.settings?.cameraConfiguration || 1;
+
+    for (let i = 1; i <= camCount; i++) {
+      const fieldId = camCount === 1 ? 'cameraFile' : `cameraFile${i}`;
+      const inRange = this.getIncomingRange(fieldId);
+      const exRange = this.getExistingRange(cameraDup.existingEntry, fieldId);
+      if (!inRange || !exRange) return false;
+      if (!this.rangesAreCompatible(inRange.min, inRange.max, exRange.min, exRange.max)) return false;
+    }
+
+    return true;
+  }
+
+  private getIncomingRange(fieldId: string): { min: number; max: number } | null {
+    const showRange = this.params.showRangeMode?.[fieldId];
+    if (showRange && this.params.rangeData?.[fieldId]?.from && this.params.rangeData?.[fieldId]?.to) {
+      const a = parseInt(this.params.rangeData[fieldId].from, 10) || 0;
+      const b = parseInt(this.params.rangeData[fieldId].to, 10) || 0;
+      return { min: Math.min(a, b), max: Math.max(a, b) };
+    }
+    const val: string | undefined = this.params.takeData?.[fieldId] || (fieldId === 'cameraFile' ? this.params.takeData?.cameraFile : undefined);
+    if (!val) return null;
+    if (val.includes('-')) {
+      const [a, b] = val.split('-');
+      const ai = parseInt(a, 10) || 0;
+      const bi = parseInt(b, 10) || 0;
+      return { min: Math.min(ai, bi), max: Math.max(ai, bi) };
+    }
+    const n = parseInt(val, 10) || 0;
+    return { min: n, max: n };
+  }
+
+  private getExistingRange(entry: LogSheet, fieldId: string): { min: number; max: number; fromKey: string; toKey: string } | null {
+    if (fieldId === 'soundFile') return null;
+    if (fieldId === 'cameraFile') {
+      const fromKey = 'camera1_from';
+      const toKey = 'camera1_to';
+      const from = entry.data?.[fromKey];
+      const to = entry.data?.[toKey];
+      if (from && to) {
+        const a = parseInt(from, 10) || 0; const b = parseInt(to, 10) || 0;
+        return { min: Math.min(a, b), max: Math.max(a, b), fromKey, toKey };
+      }
+    } else if (fieldId.startsWith('cameraFile')) {
+      const cam = parseInt(fieldId.replace('cameraFile','')) || 1;
+      const fromKey = `camera${cam}_from`;
+      const toKey = `camera${cam}_to`;
+      const from = entry.data?.[fromKey];
+      const to = entry.data?.[toKey];
+      if (from && to) {
+        const a = parseInt(from, 10) || 0; const b = parseInt(to, 10) || 0;
+        return { min: Math.min(a, b), max: Math.max(a, b), fromKey, toKey };
+      }
+    }
+    return null;
+  }
+
+  private rangesAreCompatible(minA: number, maxA: number, minB: number, maxB: number): boolean {
+    const overlap = !(maxA < minB || minA > maxB);
+    const touching = maxA + 1 === minB || maxB + 1 === minA;
+    return overlap || touching;
+  }
+
+  private mergeCameraOnlyOverlap(cameraDup: DuplicateInfo): void {
+    const camCount = this.params.project?.settings?.cameraConfiguration || 1;
+    const entry = cameraDup.existingEntry;
+
+    const updates: Record<string, any> = { ...entry.data };
+    const shifts: { fieldId: string; start: number; inc: number }[] = [];
+
+    for (let i = 1; i <= camCount; i++) {
+      const fieldId = camCount === 1 ? 'cameraFile' : `cameraFile${i}`;
+      const inRange = this.getIncomingRange(fieldId);
+      const exRange = this.getExistingRange(entry, fieldId);
+      if (!inRange || !exRange) continue;
+
+      const newMin = Math.min(inRange.min, exRange.min);
+      const newMax = Math.max(inRange.max, exRange.max);
+
+      const fromKey = exRange.fromKey;
+      const toKey = exRange.toKey;
+      const oldTo = exRange.max;
+
+      if (newMin !== exRange.min || newMax !== exRange.max) {
+        updates[fromKey] = String(newMin).padStart(4, '0');
+        updates[toKey] = String(newMax).padStart(4, '0');
+
+        const inc = newMax - oldTo;
+        if (inc > 0) {
+          shifts.push({ fieldId, start: oldTo + 1, inc });
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      this.params.updateLogSheet(entry.id, updates);
+    }
+
+    // Shift subsequent logs for cameras only
+    shifts.forEach(s => {
+      const fn = this.createUpdateFileNumbersHandler();
+      fn(this.params.project.id, s.fieldId, s.start, s.inc);
+    });
   }
 
   private findFirstDuplicateFile(): any {
