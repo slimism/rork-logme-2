@@ -192,14 +192,8 @@ export const useProjectStore = create<ProjectState>()(
             const from = parseInt(data.sound_from, 10) || 0;
             const to = parseInt(data.sound_to, 10) || 0;
             data.sound_delta = Math.abs(to - from) + 1;
-            console.log('[updateLogSheet] Calculated sound_delta:', data.sound_delta, `from ${from} to ${to}`);
-          } else if (data.soundFile && typeof data.soundFile === 'string' && !data.soundFile.includes('-')) {
-            data.sound_delta = 1;
-            console.log('[updateLogSheet] Single sound file, sound_delta = 1');
           } else {
-            // No sound file data
-            data.sound_delta = 0;
-            console.log('[updateLogSheet] No sound file, sound_delta = 0');
+            data.sound_delta = 1;
           }
           
           // Camera file delta - need to get camera configuration from project
@@ -211,33 +205,20 @@ export const useProjectStore = create<ProjectState>()(
               const from = parseInt(data.camera1_from, 10) || 0;
               const to = parseInt(data.camera1_to, 10) || 0;
               data.camera_delta = Math.abs(to - from) + 1;
-              console.log('[updateLogSheet] Calculated camera_delta:', data.camera_delta, `from ${from} to ${to}`);
-            } else if (data.cameraFile && typeof data.cameraFile === 'string' && !data.cameraFile.includes('-')) {
-              data.camera_delta = 1;
-              console.log('[updateLogSheet] Single camera file, camera_delta = 1');
             } else {
-              // No camera file data
-              data.camera_delta = 0;
-              console.log('[updateLogSheet] No camera file, camera_delta = 0');
+              data.camera_delta = 1;
             }
           } else {
             // Multi-camera: calculate delta for each camera
             for (let i = 1; i <= cameraConfiguration; i++) {
               const fromKey = `camera${i}_from`;
               const toKey = `camera${i}_to`;
-              const fieldId = `cameraFile${i}`;
               if (data[fromKey] && data[toKey]) {
                 const from = parseInt(data[fromKey], 10) || 0;
                 const to = parseInt(data[toKey], 10) || 0;
                 data[`camera${i}_delta`] = Math.abs(to - from) + 1;
-                console.log(`[updateLogSheet] Calculated camera${i}_delta:`, data[`camera${i}_delta`], `from ${from} to ${to}`);
-              } else if (data[fieldId] && typeof data[fieldId] === 'string' && !data[fieldId].includes('-')) {
-                data[`camera${i}_delta`] = 1;
-                console.log(`[updateLogSheet] Single camera${i} file, camera${i}_delta = 1`);
               } else {
-                // No camera file data for this camera
-                data[`camera${i}_delta`] = 0;
-                console.log(`[updateLogSheet] No camera${i} file, camera${i}_delta = 0`);
+                data[`camera${i}_delta`] = 1;
               }
             }
           }
@@ -449,8 +430,6 @@ export const useProjectStore = create<ProjectState>()(
             const updatedSheets = new Map<string, LogSheet>();
             
             console.log('[updateFileNumbers] Starting shift from', fromNumber, 'with increment (delta):', increment);
-            console.log('[updateFileNumbers] FieldId:', fieldId);
-            console.log('[updateFileNumbers] ExcludeLogId (inserted log):', excludeLogId);
             
             // Group sheets that need shifting: all logs that overlap with or come after fromNumber
             // (excluding the inserted log itself which is identified by excludeLogId)
@@ -512,18 +491,11 @@ export const useProjectStore = create<ProjectState>()(
               const { lower, upper, delta } = bounds;
               
               // Simple: add increment to both lower and upper bounds
-              // This applies the inserted log's delta to the existing range
               const newLower = lower + increment;
               const newUpper = upper + increment;
               
               console.log(`  -> Shifting log ${sheet.id}: ${lower}-${upper} (delta=${delta}) → ${newLower}-${newUpper} (added increment ${increment})`);
               console.log(`     UniqueId: ${sheet.data?.uniqueId}`);
-              console.log(`     Take: ${sheet.data?.takeNumber}, Scene: ${sheet.data?.sceneNumber}, Shot: ${sheet.data?.shotNumber}`);
-              console.log(`     Original bounds: lower=${lower}, upper=${upper}`);
-              console.log(`     New bounds: lower=${newLower}, upper=${newUpper}`);
-              console.log(`     Applied increment (inserted log's delta): ${increment}`);
-              console.log(`     This log's own delta (preserved): ${delta}`);
-              console.log(`     `);
               
               const newData: Record<string, any> = { ...sheet.data };
               
