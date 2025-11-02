@@ -431,51 +431,50 @@ export const useProjectStore = create<ProjectState>()(
             
             // Initialize temp variables from the inserted log
             // The inserted log is the one that was inserted before the target duplicate
-            // Since fromNumber is where we START shifting FROM (meaning we shift logs with file numbers >= fromNumber),
-            // the inserted log should have a file number < fromNumber, or exactly fromNumber - 1
-            // OR it's the log with the lowest take number that has a file number close to fromNumber
+            // When a log is inserted before Take N with file number X, the inserted log becomes Take N with file number X
+            // Then we call updateFileNumbers with fromNumber = X to shift subsequent logs
+            // So the inserted log should have file number = fromNumber, and it should be the one with the LOWEST take number
+            // that matches fromNumber (to handle cases where multiple logs might have the same file number)
             
-            // Strategy 1: Find log with file number matching (fromNumber - 1) for this specific field
-            // This is the most common case: inserted log has file number = fromNumber - 1
-            let insertedLog = sheets.find(sheet => {
-              const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
-              if (sheetFieldVal && sheetFieldVal.value !== null) {
-                // Check if this log's file number matches (fromNumber - 1)
-                const expectedInsertedFileNum = fromNumber - 1;
-                return sheetFieldVal.lower === expectedInsertedFileNum || sheetFieldVal.upper === expectedInsertedFileNum;
-              }
-              return false;
-            });
-            
-            // Strategy 2: Find log with file number matching fromNumber (in case calculation was different)
-            if (!insertedLog) {
-              insertedLog = sheets.find(sheet => {
+            // Strategy 1: Find log with file number matching fromNumber, prioritizing the LOWEST take number
+            // This is the correct approach: inserted log has file number = fromNumber
+            const matchingLogs = sheets
+              .filter(sheet => {
                 const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
                 if (sheetFieldVal && sheetFieldVal.value !== null) {
+                  // Check if this log's file number matches fromNumber
                   return sheetFieldVal.lower === fromNumber || sheetFieldVal.upper === fromNumber;
                 }
                 return false;
+              })
+              .sort((a, b) => {
+                // Sort by take number (ascending) to get the one with LOWEST take number
+                // This ensures we get the inserted log, not a later log that also has the same file number
+                const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
+                const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
+                return aTake - bTake; // Ascending order: lowest take number first
               });
-            }
             
-            // Strategy 3: Find the log with the lowest take number that has file number < fromNumber
-            // This handles edge cases where the file number doesn't match exactly
+            let insertedLog = matchingLogs[0]; // Get the one with lowest take number
+            
+            // Strategy 2: If not found, try fromNumber - 1 (fallback for edge cases)
             if (!insertedLog) {
-              insertedLog = sheets
+              const fallbackLogs = sheets
                 .filter(sheet => {
                   const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
                   if (sheetFieldVal && sheetFieldVal.value !== null) {
-                    // Find logs with file number less than fromNumber (inserted log should be before the shifting point)
-                    return sheetFieldVal.upper < fromNumber;
+                    const expectedInsertedFileNum = fromNumber - 1;
+                    return sheetFieldVal.lower === expectedInsertedFileNum || sheetFieldVal.upper === expectedInsertedFileNum;
                   }
                   return false;
                 })
                 .sort((a, b) => {
-                  // Sort by take number (ascending) to get the one with lowest take number
                   const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
                   const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
-                  return bTake - aTake; // Descending order, so last one is the one closest to fromNumber
-                })[0]; // Get the one with highest take number (closest to insertion point)
+                  return bTake - aTake; // Descending: highest take number first (closest to insertion point)
+                });
+              
+              insertedLog = fallbackLogs[0];
             }
             
             if (insertedLog) {
