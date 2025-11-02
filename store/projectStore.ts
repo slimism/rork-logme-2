@@ -6,6 +6,7 @@ import { useTokenStore } from './subscriptionStore';
 import { normalizeProjectSettings } from '@/components/CameraHandlers/cameraConfigValidator';
 import { logger } from '@/components/CameraHandlers/logger';
 import { getSoundFileValueForSubsequentShift, getSoundFileInfo, calculateSoundFileDelta, SoundHandlerContext } from '@/components/CameraHandlers/SoundHandler';
+import { calculateSoundDeltaForShifting, DeltaCalculationInput } from '@/components/CameraHandlers/deltaCalculator';
 
 interface ProjectState {
   projects: Project[];
@@ -497,15 +498,19 @@ export const useProjectStore = create<ProjectState>()(
                   );
 
                   if (fieldId === 'soundFile') {
-                    // Use SoundHandler for sound file shifting
+                    // Use centralized sound delta calculator for consistency
                     let soundShiftBase: number;
                     let soundDeltaForShift: number;
+                    
+                    // Calculate delta using centralized calculator
+                    const soundDeltaInput: DeltaCalculationInput = {
+                      logSheetData: data
+                    };
+                    soundDeltaForShift = calculateSoundDeltaForShifting(soundDeltaInput);
                     
                     if (lastValidUpper >= 0 && takeNum > fromNumber) {
                       // Sequential shifting: use previous take's upper bound
                       soundShiftBase = lastValidUpper;
-                      // Calculate delta from the current take's original value
-                      soundDeltaForShift = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
                       
                       logger.logCalculation(
                         'Sound File Sequential Shift',
@@ -516,13 +521,24 @@ export const useProjectStore = create<ProjectState>()(
                           currentUpper: currentFieldVal.upper,
                           currentDelta: soundDeltaForShift
                         },
-                        `shiftBase = ${lastValidUpper}, delta = ${soundDeltaForShift}`,
+                        `shiftBase = ${lastValidUpper}, delta = ${soundDeltaForShift} (from centralized calculator)`,
                         { shiftBase: soundShiftBase, delta: soundDeltaForShift }
                       );
                     } else {
                       // First take after insertion - use original logic
                       soundShiftBase = shiftBase;
-                      soundDeltaForShift = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
+                      
+                      logger.logCalculation(
+                        'Sound File Delta Calculation',
+                        `Calculating sound delta for take ${takeNum} using centralized calculator`,
+                        {
+                          currentLower: currentFieldVal.lower,
+                          currentUpper: currentFieldVal.upper,
+                          isRange: currentFieldVal.isRange
+                        },
+                        `calculateSoundDeltaForShifting(logSheetData) = ${soundDeltaForShift}`,
+                        soundDeltaForShift
+                      );
                     }
                     
                     // Calculate new bounds: newLower = previousUpper + 1, newUpper = newLower + delta

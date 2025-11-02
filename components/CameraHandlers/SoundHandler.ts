@@ -15,7 +15,7 @@
 
 import { TakeData, LogSheet } from '@/types';
 import { getRangeFromData } from './utils';
-import { calculateSoundDelta, DeltaCalculationInput } from './deltaCalculator';
+import { calculateSoundDeltaForShifting, DeltaCalculationInput } from './deltaCalculator';
 import { logger } from './logger';
 
 export interface SoundHandlerContext {
@@ -136,6 +136,9 @@ export const isSoundFileBlank = (data: any): boolean => {
 /**
  * Calculates sound file delta from context
  * 
+ * This function uses the centralized calculateSoundDeltaForShifting from deltaCalculator
+ * to ensure consistency across the codebase.
+ * 
  * Delta Calculation Rules:
  * - Range: delta = upper - lower (just the difference, not inclusive count)
  * - Single value: delta = 1
@@ -150,125 +153,19 @@ export const calculateSoundFileDelta = (
     hasRangeData: !!context.rangeData
   });
   
-  let delta = 0;
-  let calculationMethod = 'unknown';
-  let calculationDetails: any = {};
+  // Use centralized sound delta calculator
+  const deltaInput: DeltaCalculationInput = {
+    takeData: context.takeData,
+    showRangeMode: context.showRangeMode,
+    rangeData: context.rangeData,
+    logSheetData: context.existingEntry?.data
+  };
   
-  // Check if we're calculating from takeData (new entry) or existing entry
-  const data = context.takeData || context.existingEntry?.data;
+  const delta = calculateSoundDeltaForShifting(deltaInput);
   
-  // First, check range mode (for new entries)
-  if (context.takeData && context.showRangeMode && context.rangeData) {
-    const isRangeMode = context.showRangeMode['soundFile'];
-    const range = context.rangeData['soundFile'];
-    
-    if (isRangeMode && range?.from && range?.to) {
-      const fromNum = parseInt(range.from, 10) || 0;
-      const toNum = parseInt(range.to, 10) || 0;
-      const upper = Math.max(fromNum, toNum);
-      const lower = Math.min(fromNum, toNum);
-      // Delta = upper - lower (not +1, just the difference)
-      delta = Math.abs(upper - lower);
-      calculationMethod = 'rangeMode';
-      calculationDetails = { from: range.from, to: range.to, upper, lower };
-      
-      logger.logCalculation(
-        'Sound File Delta from Range Mode',
-        'Calculate sound file delta from rangeMode',
-        calculationDetails,
-        `Math.abs(${upper} - ${lower}) = ${delta}`,
-        delta
-      );
-    }
-  }
-  
-  // Check for range format in data (sound_from/sound_to)
-  if (delta === 0 && data) {
-    const soundRange = getRangeFromData(data, 'soundFile');
-    if (soundRange) {
-      const fromNum = parseInt(soundRange.from, 10) || 0;
-      const toNum = parseInt(soundRange.to, 10) || 0;
-      const upper = Math.max(fromNum, toNum);
-      const lower = Math.min(fromNum, toNum);
-      // Delta = upper - lower (not +1, just the difference)
-      delta = Math.abs(upper - lower);
-      calculationMethod = 'rangeFromData';
-      calculationDetails = { from: soundRange.from, to: soundRange.to, upper, lower };
-      
-      logger.logCalculation(
-        'Sound File Delta from Range Data',
-        'Calculate sound file delta from getRangeFromData',
-        calculationDetails,
-        `Math.abs(${upper} - ${lower}) = ${delta}`,
-        delta
-      );
-    }
-  }
-  
-  // Check for inline range format (e.g., "001-003")
-  if (delta === 0 && data) {
-    const soundFile = data.soundFile;
-    if (soundFile && typeof soundFile === 'string' && soundFile.includes('-')) {
-      const parts = soundFile.split('-').map(p => parseInt(p.trim(), 10) || 0);
-      if (parts.length === 2) {
-        const upper = Math.max(parts[0], parts[1]);
-        const lower = Math.min(parts[0], parts[1]);
-        // Delta = upper - lower (not +1, just the difference)
-        delta = Math.abs(upper - lower);
-        calculationMethod = 'inlineRange';
-        calculationDetails = { fieldValue: soundFile, upper, lower };
-        
-        logger.logCalculation(
-          'Sound File Delta from Inline Range',
-          'Calculate sound file delta from inline range string',
-          calculationDetails,
-          `Math.abs(${upper} - ${lower}) = ${delta}`,
-          delta
-        );
-      }
-    }
-  }
-  
-  // Single value: delta is always 1
-  if (delta === 0 && data) {
-    const soundFile = data.soundFile;
-    if (soundFile && typeof soundFile === 'string' && soundFile.trim() && !soundFile.includes('-')) {
-      const num = parseInt(soundFile, 10);
-      if (!Number.isNaN(num)) {
-        delta = 1;
-        calculationMethod = 'singleValue';
-        calculationDetails = { fieldValue: soundFile };
-        
-        logger.logCalculation(
-          'Sound File Delta for Single Value',
-          'Calculate sound file delta (single value)',
-          calculationDetails,
-          'delta = 1 (single value)',
-          1
-        );
-      }
-    }
-  }
-  
-  // If input sound field is blank, delta is 0
-  if (delta === 0 && calculationMethod === 'unknown') {
-    if (context.takeData && (!context.takeData.soundFile || !context.takeData.soundFile.trim())) {
-      logger.logCalculation(
-        'Sound File Delta - Blank Field',
-        'Sound file is blank, delta = 0',
-        { hasSoundFile: false },
-        'delta = 0 (blank field)',
-        0
-      );
-    } else {
-      logger.logWarning('Could not calculate sound file delta', { context });
-    }
-  }
-  
-  logger.logDebug('Sound file delta calculation result', {
+  logger.logDebug('Sound file delta calculated (using centralized calculator)', {
     delta,
-    calculationMethod,
-    calculationDetails
+    source: 'calculateSoundDeltaForShifting'
   });
   
   logger.logFunctionExit(delta);
