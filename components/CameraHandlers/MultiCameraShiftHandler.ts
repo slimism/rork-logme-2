@@ -23,6 +23,7 @@
 
 import { TakeData, LogSheet } from '@/types';
 import { getRangeFromData } from './utils';
+import { logger } from './logger';
 
 export interface MultiCameraShiftContext {
   // Inserted log data
@@ -363,6 +364,13 @@ const getSubsequentTakes = (
 export const shiftMultiCameraFilesSequentially = (
   context: MultiCameraShiftContext
 ): MultiCameraShiftResult[] => {
+  logger.logFunctionEntry({
+    targetLogSheetId: context.targetLogSheet.id,
+    targetTakeNumber: context.targetLogSheet.data?.takeNumber,
+    projectId: context.projectId,
+    cameraConfiguration: context.cameraConfiguration
+  });
+  
   const { targetLogSheet, updateLogSheet, projectLogSheets, cameraConfiguration, insertedCameraRecState } = context;
   const results: MultiCameraShiftResult[] = [];
 
@@ -372,12 +380,27 @@ export const shiftMultiCameraFilesSequentially = (
   const targetScene = originalTargetData.sceneNumber as string;
   const targetShot = originalTargetData.shotNumber as string;
 
+  logger.logDebug('Starting sequential shift', {
+    originalTargetTakeNum,
+    targetScene,
+    targetShot,
+    cameraConfiguration
+  });
+
   // Step 1: Shift the target duplicate
+  logger.logDebug('Step 1: Shifting target duplicate');
   const targetResult = shiftMultiCameraFiles(context);
+  logger.logSave(
+    'shiftMultiCameraFilesSequentially - Target',
+    targetLogSheet.id,
+    targetResult.updatedData,
+    originalTargetData
+  );
   updateLogSheet(targetLogSheet.id, targetResult.updatedData);
   results.push(targetResult);
 
   // Step 2: Get all subsequent takes (ordered by take number)
+  logger.logDebug('Step 2: Finding subsequent takes');
   // Find takes with take number > original target take number (before shifting)
   // This finds the original Take 2, Take 3, etc., regardless of whether they've been shifted yet
   const subsequentTakes = projectLogSheets
@@ -395,15 +418,26 @@ export const shiftMultiCameraFilesSequentially = (
       const takeNum = parseInt(data.takeNumber as string || '0', 10);
       return { sheet, takeNum };
     })
-    .filter(({ takeNum }) => !isNaN(takeNum) && takeNum > originalTargetTakeNum) // > original target take number
-    .sort((a, b) => a.takeNum - b.takeNum) // Sort ascending (Take 2, Take 3, Take 4...)
+    .filter(({ takeNum }) => !isNaN(takeNum) && takeNum > originalTargetTakeNum)
+    .sort((a, b) => a.takeNum - b.takeNum)
     .map(({ sheet }) => sheet);
 
+  logger.logDebug(`Found ${subsequentTakes.length} subsequent takes`, {
+    takeNumbers: subsequentTakes.map(s => s.data?.takeNumber)
+  });
+
   // Step 3: Shift each subsequent take sequentially
+  logger.logDebug(`Step 3: Shifting ${subsequentTakes.length} subsequent takes sequentially`);
   // Each shift is based on the PREVIOUS take's ACTUAL values (after it's been shifted)
   let previousTake = { ...targetLogSheet, data: targetResult.updatedData };
 
-  for (const subsequentTake of subsequentTakes) {
+  for (let takeIndex = 0; takeIndex < subsequentTakes.length; takeIndex++) {
+    const subsequentTake = subsequentTakes[takeIndex];
+    logger.logDebug(`Shifting subsequent take ${takeIndex + 1}/${subsequentTakes.length}`, {
+      takeId: subsequentTake.id,
+      takeNumber: subsequentTake.data?.takeNumber
+    });
+    
     // Create context with previous take as the "inserted" log
     const subsequentContext: MultiCameraShiftContext = {
       ...context,
@@ -416,25 +450,74 @@ export const shiftMultiCameraFilesSequentially = (
 
     // Build range mode and range data from previous take's actual data
     const prevData = previousTake.data || {};
+    const subsequentTakeData = subsequentTake.data || {};
+    const sceneNumber = subsequentTakeData.sceneNumber as string;
+    const shotNumber = subsequentTakeData.shotNumber as string;
+    const takeNumber = parseInt(subsequentTakeData.takeNumber as string || '0', 10);
+    const excludeIds = new Set<string>([subsequentTake.id, previousTake.id]);
     
-    // Sound file
+    // Handle sound file
     const soundRange = getRangeFromData(prevData, 'soundFile');
+    const prevSoundValue = prevData.soundFile;
+    const prevSoundIsBlank = !soundRange && (!prevSoundValue || !prevSoundValue.trim() || 
+                        (typeof prevSoundValue === 'string' && prevSoundValue.trim().toUpperCase() === 'WASTE'));
+    
     if (soundRange) {
       subsequentContext.insertedShowRangeMode['soundFile'] = true;
       subsequentContext.insertedRangeData['soundFile'] = soundRange;
-    } else if (prevData.soundFile && typeof prevData.soundFile === 'string' && !prevData.soundFile.includes('-')) {
-      subsequentContext.insertedTakeData.soundFile = prevData.soundFile;
+    } else if (!prevSoundIsBlank && prevSoundValue && typeof prevSoundValue === 'string' && !prevSoundValue.includes('-')) {
+      // Previous take has valid sound file - use it
+      subsequentContext.insertedTakeData.soundFile = prevSoundValue;
+    } else if (prevSoundIsBlank) {
+      // Previous take has blank sound - find last valid sound file before it
+      logger.logDebug(`Previous take has blank sound - finding last valid sound file for subsequent take ${takeIndex + 1}`);
+      const prevSoundUpper = context.getPreviousTakeUpperBound(
+        'soundFile',
+        takeNumber,
+        sceneNumber || '',
+        shotNumber || '',
+        excludeIds
+      );
+      if (prevSoundUpper !== null) {
+        // Use the last valid sound file value
+        subsequentContext.insertedTakeData.soundFile = String(prevSoundUpper).padStart(4, '0');
+        logger.logDebug(`Using last valid sound file: ${prevSoundUpper}`);
+      } else {
+        logger.logWarning(`No previous valid sound file found for subsequent take ${takeIndex + 1}`);
+      }
     }
 
-    // Each camera file
-    for (let i = 1; i <= cameraConfiguration; i++) {
-      const fieldId = `cameraFile${i}`;
+    // Handle each camera file
+    for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
+      const fieldId = `cameraFile${camNum}`;
       const cameraRange = getRangeFromData(prevData, fieldId);
+      const prevCameraValue = prevData[fieldId];
+      const prevCameraIsBlank = !cameraRange && (!prevCameraValue || !prevCameraValue.trim() ||
+                            (typeof prevCameraValue === 'string' && prevCameraValue.trim().toUpperCase() === 'WASTE'));
+      
       if (cameraRange) {
         subsequentContext.insertedShowRangeMode[fieldId] = true;
         subsequentContext.insertedRangeData[fieldId] = cameraRange;
-      } else if (prevData[fieldId] && typeof prevData[fieldId] === 'string' && !(prevData[fieldId] as string).includes('-')) {
-        subsequentContext.insertedTakeData[fieldId] = prevData[fieldId];
+      } else if (!prevCameraIsBlank && prevCameraValue && typeof prevCameraValue === 'string' && !(prevCameraValue as string).includes('-')) {
+        // Previous take has valid camera file - use it
+        subsequentContext.insertedTakeData[fieldId] = prevCameraValue;
+      } else if (prevCameraIsBlank) {
+        // Previous take has blank camera - find last valid camera file before it
+        logger.logDebug(`Previous take has blank ${fieldId} - finding last valid camera file for subsequent take ${takeIndex + 1}`);
+        const prevCameraUpper = context.getPreviousTakeUpperBound(
+          fieldId,
+          takeNumber,
+          sceneNumber || '',
+          shotNumber || '',
+          excludeIds
+        );
+        if (prevCameraUpper !== null) {
+          // Use the last valid camera file value
+          subsequentContext.insertedTakeData[fieldId] = String(prevCameraUpper).padStart(4, '0');
+          logger.logDebug(`Using last valid ${fieldId}: ${prevCameraUpper}`);
+        } else {
+          logger.logWarning(`No previous valid ${fieldId} found for subsequent take ${takeIndex + 1}`);
+        }
       }
       
       // Preserve REC state

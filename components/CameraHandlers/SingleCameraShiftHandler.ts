@@ -593,25 +593,72 @@ export const shiftSingleCameraFilesSequentially = (
 
     // Build range mode and range data from previous take's actual data
     const prevData = previousTake.data || {};
+    const subsequentTakeData = subsequentTake.data || {};
+    const sceneNumber = subsequentTakeData.sceneNumber as string;
+    const shotNumber = subsequentTakeData.shotNumber as string;
+    const takeNumber = parseInt(subsequentTakeData.takeNumber as string || '0', 10);
+    const excludeIds = new Set<string>([subsequentTake.id, previousTake.id]);
+    
+    // Handle sound file
     const soundRange = getRangeFromData(prevData, 'soundFile');
+    const prevSoundValue = prevData.soundFile;
+    const prevSoundIsBlank = !soundRange && (!prevSoundValue || !prevSoundValue.trim() || 
+                        (typeof prevSoundValue === 'string' && prevSoundValue.trim().toUpperCase() === 'WASTE'));
+    
     if (soundRange) {
       subsequentContext.insertedShowRangeMode['soundFile'] = true;
       subsequentContext.insertedRangeData['soundFile'] = soundRange;
+    } else if (!prevSoundIsBlank && prevSoundValue && typeof prevSoundValue === 'string' && !prevSoundValue.includes('-')) {
+      // Previous take has valid sound file - use it
+      subsequentContext.insertedTakeData.soundFile = prevSoundValue;
+    } else if (prevSoundIsBlank) {
+      // Previous take has blank sound - find last valid sound file before it
+      logger.logDebug(`Previous take has blank sound - finding last valid sound file`);
+      const prevSoundUpper = context.getPreviousTakeUpperBound(
+        'soundFile',
+        takeNumber,
+        sceneNumber || '',
+        shotNumber || '',
+        excludeIds
+      );
+      if (prevSoundUpper !== null) {
+        // Use the last valid sound file value
+        subsequentContext.insertedTakeData.soundFile = String(prevSoundUpper).padStart(4, '0');
+        logger.logDebug(`Using last valid sound file: ${prevSoundUpper}`);
+      } else {
+        logger.logWarning(`No previous valid sound file found for subsequent take ${i + 1}`);
+      }
     }
 
+    // Handle camera file
     const cameraRange = getRangeFromData(prevData, 'cameraFile');
+    const prevCameraValue = prevData.cameraFile;
+    const prevCameraIsBlank = !cameraRange && (!prevCameraValue || !prevCameraValue.trim() ||
+                          (typeof prevCameraValue === 'string' && prevCameraValue.trim().toUpperCase() === 'WASTE'));
+    
     if (cameraRange) {
       subsequentContext.insertedShowRangeMode['cameraFile'] = true;
       subsequentContext.insertedRangeData['cameraFile'] = cameraRange;
-    }
-
-    // If not range, use single values
-    if (!soundRange && prevData.soundFile && typeof prevData.soundFile === 'string' && !prevData.soundFile.includes('-')) {
-      subsequentContext.insertedTakeData.soundFile = prevData.soundFile;
-    }
-
-    if (!cameraRange && prevData.cameraFile && typeof prevData.cameraFile === 'string' && !prevData.cameraFile.includes('-')) {
-      subsequentContext.insertedTakeData.cameraFile = prevData.cameraFile;
+    } else if (!prevCameraIsBlank && prevCameraValue && typeof prevCameraValue === 'string' && !prevCameraValue.includes('-')) {
+      // Previous take has valid camera file - use it
+      subsequentContext.insertedTakeData.cameraFile = prevCameraValue;
+    } else if (prevCameraIsBlank) {
+      // Previous take has blank camera - find last valid camera file before it
+      logger.logDebug(`Previous take has blank camera - finding last valid camera file`);
+      const prevCameraUpper = context.getPreviousTakeUpperBound(
+        'cameraFile',
+        takeNumber,
+        sceneNumber || '',
+        shotNumber || '',
+        excludeIds
+      );
+      if (prevCameraUpper !== null) {
+        // Use the last valid camera file value
+        subsequentContext.insertedTakeData.cameraFile = String(prevCameraUpper).padStart(4, '0');
+        logger.logDebug(`Using last valid camera file: ${prevCameraUpper}`);
+      } else {
+        logger.logWarning(`No previous valid camera file found for subsequent take ${i + 1}`);
+      }
     }
 
     // Shift this subsequent take
