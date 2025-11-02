@@ -530,12 +530,13 @@ export const useProjectStore = create<ProjectState>()(
                   let newUpper = newLower + delta;
                   
                   // Check if value is already correctly shifted (target duplicate case)
-                  // If so, use currentFieldVal's upper bound to update temp variables, but don't shift again
-                  if (newLower === currentFieldVal.lower && newUpper === currentFieldVal.upper) {
-                    // Value is already correct - this happens when target duplicate was already shifted
-                    // Use currentFieldVal's upper bound for temp variable update, but don't change the data
-                    logger.logDebug(`Take ${takeNum} ${fieldId} is already correctly shifted (${currentFieldVal.lower}/${currentFieldVal.upper}) - will update temp variables only`);
-                    // Keep newLower and newUpper as calculated, but we'll check this later before updating data
+                  // This happens when the target duplicate was already shifted by duplicate insertion logic
+                  // We still need to update temp variables to its current upper bound so subsequent takes are correct
+                  const isAlreadyCorrectlyShifted = (newLower === currentFieldVal.lower && newUpper === currentFieldVal.upper);
+                  if (isAlreadyCorrectlyShifted) {
+                    logger.logDebug(`Take ${takeNum} ${fieldId} is already correctly shifted (${currentFieldVal.lower}/${currentFieldVal.upper}) - will update temp variables to current upper bound`);
+                    // For temp variables, use currentFieldVal.upper (the already-shifted value)
+                    // This ensures subsequent takes shift from the correct base
                   }
                   
                   const tempValue = fieldId === 'soundFile' 
@@ -624,24 +625,26 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    // ALWAYS update tempSound with the new upper bound for next calculation
+                    // ALWAYS update tempSound with the upper bound for next calculation
                     // This ensures subsequent takes use the correct base value
-                    // CRITICAL: This update must happen IMMEDIATELY after shifting so the next take uses the correct value
-                    // If the value was already correctly shifted (target duplicate case), use currentFieldVal.upper
-                    // Otherwise, use the calculated soundNewUpper
+                    // CRITICAL: This update must happen IMMEDIATELY after processing each take
+                    // - If already correctly shifted: use currentFieldVal.upper (target duplicate case)
+                    // - If was shifted: use soundNewUpper
+                    // - For blank fields: tempSound persists (handled in blank field section)
                     const previousTempSound = tempSound;
-                    const finalUpperForTemp = (soundNewLower === currentFieldVal.lower && soundNewUpper === currentFieldVal.upper)
-                      ? currentFieldVal.upper  // Already correct, use current value
-                      : soundNewUpper;  // Was shifted, use new value
+                    const soundIsAlreadyCorrectlyShifted = (soundNewLower === currentFieldVal.lower && soundNewUpper === currentFieldVal.upper);
+                    const finalUpperForTemp = soundIsAlreadyCorrectlyShifted
+                      ? currentFieldVal.upper  // Already correct, use current upper bound
+                      : soundNewUpper;  // Was shifted, use new upper bound
                     tempSound = finalUpperForTemp;
                     logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing take ${takeNum} (sound: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${soundNewLower}/${soundNewUpper}, finalUpperForTemp=${finalUpperForTemp})`);
                     logger.logDebug(`tempSound is now ${tempSound} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed
-                    if (soundNewLower !== currentFieldVal.lower || soundNewUpper !== currentFieldVal.upper) {
+                    if (!soundIsAlreadyCorrectlyShifted) {
                       updated = true;
                     } else {
                       // Data didn't change but temp variable was updated - this is expected for target duplicate
-                      logger.logDebug(`Take ${takeNum} ${fieldId} data unchanged but tempSound updated to ${tempSound}`);
+                      logger.logDebug(`Take ${takeNum} ${fieldId} data unchanged but tempSound updated to ${tempSound} (target duplicate already shifted)`);
                     }
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
@@ -688,24 +691,25 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData[`camera${cameraNum}_from`];
                       delete newData[`camera${cameraNum}_to`];
                     }
-                    // ALWAYS update tempCamera with the new upper bound for next calculation
+                    // ALWAYS update tempCamera with the upper bound for next calculation
                     // This ensures subsequent takes use the correct base value
-                    // CRITICAL: This update must happen IMMEDIATELY after shifting so the next take uses the correct value
-                    // If the value was already correctly shifted (target duplicate case), use currentFieldVal.upper
-                    // Otherwise, use the calculated newUpper
+                    // CRITICAL: This update must happen IMMEDIATELY after processing each take
+                    // - If already correctly shifted: use currentFieldVal.upper (target duplicate case)
+                    // - If was shifted: use newUpper
+                    // - For blank fields: tempCamera persists (handled in blank field section)
                     const previousTempCamera = tempCamera[cameraNum];
-                    const finalUpperForTemp = (newLower === currentFieldVal.lower && newUpper === currentFieldVal.upper) 
-                      ? currentFieldVal.upper  // Already correct, use current value
-                      : newUpper;  // Was shifted, use new value
+                    const finalUpperForTemp = isAlreadyCorrectlyShifted 
+                      ? currentFieldVal.upper  // Already correct, use current upper bound
+                      : newUpper;  // Was shifted, use new upper bound
                     tempCamera[cameraNum] = finalUpperForTemp;
                     logger.logDebug(`Updated tempCamera[${cameraNum}] from ${previousTempCamera} to ${tempCamera[cameraNum]} after processing take ${takeNum} (camera: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${newLower}/${newUpper}, finalUpperForTemp=${finalUpperForTemp})`);
                     logger.logDebug(`tempCamera[${cameraNum}] is now ${tempCamera[cameraNum]} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed
-                    if (newLower !== currentFieldVal.lower || newUpper !== currentFieldVal.upper) {
+                    if (!isAlreadyCorrectlyShifted) {
                       updated = true;
                     } else {
                       // Data didn't change but temp variable was updated - this is expected for target duplicate
-                      logger.logDebug(`Take ${takeNum} ${fieldId} data unchanged but tempCamera[${cameraNum}] updated to ${tempCamera[cameraNum]}`);
+                      logger.logDebug(`Take ${takeNum} ${fieldId} data unchanged but tempCamera[${cameraNum}] updated to ${tempCamera[cameraNum]} (target duplicate already shifted)`);
                     }
                   }
                 } else if (currentFieldVal.upper < fromNumber) {
