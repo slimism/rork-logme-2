@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { logger } from '@/components/CameraHandlers/logger';
 
@@ -148,13 +147,15 @@ This export includes:
         URL.revokeObjectURL(url);
         return true;
       } else {
-        const fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
-        await FileSystem.writeAsStringAsync(fileUri, content);
+        // Use legacy API for compatibility
+        const FileSystemLegacy = require('expo-file-system/legacy');
+        const fileUri = `${FileSystemLegacy.documentDirectory}${filename}.txt`;
+        await FileSystemLegacy.writeAsStringAsync(fileUri, content);
         
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
             mimeType: 'text/plain',
-            dialogTitle: 'Share Console Logs',
+            dialogTitle: 'Share Comprehensive Logs',
           });
         }
         return true;

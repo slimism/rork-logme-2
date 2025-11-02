@@ -551,12 +551,12 @@ class CameraHandlerLogger {
         URL.revokeObjectURL(url);
         return true;
       } else {
-        // For React Native - use FileSystem and Sharing
-        const FileSystem = require('expo-file-system').default;
+        // For React Native - use FileSystem legacy API and Sharing
+        const FileSystemLegacy = require('expo-file-system/legacy');
         const Sharing = require('expo-sharing').default;
         
-        const fileUri = `${FileSystem.documentDirectory}${filename}`;
-        await FileSystem.writeAsStringAsync(fileUri, content);
+        const fileUri = `${FileSystemLegacy.documentDirectory}${filename}`;
+        await FileSystemLegacy.writeAsStringAsync(fileUri, content);
         
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri, {
