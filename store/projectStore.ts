@@ -301,7 +301,8 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
-        console.log('=== updateFileNumbers called ===', {
+        logger.logFunctionEntry({
+          functionName: 'updateFileNumbers',
           projectId,
           fieldId,
           fromNumber,
@@ -309,109 +310,265 @@ export const useProjectStore = create<ProjectState>()(
           excludeLogId
         });
         
-        set((state) => ({
-          logSheets: (() => {
-            let skippedTarget = false;
-            const isTargetInRange = (start: number, end: number) => fromNumber >= Math.min(start, end) && fromNumber <= Math.max(start, end);
-            return state.logSheets.map((logSheet) => {
-              if (logSheet.projectId !== projectId) return logSheet;
-              
-              // Skip the excluded log (the edited log that was just saved)
-              if (excludeLogId && logSheet.id === excludeLogId) {
-                console.log(`  -> Explicitly skipping excluded log: ${logSheet.id}`);
-                return logSheet;
+        set((state) => {
+          // Helper to get field value and determine if blank
+          const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
+            if (fId === 'soundFile') {
+              const soundFrom = sheetData['sound_from'];
+              const soundTo = sheetData['sound_to'];
+              if (soundFrom && soundTo) {
+                const from = parseInt(soundFrom, 10) || 0;
+                const to = parseInt(soundTo, 10) || 0;
+                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
               }
-              const data = logSheet.data;
-              if (!data) return logSheet;
+              const soundFile = sheetData['soundFile'];
+              if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+                if (soundFile.includes('-')) {
+                  const [s, e] = soundFile.split('-').map(x => parseInt(x.trim(), 10) || 0);
+                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
+                }
+                const num = parseInt(soundFile, 10);
+                if (!Number.isNaN(num)) {
+                  return { value: num, isRange: false, upper: num, lower: num };
+                }
+              }
+            } else if (fId.startsWith('cameraFile')) {
+              const cameraNum = fId === 'cameraFile' ? 1 : (parseInt(fId.replace('cameraFile', ''), 10) || 1);
+              const cameraFrom = sheetData[`camera${cameraNum}_from`];
+              const cameraTo = sheetData[`camera${cameraNum}_to`];
+              if (cameraFrom && cameraTo) {
+                const from = parseInt(cameraFrom, 10) || 0;
+                const to = parseInt(cameraTo, 10) || 0;
+                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
+              }
+              const cameraFile = sheetData[fId];
+              if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+                if (cameraFile.includes('-')) {
+                  const [s, e] = cameraFile.split('-').map(x => parseInt(x.trim(), 10) || 0);
+                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
+                }
+                const num = parseInt(cameraFile, 10);
+                if (!Number.isNaN(num)) {
+                  return { value: num, isRange: false, upper: num, lower: num };
+                }
+              }
+            }
+            return null; // Blank/waste field
+          };
 
+          // Helper to find last valid field value before a given take
+          const getPreviousValidValue = (logSheets: LogSheet[], currentTakeNum: number, sceneNum: string, shotNum: string, fId: string, excludeIds: Set<string>): number | null => {
+            for (const sheet of logSheets) {
+              if (excludeIds.has(sheet.id)) continue;
+              const data = sheet.data || {};
+              if (data.sceneNumber !== sceneNum || data.shotNumber !== shotNum) continue;
+              const takeNum = parseInt(data.takeNumber as string || '0', 10);
+              if (takeNum >= currentTakeNum) continue;
+              
+              const fieldVal = getFieldValue(data, fId);
+              if (fieldVal && fieldVal.value !== null) {
+                return fieldVal.upper;
+              }
+            }
+            return null;
+          };
+
+          // Get relevant log sheets for this project, scene, and shot
+          const relevantSheets = state.logSheets
+            .filter(sheet => sheet.projectId === projectId)
+            .map(sheet => {
+              const data = sheet.data || {};
+              const takeNum = parseInt(data.takeNumber as string || '0', 10);
+              return { sheet, takeNum, scene: data.sceneNumber as string, shot: data.shotNumber as string };
+            })
+            .filter(item => !Number.isNaN(item.takeNum))
+            .sort((a, b) => {
+              // Sort by scene, shot, then take number
+              if (a.scene !== b.scene) return (a.scene || '').localeCompare(b.scene || '');
+              if (a.shot !== b.shot) return (a.shot || '').localeCompare(b.shot || '');
+              return a.takeNum - b.takeNum;
+            });
+
+          // Process sequentially - must process takes in order for correct sequential shifting
+          // Group sheets by scene/shot and process each group sequentially
+          const sheetsBySceneShot = new Map<string, LogSheet[]>();
+          
+          // Group sheets by scene:shot
+          state.logSheets.forEach(logSheet => {
+            if (logSheet.projectId !== projectId) return;
+            const data = logSheet.data || {};
+            const sceneNum = data.sceneNumber as string || '';
+            const shotNum = data.shotNumber as string || '';
+            const sceneShotKey = `${sceneNum}:${shotNum}`;
+            
+            if (!sheetsBySceneShot.has(sceneShotKey)) {
+              sheetsBySceneShot.set(sceneShotKey, []);
+            }
+            sheetsBySceneShot.get(sceneShotKey)!.push(logSheet);
+          });
+          
+          // Sort each group by take number
+          sheetsBySceneShot.forEach((sheets, key) => {
+            sheets.sort((a, b) => {
+              const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
+              const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
+              return aTake - bTake;
+            });
+          });
+          
+          const updatedSheetsMap = new Map<string, LogSheet>();
+          let skippedTarget = false;
+          
+          // Process each scene/shot group sequentially
+          sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
+            const [sceneNum, shotNum] = sceneShotKey.split(':');
+            let lastValidUpper = -1; // Track the last valid upper bound we've seen (after shifting)
+            
+            sheets.forEach((logSheet, index) => {
+              if (excludeLogId && logSheet.id === excludeLogId) {
+                logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id });
+                updatedSheetsMap.set(logSheet.id, logSheet);
+                return;
+              }
+              
+              const data = logSheet.data || {};
+              const takeNum = parseInt(data.takeNumber as string || '0', 10);
+              
+              if (Number.isNaN(takeNum)) {
+                updatedSheetsMap.set(logSheet.id, logSheet);
+                return;
+              }
+              
               let updated = false;
               const newData: Record<string, any> = { ...data };
+              
+              // Get current field value
+              const currentFieldVal = getFieldValue(data, fieldId);
+              const isTarget = currentFieldVal && (
+                currentFieldVal.lower === fromNumber || 
+                currentFieldVal.upper === fromNumber ||
+                (currentFieldVal.lower <= fromNumber && currentFieldVal.upper >= fromNumber)
+              );
 
-              const raw = data[fieldId] as unknown;
-              if (typeof raw === 'string' && raw.length > 0) {
-                if (raw.includes('-')) {
-                  const [startStr, endStr] = raw.split('-');
-                  const startNum = parseInt(startStr, 10);
-                  const endNum = parseInt(endStr, 10);
-                  if (!Number.isNaN(startNum) && !Number.isNaN(endNum)) {
-                    if (!skippedTarget && isTargetInRange(startNum, endNum)) {
-                      skippedTarget = true;
-                    } else {
-                      const newStart = startNum >= fromNumber ? startNum + increment : startNum;
-                      const newEnd = endNum >= fromNumber ? endNum + increment : endNum;
-                      newData[fieldId] = `${String(newStart).padStart(4, '0')}-${String(newEnd).padStart(4, '0')}`;
-                      updated = true;
-                    }
-                  }
-                } else {
-                  const currentNum = parseInt(raw as string, 10);
-                  if (!Number.isNaN(currentNum)) {
-                    if (!skippedTarget && currentNum === fromNumber) {
-                      skippedTarget = true;
-                    } else if (currentNum >= fromNumber) {
-                      newData[fieldId] = String(currentNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
-                  }
+              if (isTarget && !skippedTarget) {
+                skippedTarget = true;
+                logger.logDebug(`Skipping target log`, { logSheetId: logSheet.id, fieldValue: currentFieldVal });
+                // Track this as the last valid value (it's the inserted log's value)
+                if (currentFieldVal && currentFieldVal.value !== null) {
+                  lastValidUpper = currentFieldVal.upper;
                 }
+                updatedSheetsMap.set(logSheet.id, logSheet);
+                return;
               }
 
-              if (fieldId === 'soundFile') {
-                const soundFrom = data['sound_from'];
-                const soundTo = data['sound_to'];
-                if (typeof soundFrom === 'string' && typeof soundTo === 'string') {
-                  const sFromNum = parseInt(soundFrom, 10);
-                  const sToNum = parseInt(soundTo, 10);
-                  if (!Number.isNaN(sFromNum) && !Number.isNaN(sToNum)) {
-                    if (!skippedTarget && isTargetInRange(sFromNum, sToNum)) {
-                      skippedTarget = true;
-                    } else if (sFromNum >= fromNumber || sToNum >= fromNumber) {
-                      newData['sound_from'] = String(sFromNum + increment).padStart(4, '0');
-                      newData['sound_to'] = String(sToNum + increment).padStart(4, '0');
-                      updated = true;
-                    }
+              // Check if field needs shifting
+              if (currentFieldVal && currentFieldVal.value !== null) {
+                // Field has a value
+                if (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber) {
+                  // Needs shifting - use sequential logic: shift from the last valid upper bound + 1
+                  let shiftBase: number;
+                  if (lastValidUpper >= 0 && takeNum > fromNumber) {
+                    // Use last valid upper bound from previous take (sequential shifting)
+                    shiftBase = lastValidUpper;
+                  } else {
+                    // Use the original shifting logic for first take after insertion
+                    shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
-                }
-              } else if (fieldId.startsWith('cameraFile')) {
-                const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                const cameraFrom = data[`camera${cameraNum}_from`];
-                const cameraTo = data[`camera${cameraNum}_to`];
-                if (typeof cameraFrom === 'string' && typeof cameraTo === 'string') {
-                  const cFromNum = parseInt(cameraFrom, 10);
-                  const cToNum = parseInt(cameraTo, 10);
-                  if (!Number.isNaN(cFromNum) && !Number.isNaN(cToNum)) {
-                    console.log(`DEBUG updateFileNumbers - Checking log ${logSheet.id}:`, {
-                      fieldId,
-                      cFromNum,
-                      cToNum,
+                  
+                  const newLower = shiftBase + 1; // Always +1 from last valid
+                  const delta = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
+                  const newUpper = newLower + delta;
+                  
+                  logger.logCalculation(
+                    'Sequential File Number Shift',
+                    `Shifting ${fieldId} for take ${takeNum}`,
+                    { 
+                      lastValidUpper: lastValidUpper >= 0 ? lastValidUpper : 'N/A',
+                      currentLower: currentFieldVal.lower,
+                      currentUpper: currentFieldVal.upper,
                       fromNumber,
-                      increment,
-                      skippedTarget,
-                      'isTargetInRange': isTargetInRange(cFromNum, cToNum)
-                    });
-                    
-                    if (!skippedTarget && isTargetInRange(cFromNum, cToNum)) {
-                      console.log(`  -> Skipping target log (contains fromNumber ${fromNumber})`);
-                      skippedTarget = true;
-                    } else if (cFromNum >= fromNumber || cToNum >= fromNumber) {
-                      const newStart = cFromNum + increment;
-                      const newEnd = cToNum + increment;
-                      newData[`camera${cameraNum}_from`] = String(newStart).padStart(4, '0');
-                      newData[`camera${cameraNum}_to`] = String(newEnd).padStart(4, '0');
-                      console.log(`  -> Shifting from ${cFromNum}-${cToNum} to ${newStart}-${newEnd}`);
-                      updated = true;
+                      takeNum
+                    },
+                    lastValidUpper >= 0 && takeNum > fromNumber 
+                      ? `newLower = ${lastValidUpper} + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
+                      : `newLower = ${shiftBase} + ${increment} = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
+                    { newLower, newUpper }
+                  );
+
+                  if (fieldId === 'soundFile') {
+                    if (currentFieldVal.isRange) {
+                      newData['sound_from'] = String(newLower).padStart(4, '0');
+                      newData['sound_to'] = String(newUpper).padStart(4, '0');
+                      if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
+                        newData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                      }
+                    } else {
+                      newData.soundFile = String(newLower).padStart(4, '0');
+                      delete newData['sound_from'];
+                      delete newData['sound_to'];
                     }
+                    lastValidUpper = newUpper;
+                    updated = true;
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    if (currentFieldVal.isRange) {
+                      newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                      newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                      if (typeof data[fieldId] === 'string' && data[fieldId].includes('-')) {
+                        newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                      }
+                    } else {
+                      newData[fieldId] = String(newLower).padStart(4, '0');
+                      delete newData[`camera${cameraNum}_from`];
+                      delete newData[`camera${cameraNum}_to`];
+                    }
+                    lastValidUpper = newUpper;
+                    updated = true;
                   }
+                } else if (currentFieldVal.upper < fromNumber) {
+                  // Field exists but doesn't need shifting - track it as last valid
+                  lastValidUpper = currentFieldVal.upper;
+                }
+              } else {
+                // Field is blank/waste
+                if (takeNum > fromNumber) {
+                  // Take comes after insertion point, but field is blank
+                  // Find the last valid value before this take (from earlier takes, not from shifted takes)
+                  const excludeIds = new Set<string>([logSheet.id]);
+                  if (excludeLogId) excludeIds.add(excludeLogId);
+                  const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
+                  
+                  if (prevValid !== null) {
+                    // Use the last valid value from before this blank take
+                    // This will be used as the base for the next non-blank take
+                    lastValidUpper = prevValid;
+                    logger.logDebug(`Take ${takeNum} has blank ${fieldId}, using previous valid value: ${prevValid}`);
+                  }
+                  // Blank fields stay blank - don't update them
+                } else if (currentFieldVal === null && takeNum < fromNumber) {
+                  // Track last valid value for takes before insertion point
+                  // (This is handled by checking previous takes in the loop)
                 }
               }
 
               if (updated) {
-                return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
+                logger.logSave('updateFileNumbers', logSheet.id, newData, data);
+                updatedSheetsMap.set(logSheet.id, { ...logSheet, data: newData, updatedAt: new Date().toISOString() });
+              } else {
+                updatedSheetsMap.set(logSheet.id, logSheet);
               }
-              return logSheet;
             });
-          })(),
-        }));
+          });
+
+          // Convert map back to array, preserving non-project sheets
+          const updatedSheets = state.logSheets.map(logSheet => {
+            if (logSheet.projectId !== projectId) return logSheet;
+            return updatedSheetsMap.get(logSheet.id) || logSheet;
+          });
+
+          logger.logFunctionExit({ shiftedCount: updatedSheets.filter((s, i) => s !== state.logSheets[i]).length });
+          return { logSheets: updatedSheets };
+        });
       },
     }),
     {
