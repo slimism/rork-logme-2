@@ -685,13 +685,27 @@ export const useProjectStore = create<ProjectState>()(
                 }
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
-                newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
-                // Update inline string if it exists
-                if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
-                  newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                
+                // Check if the original entry had a range to determine what to update
+                const hadRange = typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-');
+                const hadFromTo = sheet.data[`camera${cameraNum}_from`] && sheet.data[`camera${cameraNum}_to`];
+                
+                console.log(`[CAMERA assignment] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): hadRange=${hadRange}, hadFromTo=${!!hadFromTo}`);
+                if (hadRange || hadFromTo) {
+                  // Entry had a range - preserve range format
+                  newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                  newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                  if (hadRange) {
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
+                  console.log(`[CAMERA assignment] Set range: camera${cameraNum}_from=${newData[`camera${cameraNum}_from`]}, camera${cameraNum}_to=${newData[`camera${cameraNum}_to`]}, ${fieldId}=${newData[fieldId] || 'N/A'}`);
                 } else {
+                  // Entry was a single value - keep as single value
                   newData[fieldId] = String(newLower).padStart(4, '0');
+                  // Delete any stale range fields
+                  delete newData[`camera${cameraNum}_from`];
+                  delete newData[`camera${cameraNum}_to`];
+                  console.log(`[CAMERA assignment] Set single value: ${fieldId}=${newData[fieldId]}`);
                 }
               }
               
