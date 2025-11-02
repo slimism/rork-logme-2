@@ -690,12 +690,16 @@ export const useProjectStore = create<ProjectState>()(
                 const hadRange = typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-');
                 const hadFromTo = sheet.data[`camera${cameraNum}_from`] && sheet.data[`camera${cameraNum}_to`];
                 
-                console.log(`[CAMERA assignment] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): hadRange=${hadRange}, hadFromTo=${!!hadFromTo}`);
+                console.log(`[CAMERA assignment] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): fieldId=${fieldId}, hadRange=${hadRange}, hadFromTo=${!!hadFromTo}, delta=${delta}`);
+                console.log(`[CAMERA assignment] Current values: ${fieldId}=${sheet.data[fieldId]}, camera${cameraNum}_from=${sheet.data[`camera${cameraNum}_from`]}, camera${cameraNum}_to=${sheet.data[`camera${cameraNum}_to`]}`);
+                console.log(`[CAMERA assignment] Calculating: newLower=${newLower}, newUpper=${newUpper}, previousUpper=${previousUpper}, delta=${delta}`);
+                
                 if (hadRange || hadFromTo) {
                   // Entry had a range - preserve range format
                   newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
                   newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
-                  if (hadRange) {
+                  // ALWAYS update the inline field if it exists (whether it's a range or not)
+                  if (typeof sheet.data[fieldId] === 'string') {
                     newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
                   }
                   console.log(`[CAMERA assignment] Set range: camera${cameraNum}_from=${newData[`camera${cameraNum}_from`]}, camera${cameraNum}_to=${newData[`camera${cameraNum}_to`]}, ${fieldId}=${newData[fieldId] || 'N/A'}`);
