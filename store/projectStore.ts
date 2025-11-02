@@ -21,6 +21,7 @@ interface ProjectState {
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
   updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string | string[]) => void;
+  recalculateFileNumbersFromTakes: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, excludeLogId?: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -359,6 +360,147 @@ export const useProjectStore = create<ProjectState>()(
               return logSheet;
             } catch (e) {
               console.log('[updateTakeNumbers] error while updating take numbers', e);
+              return logSheet;
+            }
+          }),
+        }));
+      },
+
+      recalculateFileNumbersFromTakes: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, excludeLogId?: string) => {
+        console.log('=== recalculateFileNumbersFromTakes called ===', {
+          projectId,
+          sceneNumber,
+          shotNumber,
+          fromTakeNumber,
+          excludeLogId
+        });
+
+        set((state) => ({
+          logSheets: state.logSheets.map((logSheet) => {
+            try {
+              if (logSheet.projectId !== projectId) return logSheet;
+              
+              // Skip the excluded log (the waste take)
+              if (excludeLogId && logSheet.id === excludeLogId) {
+                return logSheet;
+              }
+
+              const data = logSheet.data ?? {} as Record<string, unknown>;
+              const lsScene = typeof data.sceneNumber === 'string' ? data.sceneNumber.trim() : '';
+              const lsShot = typeof data.shotNumber === 'string' ? data.shotNumber.trim() : '';
+              const targetScene = sceneNumber?.trim?.() ?? sceneNumber;
+              const targetShot = shotNumber?.trim?.() ?? shotNumber;
+
+              if (lsScene !== targetScene || lsShot !== targetShot) return logSheet;
+
+              // Skip waste takes and Ambience/SFX
+              const classification = data.classification as string | undefined;
+              if (classification === 'Waste' || classification === 'Ambience' || classification === 'SFX') {
+                return logSheet;
+              }
+
+              const takeRaw = (data as any).takeNumber as unknown;
+              const currentTakeNum = typeof takeRaw === 'string' ? parseInt(takeRaw, 10) : Number.NaN;
+
+              // Only recalculate for takes that were shifted (take number >= fromTakeNumber)
+              if (Number.isNaN(currentTakeNum) || currentTakeNum < fromTakeNumber) {
+                return logSheet;
+              }
+
+              // Calculate what the old take number was (current - 1 since it was shifted)
+              const oldTakeNumber = currentTakeNum - 1;
+              const newTakeNumber = currentTakeNum;
+
+              // Helper to check if a file number matches the old take number
+              const matchesOldTake = (fileNum: number): boolean => {
+                return fileNum === oldTakeNumber;
+              };
+
+              // Helper to pad a number to 4 digits
+              const pad4 = (num: number): string => String(num).padStart(4, '0');
+
+              const updated: Record<string, any> = { ...logSheet.data };
+              let hasChanges = false;
+
+              // Check and update sound file
+              const soundFrom = data['sound_from'] as string | undefined;
+              const soundTo = data['sound_to'] as string | undefined;
+              const soundFile = data.soundFile as string | undefined;
+
+              if (soundFrom && soundTo) {
+                // Range format
+                const fromNum = parseInt(soundFrom, 10) || 0;
+                const toNum = parseInt(soundTo, 10) || 0;
+                
+                // Only update if the range matches the old take number pattern
+                // For simplicity, update if both bounds match the old take (single file case)
+                if (fromNum === oldTakeNumber && toNum === oldTakeNumber) {
+                  updated['sound_from'] = pad4(newTakeNumber);
+                  updated['sound_to'] = pad4(newTakeNumber);
+                  // Update inline format if it exists
+                  if (soundFile && typeof soundFile === 'string' && soundFile.includes('-')) {
+                    updated.soundFile = `${pad4(newTakeNumber)}-${pad4(newTakeNumber)}`;
+                  }
+                  hasChanges = true;
+                }
+              } else if (soundFile && typeof soundFile === 'string' && !soundFile.includes('-')) {
+                // Single value
+                const soundNum = parseInt(soundFile, 10) || 0;
+                if (matchesOldTake(soundNum)) {
+                  updated.soundFile = pad4(newTakeNumber);
+                  hasChanges = true;
+                }
+              }
+
+              // Check and update camera files
+              const cameraConfiguration = state.projects.find(p => p.id === projectId)?.settings?.cameraConfiguration || 1;
+              
+              for (let i = 1; i <= cameraConfiguration; i++) {
+                const fieldId = i === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${i}`;
+                const fromKey = `camera${i}_from`;
+                const toKey = `camera${i}_to`;
+                
+                const cameraFrom = data[fromKey] as string | undefined;
+                const cameraTo = data[toKey] as string | undefined;
+                const cameraFile = data[fieldId] as string | undefined;
+
+                if (cameraFrom && cameraTo) {
+                  // Range format
+                  const fromNum = parseInt(cameraFrom, 10) || 0;
+                  const toNum = parseInt(cameraTo, 10) || 0;
+                  
+                  // Only update if the range matches the old take number pattern
+                  if (fromNum === oldTakeNumber && toNum === oldTakeNumber) {
+                    updated[fromKey] = pad4(newTakeNumber);
+                    updated[toKey] = pad4(newTakeNumber);
+                    // Update inline format if it exists
+                    if (cameraFile && typeof cameraFile === 'string' && cameraFile.includes('-')) {
+                      updated[fieldId] = `${pad4(newTakeNumber)}-${pad4(newTakeNumber)}`;
+                    }
+                    hasChanges = true;
+                  }
+                } else if (cameraFile && typeof cameraFile === 'string' && !cameraFile.includes('-')) {
+                  // Single value
+                  const cameraNum = parseInt(cameraFile, 10) || 0;
+                  if (matchesOldTake(cameraNum)) {
+                    updated[fieldId] = pad4(newTakeNumber);
+                    hasChanges = true;
+                  }
+                }
+              }
+
+              if (hasChanges) {
+                console.log(`  -> Recalculating file numbers for take ${newTakeNumber} (was ${oldTakeNumber})`);
+                return {
+                  ...logSheet,
+                  data: updated,
+                  updatedAt: new Date().toISOString(),
+                };
+              }
+
+              return logSheet;
+            } catch (e) {
+              console.log('[recalculateFileNumbersFromTakes] error while recalculating file numbers', e);
               return logSheet;
             }
           }),

@@ -18,7 +18,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers, recalculateFileNumbersFromTakes } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -3041,7 +3041,40 @@ This would break the logging logic and create inconsistencies in the file number
         cameraFile: updatedData.cameraFile
       });
       
+      // Check if this is being newly marked as waste (wasn't waste before)
+      const wasWasteBefore = logSheet.data?.classification === 'Waste';
+      const isNowWaste = classification === 'Waste';
+      const isNewlyWaste = !wasWasteBefore && isNowWaste;
+      
       updateLogSheet(logSheet.id, updatedData);
+      
+      // If this is being newly marked as waste and has take number, shift subsequent takes and recalculate file numbers
+      if (isNewlyWaste && logSheet.data?.sceneNumber && logSheet.data?.shotNumber && logSheet.data?.takeNumber) {
+        const takeNumber = parseInt(logSheet.data.takeNumber as string, 10);
+        if (!Number.isNaN(takeNumber)) {
+          // Shift subsequent take numbers
+          updateTakeNumbers(
+            logSheet.projectId,
+            logSheet.data.sceneNumber as string,
+            logSheet.data.shotNumber as string,
+            takeNumber,
+            1,
+            logSheet.id
+          );
+          
+          // Recalculate file numbers for subsequent takes (wait a bit for state to propagate)
+          setTimeout(() => {
+            recalculateFileNumbersFromTakes(
+              logSheet.projectId,
+              logSheet.data.sceneNumber as string,
+              logSheet.data.shotNumber as string,
+              takeNumber,
+              logSheet.id
+            );
+          }, 0);
+        }
+      }
+      
       router.back();
     } catch (error) {
       console.error('Error saving take:', error);
