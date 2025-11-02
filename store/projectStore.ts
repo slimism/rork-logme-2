@@ -345,12 +345,110 @@ export const useProjectStore = create<ProjectState>()(
               
               if (shouldShift) {
                 console.log(`  -> Shifting take ${currentTakeNum} to ${currentTakeNum + increment} (log ${logSheet.id})`);
+                
+                // Get project to check camera configuration
+                const project = state.projects.find(p => p.id === projectId);
+                const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+                
+                // Create updated data object
+                const updatedData: Record<string, any> = {
+                  ...logSheet.data,
+                  takeNumber: (currentTakeNum + increment).toString(),
+                };
+                
+                // Helper function to update a file number by increment
+                const updateFileNumber = (value: string | undefined): string | undefined => {
+                  if (!value) return value;
+                  const num = parseInt(value, 10);
+                  if (isNaN(num)) return value;
+                  return String(num + increment).padStart(4, '0');
+                };
+                
+                // Update Sound File numbers
+                if (updatedData.soundFile && typeof updatedData.soundFile === 'string') {
+                  // Check if it's a range (contains '-')
+                  if (updatedData.soundFile.includes('-')) {
+                    // Update range format
+                    const parts = updatedData.soundFile.split('-');
+                    if (parts.length === 2) {
+                      updatedData.soundFile = `${updateFileNumber(parts[0])}-${updateFileNumber(parts[1])}`;
+                    }
+                  } else {
+                    // Update single value
+                    updatedData.soundFile = updateFileNumber(updatedData.soundFile);
+                  }
+                }
+                
+                // Update sound_from and sound_to for range data
+                if (updatedData.sound_from) {
+                  updatedData.sound_from = updateFileNumber(updatedData.sound_from);
+                }
+                if (updatedData.sound_to) {
+                  updatedData.sound_to = updateFileNumber(updatedData.sound_to);
+                }
+                
+                // Update Camera File numbers based on configuration
+                if (cameraConfiguration === 1) {
+                  // Single camera
+                  if (updatedData.cameraFile && typeof updatedData.cameraFile === 'string') {
+                    if (updatedData.cameraFile.includes('-')) {
+                      const parts = updatedData.cameraFile.split('-');
+                      if (parts.length === 2) {
+                        updatedData.cameraFile = `${updateFileNumber(parts[0])}-${updateFileNumber(parts[1])}`;
+                      }
+                    } else {
+                      updatedData.cameraFile = updateFileNumber(updatedData.cameraFile);
+                    }
+                  }
+                  
+                  // Update camera1_from and camera1_to for range data
+                  if (updatedData.camera1_from) {
+                    updatedData.camera1_from = updateFileNumber(updatedData.camera1_from);
+                  }
+                  if (updatedData.camera1_to) {
+                    updatedData.camera1_to = updateFileNumber(updatedData.camera1_to);
+                  }
+                } else {
+                  // Multiple cameras
+                  for (let i = 1; i <= cameraConfiguration; i++) {
+                    const fieldId = `cameraFile${i}`;
+                    const fromKey = `camera${i}_from`;
+                    const toKey = `camera${i}_to`;
+                    
+                    // Update single camera file
+                    if (updatedData[fieldId] && typeof updatedData[fieldId] === 'string') {
+                      if (updatedData[fieldId].includes('-')) {
+                        const parts = updatedData[fieldId].split('-');
+                        if (parts.length === 2) {
+                          updatedData[fieldId] = `${updateFileNumber(parts[0])}-${updateFileNumber(parts[1])}`;
+                        }
+                      } else {
+                        updatedData[fieldId] = updateFileNumber(updatedData[fieldId]);
+                      }
+                    }
+                    
+                    // Update camera range data
+                    if (updatedData[fromKey]) {
+                      updatedData[fromKey] = updateFileNumber(updatedData[fromKey]);
+                    }
+                    if (updatedData[toKey]) {
+                      updatedData[toKey] = updateFileNumber(updatedData[toKey]);
+                    }
+                  }
+                }
+                
+                console.log(`  -> Updated file numbers for take ${currentTakeNum}:`, {
+                  soundFile: updatedData.soundFile,
+                  cameraFile: updatedData.cameraFile,
+                  sound_from: updatedData.sound_from,
+                  sound_to: updatedData.sound_to,
+                  camera1_from: updatedData.camera1_from,
+                  camera1_to: updatedData.camera1_to,
+                });
+                
                 return {
                   ...logSheet,
-                  data: {
-                    ...logSheet.data,
-                    takeNumber: (currentTakeNum + increment).toString(),
-                  },
+                  data: updatedData,
                   updatedAt: new Date().toISOString(),
                 };
               } else if (!Number.isNaN(currentTakeNum) && currentTakeNum > fromTakeNumber && maxTakeNumber !== undefined) {
