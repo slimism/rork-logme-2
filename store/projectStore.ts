@@ -345,19 +345,12 @@ export const useProjectStore = create<ProjectState>()(
               
               if (shouldShift) {
                 console.log(`  -> Shifting take ${currentTakeNum} to ${currentTakeNum + increment} (log ${logSheet.id})`);
-                
-                // ONLY update the take number, NOT file numbers
-                // File numbers will be handled by updateFileNumbers calls
-                const updatedData: Record<string, any> = {
-                  ...logSheet.data,
-                  takeNumber: (currentTakeNum + increment).toString(),
-                };
-                
-                console.log(`  -> Updated take number for take ${currentTakeNum} to ${currentTakeNum + increment}`);
-                
                 return {
                   ...logSheet,
-                  data: updatedData,
+                  data: {
+                    ...logSheet.data,
+                    takeNumber: (currentTakeNum + increment).toString(),
+                  },
                   updatedAt: new Date().toISOString(),
                 };
               } else if (!Number.isNaN(currentTakeNum) && currentTakeNum > fromTakeNumber && maxTakeNumber !== undefined) {
@@ -455,22 +448,11 @@ export const useProjectStore = create<ProjectState>()(
             
             // If we have excluded logs, find the maximum upper bound among them
             // This will be the starting point for cascading shifts
-            // IMPORTANT: We need to get CURRENT state to read updated values
             if (excludeIds.length > 0) {
-              let maxUpperBound = -1;
+              let maxUpperBound = fromNumber + increment - 1;
               const excludedBounds: Array<{ id: string; take: string; upper: number }> = [];
               
-              // Get the current state to ensure we're reading the most recent updates
-              const currentState = get();
-              const currentProjectSheets = currentState.logSheets
-                .filter(s => s.projectId === projectId)
-                .sort((a, b) => {
-                  const uidA = parseInt(a.data?.uniqueId || '0', 10) || 0;
-                  const uidB = parseInt(b.data?.uniqueId || '0', 10) || 0;
-                  return uidA - uidB;
-                });
-              
-              for (const sheet of currentProjectSheets) {
+              for (const sheet of projectSheets) {
                 if (excludeIds.includes(sheet.id)) {
                   const bounds = getFileBounds(sheet, fieldId);
                   if (bounds) {
@@ -482,13 +464,7 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
               
-              // If we found excluded bounds, use them; otherwise fallback to fromNumber formula
-              if (maxUpperBound >= 0) {
-                insertedLogUpperBound = maxUpperBound;
-              } else {
-                // Fallback case: no bounds found in excluded logs
-                insertedLogUpperBound = fromNumber + increment - 1;
-              }
+              insertedLogUpperBound = maxUpperBound;
               console.log(`  -> Excluded logs ${excludeIds.join(', ')}, found bounds:`, excludedBounds.map(b => `${b.take}=${b.upper}`).join(', '));
               console.log(`  -> Using max upper bound: ${insertedLogUpperBound}`);
             }
@@ -611,31 +587,13 @@ export const useProjectStore = create<ProjectState>()(
                 }
               } else if (fieldId.startsWith('cameraFile')) {
                 const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                
-                // Check if the original entry had a range to determine what to update
-                const hadRange = typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-');
-                const hadFromTo = sheet.data[`camera${cameraNum}_from`] && sheet.data[`camera${cameraNum}_to`];
-                
-                console.log(`[CAMERA assignment] Sheet ${sheet.id} (take ${sheet.data?.takeNumber}): fieldId=${fieldId}, hadRange=${hadRange}, hadFromTo=${!!hadFromTo}, delta=${delta}`);
-                console.log(`[CAMERA assignment] Current values: ${fieldId}=${sheet.data[fieldId]}, camera${cameraNum}_from=${sheet.data[`camera${cameraNum}_from`]}, camera${cameraNum}_to=${sheet.data[`camera${cameraNum}_to`]}`);
-                console.log(`[CAMERA assignment] Calculating: newLower=${newLower}, newUpper=${newUpper}, previousUpper=${previousUpper}, delta=${delta}`);
-                
-                if (hadRange || hadFromTo) {
-                  // Entry had a range - preserve range format
-                  newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
-                  newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
-                  // ALWAYS update the inline field if it exists (whether it's a range or not)
-                  if (typeof sheet.data[fieldId] === 'string') {
-                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                  }
-                  console.log(`[CAMERA assignment] Set range: camera${cameraNum}_from=${newData[`camera${cameraNum}_from`]}, camera${cameraNum}_to=${newData[`camera${cameraNum}_to`]}, ${fieldId}=${newData[fieldId] || 'N/A'}`);
+                newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
+                newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
+                // Update inline string if it exists
+                if (typeof sheet.data[fieldId] === 'string' && sheet.data[fieldId].includes('-')) {
+                  newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
                 } else {
-                  // Entry was a single value - keep as single value
                   newData[fieldId] = String(newLower).padStart(4, '0');
-                  // Delete any stale range fields
-                  delete newData[`camera${cameraNum}_from`];
-                  delete newData[`camera${cameraNum}_to`];
-                  console.log(`[CAMERA assignment] Set single value: ${fieldId}=${newData[fieldId]}`);
                 }
               }
               

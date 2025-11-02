@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 interface LogEntry {
@@ -127,12 +127,11 @@ End of Logs`;
         URL.revokeObjectURL(url);
         return true;
       } else {
-        const file = new File(Paths.cache, `${filename}.txt`);
-        file.create({ overwrite: true });
-        file.write(content);
+        const fileUri = `${FileSystem.documentDirectory}${filename}.txt`;
+        await FileSystem.writeAsStringAsync(fileUri, content);
         
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(file.uri, {
+          await Sharing.shareAsync(fileUri, {
             mimeType: 'text/plain',
             dialogTitle: 'Share Console Logs',
           });
