@@ -429,30 +429,91 @@ export const useProjectStore = create<ProjectState>()(
             let tempSound: number | null = null; // Upper bound of sound file for next calculation
             let tempCamera: { [cameraNum: number]: number | null } = {}; // Upper bounds for each camera
             
-            // Initialize temp variables from the inserted log (the one with take number = fromNumber)
-            // This is the log that was inserted before the target duplicate
-            const insertedLog = sheets.find(sheet => {
-              const takeNum = parseInt(sheet.data?.takeNumber as string || '0', 10);
-              return takeNum === fromNumber;
+            // Initialize temp variables from the inserted log
+            // The inserted log is the one that was inserted before the target duplicate
+            // Since fromNumber is where we START shifting FROM (meaning we shift logs with file numbers >= fromNumber),
+            // the inserted log should have a file number < fromNumber, or exactly fromNumber - 1
+            // OR it's the log with the lowest take number that has a file number close to fromNumber
+            
+            // Strategy 1: Find log with file number matching (fromNumber - 1) for this specific field
+            // This is the most common case: inserted log has file number = fromNumber - 1
+            let insertedLog = sheets.find(sheet => {
+              const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
+              if (sheetFieldVal && sheetFieldVal.value !== null) {
+                // Check if this log's file number matches (fromNumber - 1)
+                const expectedInsertedFileNum = fromNumber - 1;
+                return sheetFieldVal.lower === expectedInsertedFileNum || sheetFieldVal.upper === expectedInsertedFileNum;
+              }
+              return false;
             });
+            
+            // Strategy 2: Find log with file number matching fromNumber (in case calculation was different)
+            if (!insertedLog) {
+              insertedLog = sheets.find(sheet => {
+                const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
+                if (sheetFieldVal && sheetFieldVal.value !== null) {
+                  return sheetFieldVal.lower === fromNumber || sheetFieldVal.upper === fromNumber;
+                }
+                return false;
+              });
+            }
+            
+            // Strategy 3: Find the log with the lowest take number that has file number < fromNumber
+            // This handles edge cases where the file number doesn't match exactly
+            if (!insertedLog) {
+              insertedLog = sheets
+                .filter(sheet => {
+                  const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
+                  if (sheetFieldVal && sheetFieldVal.value !== null) {
+                    // Find logs with file number less than fromNumber (inserted log should be before the shifting point)
+                    return sheetFieldVal.upper < fromNumber;
+                  }
+                  return false;
+                })
+                .sort((a, b) => {
+                  // Sort by take number (ascending) to get the one with lowest take number
+                  const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
+                  const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
+                  return bTake - aTake; // Descending order, so last one is the one closest to fromNumber
+                })[0]; // Get the one with highest take number (closest to insertion point)
+            }
             
             if (insertedLog) {
               const insertedData = insertedLog.data || {};
+              const insertedTakeNum = parseInt(insertedData.takeNumber as string || '0', 10);
+              
+              // Initialize the current field's temp variable
               const insertedFieldVal = getFieldValue(insertedData, fieldId);
               if (insertedFieldVal && insertedFieldVal.value !== null) {
                 if (fieldId === 'soundFile') {
                   tempSound = insertedFieldVal.upper;
-                  logger.logDebug(`Initialized tempSound from inserted log (Take ${fromNumber}): ${tempSound}`);
+                  logger.logDebug(`Initialized tempSound from inserted log (Take ${insertedTakeNum}, file number ${insertedFieldVal.lower}/${insertedFieldVal.upper}): ${tempSound}`);
                 } else if (fieldId.startsWith('cameraFile')) {
                   const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
                   tempCamera[cameraNum] = insertedFieldVal.upper;
-                  logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log (Take ${fromNumber}): ${tempCamera[cameraNum]}`);
+                  logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log (Take ${insertedTakeNum}, file number ${insertedFieldVal.lower}/${insertedFieldVal.upper}): ${tempCamera[cameraNum]}`);
                 }
               } else {
-                logger.logWarning(`Inserted log (Take ${fromNumber}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
+                logger.logWarning(`Inserted log (Take ${insertedTakeNum}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
+              }
+              
+              // For multi-camera: Also initialize temp variables for ALL other camera fields from the same inserted log
+              // This ensures all camera fields use the same inserted log's values, even if called separately
+              if (fieldId.startsWith('cameraFile')) {
+                // Find all camera fields in the inserted log and initialize their temp variables
+                for (let camNum = 1; camNum <= 10; camNum++) { // Check up to 10 cameras
+                  const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
+                  if (camFieldId !== fieldId) { // Don't re-initialize the current field
+                    const camFieldVal = getFieldValue(insertedData, camFieldId);
+                    if (camFieldVal && camFieldVal.value !== null && (tempCamera[camNum] === null || tempCamera[camNum] === undefined)) {
+                      tempCamera[camNum] = camFieldVal.upper;
+                      logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log (Take ${insertedTakeNum}, field ${camFieldId}, file number ${camFieldVal.lower}/${camFieldVal.upper}): ${tempCamera[camNum]}`);
+                    }
+                  }
+                }
               }
             } else {
-              logger.logWarning(`Inserted log (Take ${fromNumber}) not found - temp variables not initialized. This may cause incorrect shifting calculations.`);
+              logger.logWarning(`Inserted log with file number ${fromNumber} for field ${fieldId} not found - temp variables not initialized. This may cause incorrect shifting calculations.`);
             }
             
             sheets.forEach((logSheet, index) => {
