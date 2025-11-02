@@ -6,7 +6,7 @@ import { useTokenStore } from './subscriptionStore';
 import { normalizeProjectSettings } from '@/components/CameraHandlers/cameraConfigValidator';
 import { logger } from '@/components/CameraHandlers/logger';
 import { getSoundFileValueForSubsequentShift, getSoundFileInfo, calculateSoundFileDelta, SoundHandlerContext } from '@/components/CameraHandlers/SoundHandler';
-import { calculateSoundDeltaForShifting, DeltaCalculationInput } from '@/components/CameraHandlers/deltaCalculator';
+import { calculateSoundDeltaForShifting, calculateCameraDeltaForShifting, DeltaCalculationInput } from '@/components/CameraHandlers/deltaCalculator';
 
 interface ProjectState {
   projects: Project[];
@@ -487,52 +487,79 @@ export const useProjectStore = create<ProjectState>()(
                   // They are automatically assigned from the inserted log's upper bounds
                   let shiftBase: number;
                   
-                  // For ALL takes that need shifting (including target duplicate), we need to determine shiftBase
-                  // The key insight: temp variables track the LAST UPPER BOUND that was used/shifted
-                  // - For the first take after insertion (target duplicate), it might have been shifted already
-                  //   by duplicate insertion logic, so we should use its current value as the base
-                  // - For subsequent takes, we use temp variables which track the previous take's upper bound
+                  // ALWAYS use temp variables when available for ALL takes that need shifting
+                  // This includes the target duplicate - it should use tempCamera/tempSound just like subsequent takes
+                  // The key: tempCamera/tempSound track the inserted log's upper bounds, which should be used
+                  // for the FIRST shift (target duplicate), then updated, then used for subsequent shifts
                   
                   if (fieldId === 'soundFile') {
-                    if (tempSound !== null && takeNum > fromNumber) {
-                      // Sequential shifting - use temp variable from previous take
+                    if (tempSound !== null) {
+                      // ALWAYS use tempSound when available (including target duplicate)
                       shiftBase = tempSound;
-                      logger.logDebug(`Sequential shift: Using tempSound (${tempSound}) for take ${takeNum}`);
+                      logger.logDebug(`Using tempSound (${tempSound}) for take ${takeNum} - sequential shift`);
                     } else {
-                      // Target duplicate or tempSound not available - use currentFieldVal
+                      // tempSound not available - fallback to currentFieldVal
                       shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
-                      logger.logDebug(`Target duplicate/Initial shift: Using currentFieldVal (${shiftBase}) for take ${takeNum} soundFile`);
+                      logger.logWarning(`tempSound not available for take ${takeNum} - using currentFieldVal (${shiftBase}) as fallback`);
                     }
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined && takeNum > fromNumber) {
-                      // Sequential shifting - use temp variable from previous take
+                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
+                      // ALWAYS use tempCamera when available (including target duplicate)
                       shiftBase = tempCamera[cameraNum]!;
-                      logger.logDebug(`Sequential shift: Using tempCamera[${cameraNum}] (${shiftBase}) for take ${takeNum}`);
+                      logger.logDebug(`Using tempCamera[${cameraNum}] (${shiftBase}) for take ${takeNum} - sequential shift`);
                     } else {
-                      // Target duplicate or tempCamera not available
-                      // If target duplicate was already shifted by duplicate insertion logic, use its current value
-                      // Otherwise, use currentFieldVal which should be >= fromNumber
+                      // tempCamera not available - fallback to currentFieldVal
                       shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
-                      logger.logDebug(`Target duplicate/Initial shift: Using currentFieldVal (${shiftBase}) for take ${takeNum} cameraFile`);
-                      // IMPORTANT: If this is the target duplicate that was already shifted, we should update tempCamera
-                      // to its current upper bound without shifting it again. But if it needs shifting, we'll shift it.
+                      logger.logWarning(`tempCamera[${cameraNum}] not available for take ${takeNum} - using currentFieldVal (${shiftBase}) as fallback`);
                     }
                   } else {
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
                   // Calculate new bounds: newLower = shiftBase + 1, newUpper = newLower + delta
-                  // If the target duplicate was already shifted correctly, newLower/newUpper might match currentFieldVal
-                  // In that case, we still need to update temp variables but don't need to change the data
+                  // Delta calculation rules:
+                  // - For ranges: delta = upper - lower (difference between bounds)
+                  // - For single values: delta = 1 (the field represents 1 file number, so span is 1)
+                  // - For blank/waste: delta = 0 (field stays blank, temp variable unchanged)
+                  // Formula: newLower = tempValue + 1, newUpper = newLower + delta
+                  // For single values: newLower = tempValue + 1, newUpper = newLower + 1
+                  //   (e.g., tempCamera = 4: newLower = 5, newUpper = 6, but we store 5 as single value, tempCamera = 5)
+                  // For ranges: newLower = tempValue + 1, newUpper = newLower + (upper - lower)
+                  //   (e.g., tempCamera = 4, range 001-003 (delta=2): newLower = 5, newUpper = 7)
                   let newLower = shiftBase + 1;
-                  const delta = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
+                  
+                  // Use centralized delta calculator for consistency
+                  let delta: number;
+                  if (fieldId === 'soundFile') {
+                    // Use sound delta calculator
+                    const soundDeltaInput: DeltaCalculationInput = {
+                      logSheetData: data
+                    };
+                    delta = calculateSoundDeltaForShifting(soundDeltaInput);
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    // Use camera delta calculator
+                    const cameraDeltaInput: DeltaCalculationInput = {
+                      logSheetData: data
+                    };
+                    delta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
+                  } else {
+                    // Fallback to manual calculation
+                    delta = currentFieldVal.isRange 
+                      ? (currentFieldVal.upper - currentFieldVal.lower)  // Range: difference between upper and lower
+                      : 1;  // Single value: delta is 1 (one file number has span of 1)
+                  }
+                  
                   let newUpper = newLower + delta;
                   
                   // Check if value is already correctly shifted (target duplicate case)
                   // This happens when the target duplicate was already shifted by duplicate insertion logic
                   // We still need to update temp variables to its current upper bound so subsequent takes are correct
-                  const isAlreadyCorrectlyShifted = (newLower === currentFieldVal.lower && newUpper === currentFieldVal.upper);
+                  // For single values, we only compare newLower with currentLower (single values have no range)
+                  // For ranges, we compare both lower and upper bounds
+                  const isAlreadyCorrectlyShifted = currentFieldVal.isRange
+                    ? (newLower === currentFieldVal.lower && newUpper === currentFieldVal.upper)
+                    : (newLower === currentFieldVal.lower);  // Single value: only compare lower bound
                   if (isAlreadyCorrectlyShifted) {
                     logger.logDebug(`Take ${takeNum} ${fieldId} is already correctly shifted (${currentFieldVal.lower}/${currentFieldVal.upper}) - will update temp variables to current upper bound`);
                     // For temp variables, use currentFieldVal.upper (the already-shifted value)
@@ -625,15 +652,22 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    // ALWAYS update tempSound with the calculated soundNewUpper
+                    // ALWAYS update tempSound with the correct upper bound
+                    // For single values: soundNewUpper should equal soundNewLower (single file number)
+                    // For ranges: soundNewUpper = soundNewLower + delta (range of file numbers)
                     // This ensures subsequent takes use the correct base value
-                    // CRITICAL: Always use the calculated soundNewUpper (from tempSound + 1 + delta)
-                    // This way, temp variables are always updated through the same logic path
                     // If the value is already correct (target duplicate already shifted), soundNewUpper will match currentUpper
-                    // but we still update tempSound to soundNewUpper to maintain consistency
+                    // but we still update tempSound to maintain consistency
                     const previousTempSound = tempSound;
-                    const soundIsAlreadyCorrectlyShifted = (soundNewLower === currentFieldVal.lower && soundNewUpper === currentFieldVal.upper);
-                    tempSound = soundNewUpper;  // Always use calculated soundNewUpper
+                    // For single values, we only compare soundNewLower with currentLower (single values have no range)
+                    // For ranges, we compare both lower and upper bounds
+                    const soundIsAlreadyCorrectlyShifted = currentFieldVal.isRange
+                      ? (soundNewLower === currentFieldVal.lower && soundNewUpper === currentFieldVal.upper)
+                      : (soundNewLower === currentFieldVal.lower);  // Single value: only compare lower bound
+                    // For single values, the upper bound is the same as the lower bound (it's a single file, not a range)
+                    // So tempSound should be set to soundNewLower, not soundNewUpper (which would be soundNewLower + 1)
+                    const finalUpperForTempSound = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+                    tempSound = finalUpperForTempSound;
                     logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing take ${takeNum} (sound: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${soundNewLower}/${soundNewUpper})`);
                     logger.logDebug(`tempSound is now ${tempSound} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed
@@ -690,14 +724,17 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData[`camera${cameraNum}_from`];
                       delete newData[`camera${cameraNum}_to`];
                     }
-                    // ALWAYS update tempCamera with the calculated newUpper
+                    // ALWAYS update tempCamera with the correct upper bound
+                    // For single values: newUpper should equal newLower (single file number)
+                    // For ranges: newUpper = newLower + delta (range of file numbers)
                     // This ensures subsequent takes use the correct base value
-                    // CRITICAL: Always use the calculated newUpper (from tempCamera + 1 + delta)
-                    // This way, temp variables are always updated through the same logic path
                     // If the value is already correct (target duplicate already shifted), newUpper will match currentUpper
-                    // but we still update tempCamera to newUpper to maintain consistency
+                    // but we still update tempCamera to maintain consistency
                     const previousTempCamera = tempCamera[cameraNum];
-                    tempCamera[cameraNum] = newUpper;  // Always use calculated newUpper
+                    // For single values, the upper bound is the same as the lower bound (it's a single file, not a range)
+                    // So tempCamera should be set to newLower, not newUpper (which would be newLower + 1)
+                    const finalUpperForTemp = currentFieldVal.isRange ? newUpper : newLower;
+                    tempCamera[cameraNum] = finalUpperForTemp;
                     logger.logDebug(`Updated tempCamera[${cameraNum}] from ${previousTempCamera} to ${tempCamera[cameraNum]} after processing take ${takeNum} (camera: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${newLower}/${newUpper})`);
                     logger.logDebug(`tempCamera[${cameraNum}] is now ${tempCamera[cameraNum]} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed

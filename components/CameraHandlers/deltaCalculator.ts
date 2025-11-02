@@ -306,6 +306,162 @@ export const calculateSoundDelta = (input: DeltaCalculationInput): number => {
 };
 
 /**
+ * Calculates delta for camera file (for shifting operations)
+ * 
+ * Delta Calculation Rules for Camera:
+ * - Range: delta = upper - lower (just the difference, not inclusive count)
+ * - Single value: delta = 1
+ * - Blank/waste: delta = 0
+ * 
+ * This is different from calculateFieldDelta which adds +1 for ranges.
+ * Camera delta for shifting uses just the difference to maintain range size.
+ * 
+ * @param input - Input data
+ * @param fieldId - Camera field identifier (e.g., 'cameraFile', 'cameraFile1', 'cameraFile2')
+ * @returns Delta value for camera file (upper - lower for ranges, 1 for single, 0 for blank)
+ */
+export const calculateCameraDeltaForShifting = (
+  input: DeltaCalculationInput,
+  fieldId: string
+): number => {
+  logger.logFunctionEntry({ fieldId, hasTakeData: !!input.takeData, hasLogSheetData: !!input.logSheetData });
+  
+  const { takeData, showRangeMode, rangeData, logSheetData } = input;
+  const data = takeData || logSheetData;
+  const isFromTakeData = !!takeData;
+
+  let delta = 0;
+  let calculationMethod = 'unknown';
+  let calculationDetails: any = {};
+
+  // If calculating from takeData, check range mode
+  if (isFromTakeData && showRangeMode && rangeData) {
+    const isRangeMode = showRangeMode[fieldId];
+    const range = rangeData[fieldId];
+
+    if (isRangeMode && range?.from && range?.to) {
+      const fromNum = parseInt(range.from, 10) || 0;
+      const toNum = parseInt(range.to, 10) || 0;
+      const upper = Math.max(fromNum, toNum);
+      const lower = Math.min(fromNum, toNum);
+      // Delta = upper - lower (not +1, just the difference)
+      delta = Math.abs(upper - lower);
+      calculationMethod = 'rangeMode';
+      calculationDetails = { from: range.from, to: range.to, upper, lower };
+      
+      logger.logCalculation(
+        'Camera Delta from Range Mode',
+        `Calculate camera delta from rangeMode (for shifting)`,
+        calculationDetails,
+        `Math.abs(${upper} - ${lower}) = ${delta}`,
+        delta
+      );
+    }
+  }
+
+  // Check for range format in data (camera1_from/camera1_to, etc.)
+  if (delta === 0 && data) {
+    const rangeFromData = getRangeFromData(data, fieldId);
+    if (rangeFromData) {
+      const fromNum = parseInt(rangeFromData.from, 10) || 0;
+      const toNum = parseInt(rangeFromData.to, 10) || 0;
+      const upper = Math.max(fromNum, toNum);
+      const lower = Math.min(fromNum, toNum);
+      // Delta = upper - lower (not +1, just the difference)
+      delta = Math.abs(upper - lower);
+      calculationMethod = 'rangeFromData';
+      calculationDetails = { from: rangeFromData.from, to: rangeFromData.to, upper, lower };
+      
+      logger.logCalculation(
+        'Camera Delta from Range Data',
+        `Calculate camera delta from getRangeFromData (for shifting)`,
+        calculationDetails,
+        `Math.abs(${upper} - ${lower}) = ${delta}`,
+        delta
+      );
+    }
+  }
+
+  // Check for inline range format (e.g., "001-003")
+  if (delta === 0 && data) {
+    const fieldValue = data?.[fieldId];
+    if (fieldValue && typeof fieldValue === 'string' && fieldValue.includes('-')) {
+      const parts = fieldValue.split('-').map(p => parseInt(p.trim(), 10) || 0);
+      if (parts.length === 2) {
+        const upper = Math.max(parts[0], parts[1]);
+        const lower = Math.min(parts[0], parts[1]);
+        // Delta = upper - lower (not +1, just the difference)
+        delta = Math.abs(upper - lower);
+        calculationMethod = 'inlineRange';
+        calculationDetails = { fieldValue, upper, lower };
+        
+        logger.logCalculation(
+          'Camera Delta from Inline Range',
+          `Calculate camera delta from inline range string (for shifting)`,
+          calculationDetails,
+          `Math.abs(${upper} - ${lower}) = ${delta}`,
+          delta
+        );
+      }
+    }
+  }
+
+  // Single value: delta is always 1
+  if (delta === 0 && data) {
+    const fieldValue = data?.[fieldId];
+    if (fieldValue && typeof fieldValue === 'string' && fieldValue.trim() && !fieldValue.includes('-')) {
+      const num = parseInt(fieldValue, 10);
+      if (!Number.isNaN(num)) {
+        delta = 1;
+        calculationMethod = 'singleValue';
+        calculationDetails = { fieldValue };
+        
+        logger.logCalculation(
+          'Camera Delta for Single Value',
+          `Calculate camera delta (single value, for shifting)`,
+          calculationDetails,
+          'delta = 1 (single value)',
+          1
+        );
+      }
+    }
+  }
+
+  // If input camera field is blank, delta is 0
+  if (delta === 0 && calculationMethod === 'unknown') {
+    if (input.takeData && (!input.takeData[fieldId] || !input.takeData[fieldId]?.toString().trim())) {
+      logger.logCalculation(
+        'Camera Delta - Blank Field',
+        `Camera file ${fieldId} is blank, delta = 0`,
+        { hasCameraFile: false },
+        'delta = 0 (blank field)',
+        0
+      );
+    } else if (input.logSheetData && (!input.logSheetData[fieldId] || !input.logSheetData[fieldId]?.toString().trim())) {
+      logger.logCalculation(
+        'Camera Delta - Blank Field',
+        `Camera file ${fieldId} is blank, delta = 0`,
+        { hasCameraFile: false },
+        'delta = 0 (blank field)',
+        0
+      );
+    } else {
+      logger.logWarning(`Could not calculate camera delta for shifting`, { fieldId, input });
+    }
+  }
+
+  logger.logDebug('Camera delta calculation result (for shifting)', {
+    fieldId,
+    delta,
+    calculationMethod,
+    calculationDetails
+  });
+
+  logger.logFunctionExit(delta);
+  return delta;
+};
+
+/**
  * Calculates delta for camera file(s)
  * 
  * @param input - Input data

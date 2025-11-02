@@ -13,7 +13,7 @@ export * from './MultiCameraShiftHandler';
 export * from './SingleCameraDuplicateDetector';
 export * from './MultiCameraDuplicateDetector';
 export * from './deltaCalculator';
-export { calculateSoundDeltaForShifting } from './deltaCalculator';
+export { calculateSoundDeltaForShifting, calculateCameraDeltaForShifting } from './deltaCalculator';
 export * from './cameraConfigValidator';
 export * from './handlerRouter';
 export * from './types';
