@@ -6,14 +6,19 @@
  * 
  * Shifting Logic:
  * - For each camera field (cameraFile1, cameraFile2, etc.):
- *   1. Get upper bound of inserted log for that specific camera
- *   2. New lower bound = upper bound + 1
+ *   1. Get upper bound of inserted log for that specific camera (or use temp variable)
+ *   2. New lower bound = upper bound (or temp variable) + 1
  *   3. New upper bound = new lower bound + delta (where delta = original upper - original lower)
  * 
  * - For sound file:
- *   1. Get upper bound of inserted log
- *   2. New lower bound = upper bound + 1
+ *   1. Get upper bound of inserted log (or use temp variable)
+ *   2. New lower bound = upper bound (or temp variable) + 1
  *   3. New upper bound = new lower bound + delta
+ * 
+ * Temp Variables:
+ * - tempSound and tempCamera[cameraNum] track upper bounds for sequential calculations
+ * - When a field is blank, temp variable stays the same (add 0)
+ * - When a field has a value, temp variable updates to new upper bound
  * 
  * Special Cases:
  * - If target field is waste/blank, find last valid non-waste take before it for that specific camera
@@ -428,6 +433,33 @@ export const shiftMultiCameraFilesSequentially = (
 
   // Step 3: Shift each subsequent take sequentially
   logger.logDebug(`Step 3: Shifting ${subsequentTakes.length} subsequent takes sequentially`);
+  
+  // Initialize temp variables from target result (after shifting)
+  // These track the upper bounds for calculations and persist through blank fields
+  let tempSound: number | null = null;
+  let tempCamera: { [cameraNum: number]: number | null } = {};
+  
+  // Extract upper bounds from target result for temp variables
+  const targetSoundInfo = getRangeFromData(targetResult.updatedData, 'soundFile');
+  if (targetSoundInfo) {
+    tempSound = Math.max(parseInt(targetSoundInfo.to, 10) || 0, parseInt(targetSoundInfo.from, 10) || 0);
+  } else if (targetResult.updatedData.soundFile && typeof targetResult.updatedData.soundFile === 'string' && !targetResult.updatedData.soundFile.includes('-')) {
+    tempSound = parseInt(targetResult.updatedData.soundFile, 10) || null;
+  }
+  
+  // Extract camera file upper bounds for each camera
+  for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
+    const fieldId = `cameraFile${camNum}`;
+    const targetCameraInfo = getRangeFromData(targetResult.updatedData, fieldId);
+    if (targetCameraInfo) {
+      tempCamera[camNum] = Math.max(parseInt(targetCameraInfo.to, 10) || 0, parseInt(targetCameraInfo.from, 10) || 0);
+    } else if (targetResult.updatedData[fieldId] && typeof targetResult.updatedData[fieldId] === 'string' && !targetResult.updatedData[fieldId].includes('-')) {
+      tempCamera[camNum] = parseInt(targetResult.updatedData[fieldId], 10) || null;
+    }
+  }
+  
+  logger.logDebug('Initialized temp variables from target result', { tempSound, tempCamera });
+  
   // Each shift is based on the PREVIOUS take's ACTUAL values (after it's been shifted)
   let previousTake = { ...targetLogSheet, data: targetResult.updatedData };
 
@@ -456,7 +488,7 @@ export const shiftMultiCameraFilesSequentially = (
     const takeNumber = parseInt(subsequentTakeData.takeNumber as string || '0', 10);
     const excludeIds = new Set<string>([subsequentTake.id, previousTake.id]);
     
-    // Handle sound file
+    // Handle sound file - use tempSound for consistency
     const soundRange = getRangeFromData(prevData, 'soundFile');
     const prevSoundValue = prevData.soundFile;
     const prevSoundIsBlank = !soundRange && (!prevSoundValue || !prevSoundValue.trim() || 
@@ -465,29 +497,46 @@ export const shiftMultiCameraFilesSequentially = (
     if (soundRange) {
       subsequentContext.insertedShowRangeMode['soundFile'] = true;
       subsequentContext.insertedRangeData['soundFile'] = soundRange;
+      // Update tempSound to the upper bound of the range
+      tempSound = Math.max(parseInt(soundRange.to, 10) || 0, parseInt(soundRange.from, 10) || 0);
+      logger.logDebug(`Updated tempSound from range: ${tempSound}`);
     } else if (!prevSoundIsBlank && prevSoundValue && typeof prevSoundValue === 'string' && !prevSoundValue.includes('-')) {
-      // Previous take has valid sound file - use it
+      // Previous take has valid sound file - use it and update tempSound
       subsequentContext.insertedTakeData.soundFile = prevSoundValue;
+      tempSound = parseInt(prevSoundValue, 10) || null;
+      logger.logDebug(`Updated tempSound from single value: ${tempSound}`);
     } else if (prevSoundIsBlank) {
-      // Previous take has blank sound - find last valid sound file before it
-      logger.logDebug(`Previous take has blank sound - finding last valid sound file for subsequent take ${takeIndex + 1}`);
-      const prevSoundUpper = context.getPreviousTakeUpperBound(
-        'soundFile',
-        takeNumber,
-        sceneNumber || '',
-        shotNumber || '',
-        excludeIds
-      );
-      if (prevSoundUpper !== null) {
-        // Use the last valid sound file value
-        subsequentContext.insertedTakeData.soundFile = String(prevSoundUpper).padStart(4, '0');
-        logger.logDebug(`Using last valid sound file: ${prevSoundUpper}`);
+      // Previous take has blank sound - use tempSound (stays same, add 0)
+      if (tempSound !== null) {
+        subsequentContext.insertedTakeData.soundFile = String(tempSound).padStart(4, '0');
+        logger.logCalculation(
+          'Sound File Blank - Using tempSound',
+          `Previous take has blank sound, using tempSound (stays same for calculation)`,
+          { takeNumber, tempSound },
+          `tempSound remains ${tempSound} (blank field adds 0)`,
+          tempSound
+        );
       } else {
-        logger.logWarning(`No previous valid sound file found for subsequent take ${takeIndex + 1}`);
+        // Fallback to getPreviousTakeUpperBound if tempSound not set
+        logger.logDebug(`Previous take has blank sound and tempSound is null - finding last valid sound file for subsequent take ${takeIndex + 1}`);
+        const prevSoundUpper = context.getPreviousTakeUpperBound(
+          'soundFile',
+          takeNumber,
+          sceneNumber || '',
+          shotNumber || '',
+          excludeIds
+        );
+        if (prevSoundUpper !== null) {
+          tempSound = prevSoundUpper;
+          subsequentContext.insertedTakeData.soundFile = String(prevSoundUpper).padStart(4, '0');
+          logger.logDebug(`Set tempSound from getPreviousTakeUpperBound: ${tempSound}`);
+        } else {
+          logger.logWarning(`No previous valid sound file found for subsequent take ${takeIndex + 1}`);
+        }
       }
     }
 
-    // Handle each camera file
+    // Handle each camera file - use tempCamera for consistency
     for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
       const fieldId = `cameraFile${camNum}`;
       const cameraRange = getRangeFromData(prevData, fieldId);
@@ -498,25 +547,42 @@ export const shiftMultiCameraFilesSequentially = (
       if (cameraRange) {
         subsequentContext.insertedShowRangeMode[fieldId] = true;
         subsequentContext.insertedRangeData[fieldId] = cameraRange;
+        // Update tempCamera to the upper bound of the range
+        tempCamera[camNum] = Math.max(parseInt(cameraRange.to, 10) || 0, parseInt(cameraRange.from, 10) || 0);
+        logger.logDebug(`Updated tempCamera[${camNum}] from range: ${tempCamera[camNum]}`);
       } else if (!prevCameraIsBlank && prevCameraValue && typeof prevCameraValue === 'string' && !(prevCameraValue as string).includes('-')) {
-        // Previous take has valid camera file - use it
+        // Previous take has valid camera file - use it and update tempCamera
         subsequentContext.insertedTakeData[fieldId] = prevCameraValue;
+        tempCamera[camNum] = parseInt(prevCameraValue, 10) || null;
+        logger.logDebug(`Updated tempCamera[${camNum}] from single value: ${tempCamera[camNum]}`);
       } else if (prevCameraIsBlank) {
-        // Previous take has blank camera - find last valid camera file before it
-        logger.logDebug(`Previous take has blank ${fieldId} - finding last valid camera file for subsequent take ${takeIndex + 1}`);
-        const prevCameraUpper = context.getPreviousTakeUpperBound(
-          fieldId,
-          takeNumber,
-          sceneNumber || '',
-          shotNumber || '',
-          excludeIds
-        );
-        if (prevCameraUpper !== null) {
-          // Use the last valid camera file value
-          subsequentContext.insertedTakeData[fieldId] = String(prevCameraUpper).padStart(4, '0');
-          logger.logDebug(`Using last valid ${fieldId}: ${prevCameraUpper}`);
+        // Previous take has blank camera - use tempCamera (stays same, add 0)
+        if (tempCamera[camNum] !== null && tempCamera[camNum] !== undefined) {
+          subsequentContext.insertedTakeData[fieldId] = String(tempCamera[camNum]!).padStart(4, '0');
+          logger.logCalculation(
+            'Camera File Blank - Using tempCamera',
+            `Previous take has blank ${fieldId}, using tempCamera[${camNum}] (stays same for calculation)`,
+            { takeNumber, fieldId, tempCameraValue: tempCamera[camNum] },
+            `tempCamera[${camNum}] remains ${tempCamera[camNum]} (blank field adds 0)`,
+            tempCamera[camNum]
+          );
         } else {
-          logger.logWarning(`No previous valid ${fieldId} found for subsequent take ${takeIndex + 1}`);
+          // Fallback to getPreviousTakeUpperBound if tempCamera not set
+          logger.logDebug(`Previous take has blank ${fieldId} and tempCamera[${camNum}] is null - finding last valid camera file for subsequent take ${takeIndex + 1}`);
+          const prevCameraUpper = context.getPreviousTakeUpperBound(
+            fieldId,
+            takeNumber,
+            sceneNumber || '',
+            shotNumber || '',
+            excludeIds
+          );
+          if (prevCameraUpper !== null) {
+            tempCamera[camNum] = prevCameraUpper;
+            subsequentContext.insertedTakeData[fieldId] = String(prevCameraUpper).padStart(4, '0');
+            logger.logDebug(`Set tempCamera[${camNum}] from getPreviousTakeUpperBound: ${tempCamera[camNum]}`);
+          } else {
+            logger.logWarning(`No previous valid ${fieldId} found for subsequent take ${takeIndex + 1}`);
+          }
         }
       }
       
@@ -530,6 +596,36 @@ export const shiftMultiCameraFilesSequentially = (
     const subsequentResult = shiftMultiCameraFiles(subsequentContext);
     updateLogSheet(subsequentTake.id, subsequentResult.updatedData);
     results.push(subsequentResult);
+    
+    // Update temp variables from the shifted result for next iteration
+    // If the field was shifted, update temp variable; if blank, it stays the same
+    const shiftedSoundRange = getRangeFromData(subsequentResult.updatedData, 'soundFile');
+    if (shiftedSoundRange) {
+      tempSound = Math.max(parseInt(shiftedSoundRange.to, 10) || 0, parseInt(shiftedSoundRange.from, 10) || 0);
+      logger.logDebug(`Updated tempSound from shifted result: ${tempSound}`);
+    } else if (subsequentResult.updatedData.soundFile && typeof subsequentResult.updatedData.soundFile === 'string' && !subsequentResult.updatedData.soundFile.includes('-')) {
+      tempSound = parseInt(subsequentResult.updatedData.soundFile, 10) || null;
+      logger.logDebug(`Updated tempSound from shifted single value: ${tempSound}`);
+    } else {
+      // Blank field - tempSound stays the same (already handled above)
+      logger.logDebug(`Subsequent take has blank sound - tempSound remains ${tempSound}`);
+    }
+    
+    // Update tempCamera for each camera
+    for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
+      const fieldId = `cameraFile${camNum}`;
+      const shiftedCameraRange = getRangeFromData(subsequentResult.updatedData, fieldId);
+      if (shiftedCameraRange) {
+        tempCamera[camNum] = Math.max(parseInt(shiftedCameraRange.to, 10) || 0, parseInt(shiftedCameraRange.from, 10) || 0);
+        logger.logDebug(`Updated tempCamera[${camNum}] from shifted result: ${tempCamera[camNum]}`);
+      } else if (subsequentResult.updatedData[fieldId] && typeof subsequentResult.updatedData[fieldId] === 'string' && !subsequentResult.updatedData[fieldId].includes('-')) {
+        tempCamera[camNum] = parseInt(subsequentResult.updatedData[fieldId], 10) || null;
+        logger.logDebug(`Updated tempCamera[${camNum}] from shifted single value: ${tempCamera[camNum]}`);
+      } else {
+        // Blank field - tempCamera stays the same (already handled above)
+        logger.logDebug(`Subsequent take has blank ${fieldId} - tempCamera[${camNum}] remains ${tempCamera[camNum]}`);
+      }
+    }
 
     // Update previous take for next iteration
     previousTake = { ...subsequentTake, data: subsequentResult.updatedData };

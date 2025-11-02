@@ -529,7 +529,6 @@ export const useProjectStore = create<ProjectState>()(
 
                   if (fieldId === 'soundFile') {
                     // Use centralized sound delta calculator for consistency
-                    let soundShiftBase: number;
                     let soundDeltaForShift: number;
                     
                     // Calculate delta using centralized calculator
@@ -538,41 +537,28 @@ export const useProjectStore = create<ProjectState>()(
                     };
                     soundDeltaForShift = calculateSoundDeltaForShifting(soundDeltaInput);
                     
-                    // Use tempSound if available (from previous take), otherwise use shiftBase
-                    if (tempSound !== null && takeNum > fromNumber) {
-                      // Sequential shifting: use tempSound (previous take's upper bound)
-                      soundShiftBase = tempSound;
-                      
-                      logger.logCalculation(
-                        'Sound File Sequential Shift',
-                        `Shifting sound file for take ${takeNum} using tempSound (previous take's upper bound)`,
-                        {
-                          tempSound,
-                          currentLower: currentFieldVal.lower,
-                          currentUpper: currentFieldVal.upper,
-                          currentDelta: soundDeltaForShift
-                        },
-                        `shiftBase = tempSound = ${tempSound}, delta = ${soundDeltaForShift} (from centralized calculator)`,
-                        { shiftBase: soundShiftBase, delta: soundDeltaForShift }
-                      );
-                    } else {
-                      // First take after insertion - use original logic
-                      soundShiftBase = shiftBase;
-                      
-                      logger.logCalculation(
-                        'Sound File Delta Calculation',
-                        `Calculating sound delta for take ${takeNum} using centralized calculator`,
-                        {
-                          currentLower: currentFieldVal.lower,
-                          currentUpper: currentFieldVal.upper,
-                          isRange: currentFieldVal.isRange
-                        },
-                        `calculateSoundDeltaForShifting(logSheetData) = ${soundDeltaForShift}`,
-                        soundDeltaForShift
-                      );
-                    }
+                    // ALWAYS use tempSound when available, otherwise use shiftBase
+                    // tempSound should be set from the inserted log or previous take
+                    const soundShiftBase = tempSound !== null ? tempSound : shiftBase;
                     
-                    // Calculate new bounds: newLower = previousUpper + 1, newUpper = newLower + delta
+                    logger.logCalculation(
+                      'Sound File Shift Base Selection',
+                      `Selecting shift base for sound file shifting (take ${takeNum})`,
+                      {
+                        tempSound,
+                        shiftBase,
+                        usingTemp: tempSound !== null,
+                        currentLower: currentFieldVal.lower,
+                        currentUpper: currentFieldVal.upper,
+                        currentDelta: soundDeltaForShift
+                      },
+                      tempSound !== null 
+                        ? `Using tempSound = ${tempSound} (from inserted log or previous take)`
+                        : `Using shiftBase = ${shiftBase} (tempSound not available)`,
+                      { selectedBase: soundShiftBase }
+                    );
+                    
+                    // Calculate new bounds: newLower = tempSound + 1, newUpper = newLower + delta
                     const soundNewLower = soundShiftBase + 1;
                     const soundNewUpper = soundNewLower + soundDeltaForShift;
                     
@@ -580,12 +566,13 @@ export const useProjectStore = create<ProjectState>()(
                       'Sound File Shift Calculation',
                       `Calculate new sound file bounds for take ${takeNum}`,
                       {
+                        tempSound: tempSound !== null ? tempSound : 'N/A',
                         shiftBase: soundShiftBase,
                         delta: soundDeltaForShift,
                         currentLower: currentFieldVal.lower,
                         currentUpper: currentFieldVal.upper
                       },
-                      `newLower = ${soundShiftBase} + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`,
+                      `newLower = tempSound(${tempSound !== null ? tempSound : shiftBase}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`,
                       { newLower: soundNewLower, newUpper: soundNewUpper }
                     );
                     
@@ -606,6 +593,29 @@ export const useProjectStore = create<ProjectState>()(
                     updated = true;
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    
+                    // ALWAYS use tempCamera when available, recalculate if needed
+                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
+                      // Use tempCamera - recalculate newLower and newUpper
+                      newLower = tempCamera[cameraNum]! + 1;
+                      newUpper = newLower + delta;
+                      
+                      logger.logCalculation(
+                        'Camera File Shift Base Selection',
+                        `Using tempCamera[${cameraNum}] for shifting (take ${takeNum})`,
+                        {
+                          tempCameraValue: tempCamera[cameraNum],
+                          delta,
+                          currentLower: currentFieldVal.lower,
+                          currentUpper: currentFieldVal.upper
+                        },
+                        `newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
+                        { newLower, newUpper }
+                      );
+                    } else {
+                      // tempCamera not available - use existing calculated values
+                      logger.logDebug(`tempCamera[${cameraNum}] not available, using calculated shiftBase for take ${takeNum}`);
+                    }
                     
                     if (currentFieldVal.isRange) {
                       newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
@@ -677,8 +687,17 @@ export const useProjectStore = create<ProjectState>()(
                         logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found - tempSound remains null`);
                       }
                     } else {
-                      // tempSound already set - keep it for next calculation
-                      logger.logDebug(`Take ${takeNum} has blank sound - tempSound remains ${tempSound} for next calculation`);
+                      // tempSound already set - keep it for next calculation (add 0 = stays same)
+                      logger.logCalculation(
+                        'Sound File Blank - Keeping tempSound',
+                        `Take ${takeNum} has blank sound file, tempSound stays unchanged`,
+                        {
+                          takeNumber: takeNum,
+                          tempSound
+                        },
+                        `tempSound remains ${tempSound} (blank field adds 0, so temp variable stays same)`,
+                        tempSound
+                      );
                     }
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
@@ -696,8 +715,18 @@ export const useProjectStore = create<ProjectState>()(
                         logger.logWarning(`Take ${takeNum} has blank ${fieldId} and no previous valid value found - tempCamera[${cameraNum}] remains null`);
                       }
                     } else {
-                      // tempCamera already set - keep it for next calculation
-                      logger.logDebug(`Take ${takeNum} has blank ${fieldId} - tempCamera[${cameraNum}] remains ${tempCamera[cameraNum]} for next calculation`);
+                      // tempCamera already set - keep it for next calculation (add 0 = stays same)
+                      logger.logCalculation(
+                        'Camera File Blank - Keeping tempCamera',
+                        `Take ${takeNum} has blank ${fieldId}, tempCamera[${cameraNum}] stays unchanged`,
+                        {
+                          takeNumber: takeNum,
+                          fieldId,
+                          tempCameraValue: tempCamera[cameraNum]
+                        },
+                        `tempCamera[${cameraNum}] remains ${tempCamera[cameraNum]} (blank field adds 0, so temp variable stays same)`,
+                        tempCamera[cameraNum]
+                      );
                     }
                   }
                   // Blank fields stay blank - don't update them
