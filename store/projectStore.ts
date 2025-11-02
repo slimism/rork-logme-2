@@ -500,9 +500,9 @@ export const useProjectStore = create<ProjectState>()(
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
-                  const newLower = shiftBase + 1; // Always +1 from temp variable or original value
+                  let newLower = shiftBase + 1; // Always +1 from temp variable or original value
                   const delta = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
-                  const newUpper = newLower + delta;
+                  let newUpper = newLower + delta;
                   
                   const tempValue = fieldId === 'soundFile' 
                     ? tempSound 
