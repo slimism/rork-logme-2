@@ -419,7 +419,6 @@ export const useProjectStore = create<ProjectState>()(
           });
           
           const updatedSheetsMap = new Map<string, LogSheet>();
-          let skippedTarget = false;
           
           // Process each scene/shot group sequentially
           sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
@@ -429,6 +428,28 @@ export const useProjectStore = create<ProjectState>()(
             // These persist across blank fields to ensure correct sequential shifting
             let tempSound: number | null = null; // Upper bound of sound file for next calculation
             let tempCamera: { [cameraNum: number]: number | null } = {}; // Upper bounds for each camera
+            
+            // Initialize temp variables from the inserted log (the one with take number = fromNumber)
+            // This is the log that was inserted before the target duplicate
+            const insertedLog = sheets.find(sheet => {
+              const takeNum = parseInt(sheet.data?.takeNumber as string || '0', 10);
+              return takeNum === fromNumber;
+            });
+            
+            if (insertedLog) {
+              const insertedData = insertedLog.data || {};
+              const insertedFieldVal = getFieldValue(insertedData, fieldId);
+              if (insertedFieldVal && insertedFieldVal.value !== null) {
+                if (fieldId === 'soundFile') {
+                  tempSound = insertedFieldVal.upper;
+                  logger.logDebug(`Initialized tempSound from inserted log (Take ${fromNumber}): ${tempSound}`);
+                } else if (fieldId.startsWith('cameraFile')) {
+                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                  tempCamera[cameraNum] = insertedFieldVal.upper;
+                  logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log (Take ${fromNumber}): ${tempCamera[cameraNum]}`);
+                }
+              }
+            }
             
             sheets.forEach((logSheet, index) => {
               if (excludeLogId && logSheet.id === excludeLogId) {
@@ -450,30 +471,10 @@ export const useProjectStore = create<ProjectState>()(
               
               // Get current field value
               const currentFieldVal = getFieldValue(data, fieldId);
-              const isTarget = currentFieldVal && (
-                currentFieldVal.lower === fromNumber || 
-                currentFieldVal.upper === fromNumber ||
-                (currentFieldVal.lower <= fromNumber && currentFieldVal.upper >= fromNumber)
-              );
-
-              if (isTarget && !skippedTarget) {
-                skippedTarget = true;
-                logger.logDebug(`Skipping target log`, { logSheetId: logSheet.id, fieldValue: currentFieldVal });
-                // Track this as the last valid value (it's the inserted log's value)
-                // Update temp variables based on the inserted log
-                if (currentFieldVal && currentFieldVal.value !== null) {
-                  if (fieldId === 'soundFile') {
-                    tempSound = currentFieldVal.upper;
-                    logger.logDebug(`Target log - tempSound set to ${tempSound}`, { logSheetId: logSheet.id });
-                  } else if (fieldId.startsWith('cameraFile')) {
-                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                    tempCamera[cameraNum] = currentFieldVal.upper;
-                    logger.logDebug(`Target log - tempCamera[${cameraNum}] set to ${tempCamera[cameraNum]}`, { logSheetId: logSheet.id });
-                  }
-                }
-                updatedSheetsMap.set(logSheet.id, logSheet);
-                return;
-              }
+              // Note: We no longer skip the target duplicate
+              // Instead, we process it through the normal shifting logic
+              // The inserted log's upper bounds are used to initialize temp variables before processing
+              // Then the target duplicate is processed like any other take, and temp variables are updated correctly
 
               // Check if field needs shifting
               if (currentFieldVal && currentFieldVal.value !== null) {
