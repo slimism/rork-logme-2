@@ -448,7 +448,11 @@ export const useProjectStore = create<ProjectState>()(
                   tempCamera[cameraNum] = insertedFieldVal.upper;
                   logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log (Take ${fromNumber}): ${tempCamera[cameraNum]}`);
                 }
+              } else {
+                logger.logWarning(`Inserted log (Take ${fromNumber}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
               }
+            } else {
+              logger.logWarning(`Inserted log (Take ${fromNumber}) not found - temp variables not initialized. This may cause incorrect shifting calculations.`);
             }
             
             sheets.forEach((logSheet, index) => {
@@ -748,15 +752,9 @@ export const useProjectStore = create<ProjectState>()(
                   }
                 } else if (currentFieldVal.upper < fromNumber) {
                   // Field exists but doesn't need shifting (take is before insertion point)
-                  // Update temp variable to track the upper bound for calculations after insertion
-                  if (fieldId === 'soundFile') {
-                    tempSound = currentFieldVal.upper;
-                    logger.logDebug(`Take ${takeNum} is before insertion - tempSound set to ${tempSound} for future calculations`);
-                  } else if (fieldId.startsWith('cameraFile')) {
-                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                    tempCamera[cameraNum] = currentFieldVal.upper;
-                    logger.logDebug(`Take ${takeNum} is before insertion - tempCamera[${cameraNum}] set to ${tempCamera[cameraNum]} for future calculations`);
-                  }
+                  // Don't update temp variables - they should already be initialized from the inserted log
+                  // Takes before insertion are not being shifted, so we don't need to track their values
+                  logger.logDebug(`Take ${takeNum} is before insertion - skipping (temp variables initialized from inserted log)`);
                 }
               } else {
                 // Field is blank/waste
@@ -844,22 +842,10 @@ export const useProjectStore = create<ProjectState>()(
                   }
                   // Blank fields stay blank - don't update them
                 } else if (currentFieldVal === null && takeNum < fromNumber) {
-                  // Track last valid value for takes before insertion point
-                  // Update temp variables to prepare for shifting after insertion
-                  if (fieldId === 'soundFile') {
-                    const soundInfo = getSoundFileInfo(data);
-                    if (soundInfo && soundInfo.value !== null) {
-                      tempSound = soundInfo.upper;
-                      logger.logDebug(`Tracking sound file upper bound for take ${takeNum} (before insertion): tempSound = ${tempSound}`);
-                    }
-                  } else if (fieldId.startsWith('cameraFile')) {
-                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                    const cameraVal = getFieldValue(data, fieldId);
-                    if (cameraVal && cameraVal.value !== null) {
-                      tempCamera[cameraNum] = cameraVal.upper;
-                      logger.logDebug(`Tracking camera file upper bound for take ${takeNum} (before insertion): tempCamera[${cameraNum}] = ${tempCamera[cameraNum]}`);
-                    }
-                  }
+                  // Field is blank and take is before insertion point
+                  // Don't update temp variables - they should already be initialized from the inserted log
+                  // Takes before insertion are not being shifted, so we don't need to track their values
+                  logger.logDebug(`Take ${takeNum} is before insertion and field is blank - skipping (temp variables initialized from inserted log)`);
                 }
               }
 
