@@ -7,6 +7,7 @@ import { useProjectStore } from '@/store/projectStore';
 import { useColors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType } from '@/types';
 import Toast from 'react-native-toast-message';
+import { handleSoundFileForDuplicateInsertion } from '@/components/CameraHandlers/SoundHandler';
 
 interface FieldType {
   id: string;
@@ -1710,48 +1711,30 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Only shift the target field
     if (targetFieldId === 'soundFile') {
-      let soundStart = targetTakeNumber;
-      const hasSound = (existingEntry.data?.soundFile && typeof existingEntry.data.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) || 
-                       (existingEntry.data?.sound_from && typeof existingEntry.data.sound_from === 'string' && existingEntry.data.sound_from.trim().length > 0);
-      if (hasSound) {
-        if (typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim()) {
-          const n = parseInt(existingEntry.data.sound_from, 10);
-          if (!Number.isNaN(n)) soundStart = n;
-        } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) {
-          const n = parseInt(existingEntry.data.soundFile, 10);
-          if (!Number.isNaN(n)) soundStart = n;
-        }
-      } else {
-        // Target has blank sound - use inserted log's sound file
-        const candidate = typeof newLogData.soundFile === 'string' && newLogData.soundFile.trim()
-          ? parseInt(newLogData.soundFile, 10)
-          : (typeof takeData.soundFile === 'string' && takeData.soundFile.trim()
-              ? parseInt(String(takeData.soundFile), 10)
-              : null);
-        if (candidate !== null && !Number.isNaN(candidate)) {
-          soundStart = candidate;
-        }
-      }
-      const soundDelta = (() => {
-        // For selective shifting, use the input field's delta, not the existing field's
-        // Check rangeData FIRST (for range mode), then fallback to takeData (for single value mode)
-        const r = rangeData['soundFile'];
-        if (showRangeMode['soundFile'] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
-        }
-        // If input sound field is blank, don't shift sound files
-        if (!takeData.soundFile || !takeData.soundFile.trim()) {
-          return 0;
-        }
-        return 1;
-      })();
-      if (!disabledFields.has('soundFile') && soundDelta > 0) {
-        // Always use soundStart (the beginning of the duplicate), not the end of the range
-        // updateFileNumbers will skip the first occurrence and shift everything else
-        console.log('  Selective: Calling updateFileNumbers for soundFile:', { soundStart, soundDelta });
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      // Use SoundHandler for selective sound file shifting
+      const soundHandlerContext = {
+        projectId: logSheet.projectId,
+        projectLogSheets: logSheets.filter(s => s.projectId === logSheet.projectId),
+        takeData,
+        showRangeMode,
+        rangeData,
+        existingEntry,
+        sceneNumber: existingEntry.data?.sceneNumber as string,
+        shotNumber: existingEntry.data?.shotNumber as string,
+        takeNumber: targetTakeNumber
+      };
+      
+      const soundFileResult = handleSoundFileForDuplicateInsertion(
+        soundHandlerContext,
+        targetTakeNumber
+      );
+      
+      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
+        console.log('  Selective: SoundHandler calling updateFileNumbers for soundFile:', { 
+          start: soundFileResult.soundStart, 
+          delta: soundFileResult.soundDelta 
+        });
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta);
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -1760,7 +1743,7 @@ This would break the logging logic and create inconsistencies in the file number
           const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
           const oldToNum = parseInt(targetRange.to, 10) || 0;
           const newFrom = String(insertedUpper + 1).padStart(4, '0');
-          const newTo = String(oldToNum + soundDelta).padStart(4, '0');
+          const newTo = String(oldToNum + soundFileResult.soundDelta).padStart(4, '0');
           const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo, takeNumber: String(targetTakeNumber + 1) };
           const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
           if (hadInline) {
@@ -1769,7 +1752,7 @@ This would break the logging logic and create inconsistencies in the file number
           existingEntryUpdates = updated;
         } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
           const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
-          const newVal = String(exNum + soundDelta).padStart(4, '0');
+          const newVal = String(exNum + soundFileResult.soundDelta).padStart(4, '0');
           const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal, takeNumber: String(targetTakeNumber + 1) };
           existingEntryUpdates = updated;
         }
@@ -2601,49 +2584,50 @@ This would break the logging logic and create inconsistencies in the file number
         }
 
         // Shift file numbers starting from target
-        // Shift sound files starting from the correct number
+        // Use SoundHandler for sound file operations
         console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
         console.log('  Edited log ID:', logSheet.id);
         console.log('  Existing entry ID:', existingEntry.id);
-        console.log('  Existing entry soundFile:', existingEntry.data?.soundFile);
-        console.log('  Existing entry sound_from:', existingEntry.data?.sound_from);
-        const hasSound = (existingEntry.data?.soundFile && typeof existingEntry.data.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) || 
-                         (existingEntry.data?.sound_from && typeof existingEntry.data.sound_from === 'string' && existingEntry.data.sound_from.trim().length > 0);
-        console.log('  Has sound file:', hasSound);
-        if (hasSound) {
-          let soundStart = targetTakeNumber;
-          if (typeof existingEntry.data?.sound_from === 'string') {
-            const n = parseInt(existingEntry.data.sound_from, 10);
-            if (!Number.isNaN(n)) soundStart = n;
-          } else if (typeof existingEntry.data?.soundFile === 'string') {
-            const n = parseInt(existingEntry.data.soundFile, 10);
-            if (!Number.isNaN(n)) soundStart = n;
-          }
-          const soundDelta = (() => {
-            const r = rangeData['soundFile'];
-            if (showRangeMode['soundFile'] && r?.from && r?.to) {
-              const a = parseInt(r.from, 10) || 0;
-              const b = parseInt(r.to, 10) || 0;
-              return Math.abs(b - a) + 1;
-            }
-            // If input sound field is blank, don't shift sound files
-            if (!takeData.soundFile || !takeData.soundFile.trim()) {
-              return 0;
-            }
-            return 1;
-          })();
-          if (!disabledFields.has('soundFile')) {
-            // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
-            
-            // If target has a range, adjust lower to end after inserted and extend upper by delta
+        
+        // Use SoundHandler to handle sound file operations
+        const soundHandlerContext = {
+          projectId: logSheet.projectId,
+          projectLogSheets: logSheets.filter(s => s.projectId === logSheet.projectId),
+          takeData,
+          showRangeMode,
+          rangeData,
+          existingEntry,
+          sceneNumber: existingEntry.data?.sceneNumber as string,
+          shotNumber: existingEntry.data?.shotNumber as string,
+          takeNumber: targetTakeNumber
+        };
+        
+        const soundFileResult = handleSoundFileForDuplicateInsertion(
+          soundHandlerContext,
+          targetTakeNumber
+        );
+        
+        if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
+          console.log('  SoundHandler: Calling updateFileNumbers for soundFile:', { 
+            start: soundFileResult.soundStart, 
+            delta: soundFileResult.soundDelta 
+          });
+          updateFileNumbers(
+            logSheet.projectId, 
+            'soundFile', 
+            soundFileResult.soundStart!, 
+            soundFileResult.soundDelta
+          );
+          
+          // If target has a range, adjust lower to end after inserted and extend upper by delta
+          if (soundFileResult.shouldShift && existingEntry) {
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
             if (targetRange) {
               const bounds = getInsertedBounds('soundFile');
               const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
               const oldToNum = parseInt(targetRange.to, 10) || 0;
               const newFrom = String(insertedUpper + 1).padStart(4, '0');
-              const newTo = String(oldToNum + soundDelta).padStart(4, '0');
+              const newTo = String(oldToNum + soundFileResult.soundDelta).padStart(4, '0');
               const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
               const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
               if (hadInline) {
@@ -2652,57 +2636,16 @@ This would break the logging logic and create inconsistencies in the file number
               updateLogSheet(existingEntry.id, updated);
             } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
               const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
-              const newVal = String(exNum + soundDelta).padStart(4, '0');
+              const newVal = String(exNum + soundFileResult.soundDelta).padStart(4, '0');
               const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
               updateLogSheet(existingEntry.id, updated);
             }
           }
         } else {
-          // Target duplicate has blank sound: still shift subsequent sound files.
-          // Fallback to the new log's sound number if available.
-          console.log('  Target has blank sound - finding soundStart from inserted log');
-          let soundStart: number | null = null;
-          if (typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim()) {
-            const n = parseInt(existingEntry.data.sound_from, 10);
-            if (!Number.isNaN(n)) soundStart = n;
-          } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) {
-            const n = parseInt(existingEntry.data.soundFile, 10);
-            if (!Number.isNaN(n)) soundStart = n;
-          }
-          if (soundStart == null) {
-            // Get from inserted log's sound file
-            const candidate = typeof newLogData.soundFile === 'string' && newLogData.soundFile.trim()
-              ? parseInt(newLogData.soundFile, 10)
-              : (typeof takeData.soundFile === 'string' && takeData.soundFile.trim()
-                  ? parseInt(String(takeData.soundFile), 10)
-                  : null);
-            if (candidate !== null && !Number.isNaN(candidate)) {
-              soundStart = candidate;
-            }
-          }
-          console.log('  Calculated soundStart:', soundStart);
-          if (soundStart != null) {
-            const soundDelta = (() => {
-              const r = rangeData['soundFile'];
-              if (showRangeMode['soundFile'] && r?.from && r?.to) {
-                const a = parseInt(r.from, 10) || 0;
-                const b = parseInt(r.to, 10) || 0;
-                return Math.abs(b - a) + 1;
-              }
-              return 1;
-            })();
-            console.log('  Sound delta:', soundDelta);
-            if (!disabledFields.has('soundFile')) {
-              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-              const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
-              console.log('  Calling updateFileNumbers for soundFile:', { start, soundDelta });
-              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
-            } else {
-              console.log('  Sound file is disabled, skipping shift');
-            }
-          } else {
-            console.log('  Could not determine soundStart, skipping sound file shift');
-          }
+          console.log('  SoundHandler: Skipping sound file shift', { 
+            shouldCall: soundFileResult.shouldCallUpdateFileNumbers,
+            isDisabled: disabledFields.has('soundFile')
+          });
         }
 
         console.log('DEBUG - Processing camera shifts for camCount=1');

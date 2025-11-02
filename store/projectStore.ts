@@ -5,6 +5,7 @@ import { Project, Folder, LogSheet, ProjectSettings } from '@/types';
 import { useTokenStore } from './subscriptionStore';
 import { normalizeProjectSettings } from '@/components/CameraHandlers/cameraConfigValidator';
 import { logger } from '@/components/CameraHandlers/logger';
+import { getSoundFileValueForSubsequentShift, getSoundFileInfo, calculateSoundFileDelta, SoundHandlerContext } from '@/components/CameraHandlers/SoundHandler';
 
 interface ProjectState {
   projects: Project[];
@@ -496,18 +497,63 @@ export const useProjectStore = create<ProjectState>()(
                   );
 
                   if (fieldId === 'soundFile') {
+                    // Use SoundHandler for sound file shifting
+                    let soundShiftBase: number;
+                    let soundDeltaForShift: number;
+                    
+                    if (lastValidUpper >= 0 && takeNum > fromNumber) {
+                      // Sequential shifting: use previous take's upper bound
+                      soundShiftBase = lastValidUpper;
+                      // Calculate delta from the current take's original value
+                      soundDeltaForShift = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
+                      
+                      logger.logCalculation(
+                        'Sound File Sequential Shift',
+                        `Shifting sound file for take ${takeNum} using previous take's upper bound`,
+                        {
+                          previousTakeUpper: lastValidUpper,
+                          currentLower: currentFieldVal.lower,
+                          currentUpper: currentFieldVal.upper,
+                          currentDelta: soundDeltaForShift
+                        },
+                        `shiftBase = ${lastValidUpper}, delta = ${soundDeltaForShift}`,
+                        { shiftBase: soundShiftBase, delta: soundDeltaForShift }
+                      );
+                    } else {
+                      // First take after insertion - use original logic
+                      soundShiftBase = shiftBase;
+                      soundDeltaForShift = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
+                    }
+                    
+                    // Calculate new bounds: newLower = previousUpper + 1, newUpper = newLower + delta
+                    const soundNewLower = soundShiftBase + 1;
+                    const soundNewUpper = soundNewLower + soundDeltaForShift;
+                    
+                    logger.logCalculation(
+                      'Sound File Shift Calculation',
+                      `Calculate new sound file bounds for take ${takeNum}`,
+                      {
+                        shiftBase: soundShiftBase,
+                        delta: soundDeltaForShift,
+                        currentLower: currentFieldVal.lower,
+                        currentUpper: currentFieldVal.upper
+                      },
+                      `newLower = ${soundShiftBase} + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`,
+                      { newLower: soundNewLower, newUpper: soundNewUpper }
+                    );
+                    
                     if (currentFieldVal.isRange) {
-                      newData['sound_from'] = String(newLower).padStart(4, '0');
-                      newData['sound_to'] = String(newUpper).padStart(4, '0');
+                      newData['sound_from'] = String(soundNewLower).padStart(4, '0');
+                      newData['sound_to'] = String(soundNewUpper).padStart(4, '0');
                       if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
-                        newData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                        newData.soundFile = `${String(soundNewLower).padStart(4, '0')}-${String(soundNewUpper).padStart(4, '0')}`;
                       }
                     } else {
-                      newData.soundFile = String(newLower).padStart(4, '0');
+                      newData.soundFile = String(soundNewLower).padStart(4, '0');
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    lastValidUpper = newUpper;
+                    lastValidUpper = soundNewUpper;
                     updated = true;
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
@@ -533,21 +579,61 @@ export const useProjectStore = create<ProjectState>()(
                 // Field is blank/waste
                 if (takeNum > fromNumber) {
                   // Take comes after insertion point, but field is blank
-                  // Find the last valid value before this take (from earlier takes, not from shifted takes)
-                  const excludeIds = new Set<string>([logSheet.id]);
-                  if (excludeLogId) excludeIds.add(excludeLogId);
-                  const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
-                  
-                  if (prevValid !== null) {
-                    // Use the last valid value from before this blank take
-                    // This will be used as the base for the next non-blank take
-                    lastValidUpper = prevValid;
-                    logger.logDebug(`Take ${takeNum} has blank ${fieldId}, using previous valid value: ${prevValid}`);
+                  // For sound files, use SoundHandler to find previous valid sound file
+                  if (fieldId === 'soundFile') {
+                    const soundHandlerContext: SoundHandlerContext = {
+                      projectId,
+                      projectLogSheets: state.logSheets.filter(s => s.projectId === projectId),
+                      sceneNumber: sceneNum,
+                      shotNumber: shotNum,
+                      takeNumber: takeNum
+                    };
+                    
+                    const previousSoundUpper = getSoundFileValueForSubsequentShift(
+                      soundHandlerContext,
+                      takeNum - 1 // Previous take number
+                    );
+                    
+                    if (previousSoundUpper !== null) {
+                      lastValidUpper = previousSoundUpper;
+                      logger.logCalculation(
+                        'Sound File Blank - Using Previous Valid',
+                        `Take ${takeNum} has blank sound file, using previous valid upper bound`,
+                        {
+                          takeNumber: takeNum,
+                          previousTakeNumber: takeNum - 1,
+                          previousSoundUpper
+                        },
+                        `lastValidUpper = ${previousSoundUpper}`,
+                        previousSoundUpper
+                      );
+                    } else {
+                      logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found`);
+                    }
+                  } else {
+                    // For camera files, use existing logic
+                    const excludeIds = new Set<string>([logSheet.id]);
+                    if (excludeLogId) excludeIds.add(excludeLogId);
+                    const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
+                    
+                    if (prevValid !== null) {
+                      // Use the last valid value from before this blank take
+                      // This will be used as the base for the next non-blank take
+                      lastValidUpper = prevValid;
+                      logger.logDebug(`Take ${takeNum} has blank ${fieldId}, using previous valid value: ${prevValid}`);
+                    }
                   }
                   // Blank fields stay blank - don't update them
                 } else if (currentFieldVal === null && takeNum < fromNumber) {
                   // Track last valid value for takes before insertion point
-                  // (This is handled by checking previous takes in the loop)
+                  // For sound files, use SoundHandler
+                  if (fieldId === 'soundFile') {
+                    const soundInfo = getSoundFileInfo(data);
+                    if (soundInfo && soundInfo.value !== null) {
+                      lastValidUpper = soundInfo.upper;
+                      logger.logDebug(`Tracking sound file upper bound for take ${takeNum}: ${lastValidUpper}`);
+                    }
+                  }
                 }
               }
 

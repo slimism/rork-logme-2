@@ -17,6 +17,7 @@ export * from './cameraConfigValidator';
 export * from './handlerRouter';
 export * from './types';
 export * from './utils';
+export * from './SoundHandler';
 export { logger } from './logger';
 
 // Re-export sequential shift functions
