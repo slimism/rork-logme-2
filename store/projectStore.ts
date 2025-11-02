@@ -480,21 +480,27 @@ export const useProjectStore = create<ProjectState>()(
                 // Field has a value
                 if (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber) {
                   // Needs shifting - use sequential logic: shift from the temp variable (previous take's upper bound) + 1
+                  // For sequential shifting, we MUST use temp variables when available to ensure correct propagation
                   let shiftBase: number;
                   
                   // Determine shift base based on field type and temp variables
+                  // Priority: Use temp variable if available and takeNum > fromNumber (sequential shifting)
                   if (fieldId === 'soundFile') {
                     if (tempSound !== null && takeNum > fromNumber) {
                       shiftBase = tempSound;
+                      logger.logDebug(`Using tempSound (${tempSound}) for take ${takeNum} sequential shift`);
                     } else {
                       shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
+                      logger.logDebug(`Using currentFieldVal (${shiftBase}) for take ${takeNum} - tempSound not available or takeNum <= fromNumber`);
                     }
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
                     if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined && takeNum > fromNumber) {
                       shiftBase = tempCamera[cameraNum]!;
+                      logger.logDebug(`Using tempCamera[${cameraNum}] (${shiftBase}) for take ${takeNum} sequential shift`);
                     } else {
                       shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
+                      logger.logDebug(`Using currentFieldVal (${shiftBase}) for take ${takeNum} - tempCamera[${cameraNum}] not available (${tempCamera[cameraNum]}) or takeNum (${takeNum}) <= fromNumber (${fromNumber})`);
                     }
                   } else {
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
@@ -537,9 +543,10 @@ export const useProjectStore = create<ProjectState>()(
                     };
                     soundDeltaForShift = calculateSoundDeltaForShifting(soundDeltaInput);
                     
-                    // ALWAYS use tempSound when available, otherwise use shiftBase
+                    // For sequential shifting, ALWAYS use tempSound when available and takeNum > fromNumber
+                    // This ensures correct propagation: each take shifts from the previous take's upper bound
                     // tempSound should be set from the inserted log or previous take
-                    const soundShiftBase = tempSound !== null ? tempSound : shiftBase;
+                    const soundShiftBase = (tempSound !== null && takeNum > fromNumber) ? tempSound : shiftBase;
                     
                     logger.logCalculation(
                       'Sound File Shift Base Selection',
@@ -547,14 +554,16 @@ export const useProjectStore = create<ProjectState>()(
                       {
                         tempSound,
                         shiftBase,
-                        usingTemp: tempSound !== null,
+                        takeNum,
+                        fromNumber,
+                        usingTemp: (tempSound !== null && takeNum > fromNumber),
                         currentLower: currentFieldVal.lower,
                         currentUpper: currentFieldVal.upper,
                         currentDelta: soundDeltaForShift
                       },
-                      tempSound !== null 
-                        ? `Using tempSound = ${tempSound} (from inserted log or previous take)`
-                        : `Using shiftBase = ${shiftBase} (tempSound not available)`,
+                      (tempSound !== null && takeNum > fromNumber)
+                        ? `Sequential shift: Using tempSound = ${tempSound} (from inserted log or previous take)`
+                        : `Using shiftBase = ${shiftBase} (tempSound=${tempSound}, takeNum=${takeNum} <= fromNumber=${fromNumber})`,
                       { selectedBase: soundShiftBase }
                     );
                     
@@ -587,34 +596,41 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    // Update tempSound with the new upper bound for next calculation
+                    // ALWAYS update tempSound with the new upper bound for next calculation
+                    // This ensures subsequent takes use the correct base value
+                    const previousTempSound = tempSound;
                     tempSound = soundNewUpper;
-                    logger.logDebug(`Updated tempSound to ${tempSound} after shifting take ${takeNum}`);
+                    logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after shifting take ${takeNum} (sound: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${soundNewLower}/${soundNewUpper})`);
                     updated = true;
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
                     
-                    // ALWAYS use tempCamera when available, recalculate if needed
-                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
-                      // Use tempCamera - recalculate newLower and newUpper
+                    // For sequential shifting, ALWAYS use tempCamera when available and takeNum > fromNumber
+                    // This ensures correct propagation: each take shifts from the previous take's upper bound
+                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined && takeNum > fromNumber) {
+                      // Use tempCamera (previous take's upper bound) - recalculate newLower and newUpper
                       newLower = tempCamera[cameraNum]! + 1;
                       newUpper = newLower + delta;
                       
                       logger.logCalculation(
-                        'Camera File Shift Base Selection',
-                        `Using tempCamera[${cameraNum}] for shifting (take ${takeNum})`,
+                        'Camera File Sequential Shift',
+                        `Using tempCamera[${cameraNum}] for sequential shifting (take ${takeNum})`,
                         {
                           tempCameraValue: tempCamera[cameraNum],
                           delta,
                           currentLower: currentFieldVal.lower,
-                          currentUpper: currentFieldVal.upper
+                          currentUpper: currentFieldVal.upper,
+                          fromNumber,
+                          takeNum
                         },
-                        `newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
+                        `Sequential shift: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
                         { newLower, newUpper }
                       );
                     } else {
-                      // tempCamera not available - use existing calculated values
-                      logger.logDebug(`tempCamera[${cameraNum}] not available, using calculated shiftBase for take ${takeNum}`);
+                      // tempCamera not available or this is the target duplicate itself - use shiftBase (already calculated)
+                      // This is the initial shift for the target duplicate
+                      logger.logDebug(`Using shiftBase (${shiftBase}) for take ${takeNum} cameraFile - tempCamera[${cameraNum}]=${tempCamera[cameraNum]}, takeNum=${takeNum}, fromNumber=${fromNumber}`);
+                      // newLower and newUpper are already calculated from shiftBase above (lines 509-511)
                     }
                     
                     if (currentFieldVal.isRange) {
@@ -628,9 +644,11 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData[`camera${cameraNum}_from`];
                       delete newData[`camera${cameraNum}_to`];
                     }
-                    // Update tempCamera with the new upper bound for next calculation
+                    // ALWAYS update tempCamera with the new upper bound for next calculation
+                    // This ensures subsequent takes use the correct base value
+                    const previousTempCamera = tempCamera[cameraNum];
                     tempCamera[cameraNum] = newUpper;
-                    logger.logDebug(`Updated tempCamera[${cameraNum}] to ${tempCamera[cameraNum]} after shifting take ${takeNum}`);
+                    logger.logDebug(`Updated tempCamera[${cameraNum}] from ${previousTempCamera} to ${tempCamera[cameraNum]} after shifting take ${takeNum} (camera: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${newLower}/${newUpper})`);
                     updated = true;
                   }
                 } else if (currentFieldVal.upper < fromNumber) {
