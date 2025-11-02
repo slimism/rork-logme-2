@@ -424,7 +424,11 @@ export const useProjectStore = create<ProjectState>()(
           // Process each scene/shot group sequentially
           sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
             const [sceneNum, shotNum] = sceneShotKey.split(':');
-            let lastValidUpper = -1; // Track the last valid upper bound we've seen (after shifting)
+            
+            // Separate temp variables for tracking upper bounds used in calculations
+            // These persist across blank fields to ensure correct sequential shifting
+            let tempSound: number | null = null; // Upper bound of sound file for next calculation
+            let tempCamera: { [cameraNum: number]: number | null } = {}; // Upper bounds for each camera
             
             sheets.forEach((logSheet, index) => {
               if (excludeLogId && logSheet.id === excludeLogId) {
@@ -456,8 +460,16 @@ export const useProjectStore = create<ProjectState>()(
                 skippedTarget = true;
                 logger.logDebug(`Skipping target log`, { logSheetId: logSheet.id, fieldValue: currentFieldVal });
                 // Track this as the last valid value (it's the inserted log's value)
+                // Update temp variables based on the inserted log
                 if (currentFieldVal && currentFieldVal.value !== null) {
-                  lastValidUpper = currentFieldVal.upper;
+                  if (fieldId === 'soundFile') {
+                    tempSound = currentFieldVal.upper;
+                    logger.logDebug(`Target log - tempSound set to ${tempSound}`, { logSheetId: logSheet.id });
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    tempCamera[cameraNum] = currentFieldVal.upper;
+                    logger.logDebug(`Target log - tempCamera[${cameraNum}] set to ${tempCamera[cameraNum]}`, { logSheetId: logSheet.id });
+                  }
                 }
                 updatedSheetsMap.set(logSheet.id, logSheet);
                 return;
@@ -467,33 +479,51 @@ export const useProjectStore = create<ProjectState>()(
               if (currentFieldVal && currentFieldVal.value !== null) {
                 // Field has a value
                 if (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber) {
-                  // Needs shifting - use sequential logic: shift from the last valid upper bound + 1
+                  // Needs shifting - use sequential logic: shift from the temp variable (previous take's upper bound) + 1
                   let shiftBase: number;
-                  if (lastValidUpper >= 0 && takeNum > fromNumber) {
-                    // Use last valid upper bound from previous take (sequential shifting)
-                    shiftBase = lastValidUpper;
+                  
+                  // Determine shift base based on field type and temp variables
+                  if (fieldId === 'soundFile') {
+                    if (tempSound !== null && takeNum > fromNumber) {
+                      shiftBase = tempSound;
+                    } else {
+                      shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
+                    }
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined && takeNum > fromNumber) {
+                      shiftBase = tempCamera[cameraNum]!;
+                    } else {
+                      shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
+                    }
                   } else {
-                    // Use the original shifting logic for first take after insertion
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
-                  const newLower = shiftBase + 1; // Always +1 from last valid
+                  const newLower = shiftBase + 1; // Always +1 from temp variable or original value
                   const delta = currentFieldVal.isRange ? (currentFieldVal.upper - currentFieldVal.lower) : 0;
                   const newUpper = newLower + delta;
+                  
+                  const tempValue = fieldId === 'soundFile' 
+                    ? tempSound 
+                    : (fieldId.startsWith('cameraFile') 
+                      ? tempCamera[fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1)] 
+                      : null);
                   
                   logger.logCalculation(
                     'Sequential File Number Shift',
                     `Shifting ${fieldId} for take ${takeNum}`,
                     { 
-                      lastValidUpper: lastValidUpper >= 0 ? lastValidUpper : 'N/A',
+                      tempValue: tempValue !== null && tempValue !== undefined ? tempValue : 'N/A',
                       currentLower: currentFieldVal.lower,
                       currentUpper: currentFieldVal.upper,
                       fromNumber,
-                      takeNum
+                      takeNum,
+                      shiftBase
                     },
-                    lastValidUpper >= 0 && takeNum > fromNumber 
-                      ? `newLower = ${lastValidUpper} + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
-                      : `newLower = ${shiftBase} + ${increment} = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
+                    tempValue !== null && tempValue !== undefined && takeNum > fromNumber 
+                      ? `newLower = tempValue(${tempValue}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
+                      : `newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
                     { newLower, newUpper }
                   );
 
@@ -508,20 +538,21 @@ export const useProjectStore = create<ProjectState>()(
                     };
                     soundDeltaForShift = calculateSoundDeltaForShifting(soundDeltaInput);
                     
-                    if (lastValidUpper >= 0 && takeNum > fromNumber) {
-                      // Sequential shifting: use previous take's upper bound
-                      soundShiftBase = lastValidUpper;
+                    // Use tempSound if available (from previous take), otherwise use shiftBase
+                    if (tempSound !== null && takeNum > fromNumber) {
+                      // Sequential shifting: use tempSound (previous take's upper bound)
+                      soundShiftBase = tempSound;
                       
                       logger.logCalculation(
                         'Sound File Sequential Shift',
-                        `Shifting sound file for take ${takeNum} using previous take's upper bound`,
+                        `Shifting sound file for take ${takeNum} using tempSound (previous take's upper bound)`,
                         {
-                          previousTakeUpper: lastValidUpper,
+                          tempSound,
                           currentLower: currentFieldVal.lower,
                           currentUpper: currentFieldVal.upper,
                           currentDelta: soundDeltaForShift
                         },
-                        `shiftBase = ${lastValidUpper}, delta = ${soundDeltaForShift} (from centralized calculator)`,
+                        `shiftBase = tempSound = ${tempSound}, delta = ${soundDeltaForShift} (from centralized calculator)`,
                         { shiftBase: soundShiftBase, delta: soundDeltaForShift }
                       );
                     } else {
@@ -569,10 +600,13 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    lastValidUpper = soundNewUpper;
+                    // Update tempSound with the new upper bound for next calculation
+                    tempSound = soundNewUpper;
+                    logger.logDebug(`Updated tempSound to ${tempSound} after shifting take ${takeNum}`);
                     updated = true;
                   } else if (fieldId.startsWith('cameraFile')) {
                     const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    
                     if (currentFieldVal.isRange) {
                       newData[`camera${cameraNum}_from`] = String(newLower).padStart(4, '0');
                       newData[`camera${cameraNum}_to`] = String(newUpper).padStart(4, '0');
@@ -584,70 +618,104 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData[`camera${cameraNum}_from`];
                       delete newData[`camera${cameraNum}_to`];
                     }
-                    lastValidUpper = newUpper;
+                    // Update tempCamera with the new upper bound for next calculation
+                    tempCamera[cameraNum] = newUpper;
+                    logger.logDebug(`Updated tempCamera[${cameraNum}] to ${tempCamera[cameraNum]} after shifting take ${takeNum}`);
                     updated = true;
                   }
                 } else if (currentFieldVal.upper < fromNumber) {
-                  // Field exists but doesn't need shifting - track it as last valid
-                  lastValidUpper = currentFieldVal.upper;
+                  // Field exists but doesn't need shifting (take is before insertion point)
+                  // Update temp variable to track the upper bound for calculations after insertion
+                  if (fieldId === 'soundFile') {
+                    tempSound = currentFieldVal.upper;
+                    logger.logDebug(`Take ${takeNum} is before insertion - tempSound set to ${tempSound} for future calculations`);
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    tempCamera[cameraNum] = currentFieldVal.upper;
+                    logger.logDebug(`Take ${takeNum} is before insertion - tempCamera[${cameraNum}] set to ${tempCamera[cameraNum]} for future calculations`);
+                  }
                 }
               } else {
                 // Field is blank/waste
                 if (takeNum > fromNumber) {
                   // Take comes after insertion point, but field is blank
-                  // For sound files, use SoundHandler to find previous valid sound file
+                  // Blank fields stay blank - don't update them
+                  // But we need to ensure temp variables are set correctly for next calculation
+                  
                   if (fieldId === 'soundFile') {
-                    const soundHandlerContext: SoundHandlerContext = {
-                      projectId,
-                      projectLogSheets: state.logSheets.filter(s => s.projectId === projectId),
-                      sceneNumber: sceneNum,
-                      shotNumber: shotNum,
-                      takeNumber: takeNum
-                    };
-                    
-                    const previousSoundUpper = getSoundFileValueForSubsequentShift(
-                      soundHandlerContext,
-                      takeNum - 1 // Previous take number
-                    );
-                    
-                    if (previousSoundUpper !== null) {
-                      lastValidUpper = previousSoundUpper;
-                      logger.logCalculation(
-                        'Sound File Blank - Using Previous Valid',
-                        `Take ${takeNum} has blank sound file, using previous valid upper bound`,
-                        {
-                          takeNumber: takeNum,
-                          previousTakeNumber: takeNum - 1,
-                          previousSoundUpper
-                        },
-                        `lastValidUpper = ${previousSoundUpper}`,
-                        previousSoundUpper
+                    // Sound is blank - tempSound stays as it is (from previous record)
+                    // If tempSound is null, find previous valid sound file
+                    if (tempSound === null) {
+                      const soundHandlerContext: SoundHandlerContext = {
+                        projectId,
+                        projectLogSheets: state.logSheets.filter(s => s.projectId === projectId),
+                        sceneNumber: sceneNum,
+                        shotNumber: shotNum,
+                        takeNumber: takeNum
+                      };
+                      
+                      const previousSoundUpper = getSoundFileValueForSubsequentShift(
+                        soundHandlerContext,
+                        takeNum - 1 // Previous take number
                       );
+                      
+                      if (previousSoundUpper !== null) {
+                        tempSound = previousSoundUpper;
+                        logger.logCalculation(
+                          'Sound File Blank - Setting tempSound from Previous Valid',
+                          `Take ${takeNum} has blank sound file, setting tempSound from previous valid upper bound`,
+                          {
+                            takeNumber: takeNum,
+                            previousTakeNumber: takeNum - 1,
+                            previousSoundUpper,
+                            tempSound
+                          },
+                          `tempSound = ${tempSound} (stays same for next calculation)`,
+                          tempSound
+                        );
+                      } else {
+                        logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found - tempSound remains null`);
+                      }
                     } else {
-                      logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found`);
+                      // tempSound already set - keep it for next calculation
+                      logger.logDebug(`Take ${takeNum} has blank sound - tempSound remains ${tempSound} for next calculation`);
                     }
-                  } else {
-                    // For camera files, use existing logic
-                    const excludeIds = new Set<string>([logSheet.id]);
-                    if (excludeLogId) excludeIds.add(excludeLogId);
-                    const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
-                    
-                    if (prevValid !== null) {
-                      // Use the last valid value from before this blank take
-                      // This will be used as the base for the next non-blank take
-                      lastValidUpper = prevValid;
-                      logger.logDebug(`Take ${takeNum} has blank ${fieldId}, using previous valid value: ${prevValid}`);
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    // Camera is blank - tempCamera stays as it is (from previous record)
+                    // If tempCamera is null, find previous valid camera file
+                    if (tempCamera[cameraNum] === null || tempCamera[cameraNum] === undefined) {
+                      const excludeIds = new Set<string>([logSheet.id]);
+                      if (excludeLogId) excludeIds.add(excludeLogId);
+                      const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
+                      
+                      if (prevValid !== null) {
+                        tempCamera[cameraNum] = prevValid;
+                        logger.logDebug(`Take ${takeNum} has blank ${fieldId} - tempCamera[${cameraNum}] set to ${prevValid} from previous valid value`);
+                      } else {
+                        logger.logWarning(`Take ${takeNum} has blank ${fieldId} and no previous valid value found - tempCamera[${cameraNum}] remains null`);
+                      }
+                    } else {
+                      // tempCamera already set - keep it for next calculation
+                      logger.logDebug(`Take ${takeNum} has blank ${fieldId} - tempCamera[${cameraNum}] remains ${tempCamera[cameraNum]} for next calculation`);
                     }
                   }
                   // Blank fields stay blank - don't update them
                 } else if (currentFieldVal === null && takeNum < fromNumber) {
                   // Track last valid value for takes before insertion point
-                  // For sound files, use SoundHandler
+                  // Update temp variables to prepare for shifting after insertion
                   if (fieldId === 'soundFile') {
                     const soundInfo = getSoundFileInfo(data);
                     if (soundInfo && soundInfo.value !== null) {
-                      lastValidUpper = soundInfo.upper;
-                      logger.logDebug(`Tracking sound file upper bound for take ${takeNum}: ${lastValidUpper}`);
+                      tempSound = soundInfo.upper;
+                      logger.logDebug(`Tracking sound file upper bound for take ${takeNum} (before insertion): tempSound = ${tempSound}`);
+                    }
+                  } else if (fieldId.startsWith('cameraFile')) {
+                    const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+                    const cameraVal = getFieldValue(data, fieldId);
+                    if (cameraVal && cameraVal.value !== null) {
+                      tempCamera[cameraNum] = cameraVal.upper;
+                      logger.logDebug(`Tracking camera file upper bound for take ${takeNum} (before insertion): tempCamera[${cameraNum}] = ${tempCamera[cameraNum]}`);
                     }
                   }
                 }
