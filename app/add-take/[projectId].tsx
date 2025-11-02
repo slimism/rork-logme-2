@@ -2275,6 +2275,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = applyRangePersistence(finalTakeData);
 
     logSheet.data = {
+      ...logSheet.data, // Preserve uniqueId from addLogSheet
       ...finalTakeData,
       classification,
       shotDetails,
@@ -2615,6 +2616,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = applyRangePersistenceSelective(finalTakeData);
 
     logSheet.data = {
+      ...logSheet.data, // Preserve uniqueId from addLogSheet
       ...finalTakeData,
       classification,
       shotDetails,
@@ -2956,6 +2958,14 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
+    // Add the new log FIRST so it exists when updateFileNumbers is called
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+
     // Apply all accumulated updates to the existing entry BEFORE calling updateFileNumbers
     if (hasUpdates) {
       updateLogSheet(existingEntry.id, existingEntryUpdates);
@@ -2963,13 +2973,14 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Now call updateFileNumbers for sound and camera files
     // (we already computed the deltas and collected updates above, and applied existingEntryUpdates)
+    // Exclude both existingEntry and the new logSheet from shifting
     if (targetSoundExists && soundDelta !== undefined && soundDelta > 0 && soundStart !== undefined) {
-      updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta, [existingEntry.id]);
+      updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta, [existingEntry.id, logSheet.id]);
     }
     
     if (camCount === 1) {
       if (targetCameraExists && camDelta !== undefined && camDelta > 0 && camStart !== undefined) {
-        updateFileNumbers(projectId, 'cameraFile', camStart, camDelta, [existingEntry.id]);
+        updateFileNumbers(projectId, 'cameraFile', camStart, camDelta, [existingEntry.id, logSheet.id]);
       }
     } else {
       // For multi-camera, call updateFileNumbers for each camera that was updated
@@ -3000,18 +3011,11 @@ This would break the logging logic and create inconsistencies in the file number
           }
           
           if (cameraDeltaLocal > 0) {
-            updateFileNumbers(projectId, fieldId, camStartLocal, cameraDeltaLocal, [existingEntry.id]);
+            updateFileNumbers(projectId, fieldId, camStartLocal, cameraDeltaLocal, [existingEntry.id, logSheet.id]);
           }
         }
       }
     }
-
-    const logSheet = addLogSheet(
-      `Take ${stats.totalTakes + 1}`,
-      'take',
-      '',
-      projectId
-    );
 
     let finalTakeData = { ...newLogData };
     if (camCount > 1) {
@@ -3085,6 +3089,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = applyRangePersistence(finalTakeData);
 
     logSheet.data = {
+      ...logSheet.data, // Preserve uniqueId from addLogSheet
       ...finalTakeData,
       classification,
       shotDetails,
@@ -3197,6 +3202,7 @@ This would break the logging logic and create inconsistencies in the file number
     finalTakeData = applyRangePersistence(finalTakeData);
       
       logSheet.data = {
+      ...logSheet.data, // Preserve uniqueId from addLogSheet
       ...finalTakeData,
       classification,
       shotDetails,
