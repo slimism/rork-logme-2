@@ -449,7 +449,7 @@ export const useProjectStore = create<ProjectState>()(
             // If we have excluded logs, find the maximum upper bound among them
             // This will be the starting point for cascading shifts
             if (excludeIds.length > 0) {
-              let maxUpperBound = fromNumber + increment - 1;
+              let maxUpperBound = -1;
               const excludedBounds: Array<{ id: string; take: string; upper: number }> = [];
               
               for (const sheet of projectSheets) {
@@ -464,7 +464,13 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
               
-              insertedLogUpperBound = maxUpperBound;
+              // If we found excluded bounds, use them; otherwise fallback to fromNumber formula
+              if (maxUpperBound >= 0) {
+                insertedLogUpperBound = maxUpperBound;
+              } else {
+                // Fallback case: no bounds found in excluded logs
+                insertedLogUpperBound = fromNumber + increment - 1;
+              }
               console.log(`  -> Excluded logs ${excludeIds.join(', ')}, found bounds:`, excludedBounds.map(b => `${b.take}=${b.upper}`).join(', '));
               console.log(`  -> Using max upper bound: ${insertedLogUpperBound}`);
             }
