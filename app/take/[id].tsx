@@ -1736,7 +1736,7 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has('soundFile') && soundDelta > 0) {
         // Always use soundStart (the beginning of the duplicate), not the end of the range
         // updateFileNumbers will skip the first occurrence and shift everything else
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
         
         // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2020,7 +2020,7 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
         // Always use camStart (the beginning of the duplicate), not the end of the range
         // updateFileNumbers will skip the first occurrence and shift everything else
-        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta, logSheet.id);
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
       }
     }
     
@@ -2238,7 +2238,7 @@ This would break the logging logic and create inconsistencies in the file number
           })();
           if (!disabledFields.has('soundFile')) {
             // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2292,7 +2292,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id); }
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             }
           }
         }
@@ -2320,7 +2320,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('cameraFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -2401,7 +2401,7 @@ This would break the logging logic and create inconsistencies in the file number
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); }
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
@@ -2614,7 +2614,7 @@ This would break the logging logic and create inconsistencies in the file number
           })();
           if (!disabledFields.has('soundFile')) {
             // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2667,7 +2667,7 @@ This would break the logging logic and create inconsistencies in the file number
               return 1;
             })();
             if (!disabledFields.has('soundFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id); }
+              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
             }
           }
         }
@@ -2794,7 +2794,7 @@ This would break the logging logic and create inconsistencies in the file number
                   return 1;
                 })();
                 if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); }
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(existingEntry.data, fieldId);
@@ -3436,7 +3436,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0) {
       // Always use soundStart (the beginning of the duplicate), not the end of the range
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
     }
     
     if (camCount === 1) {
@@ -3469,7 +3469,7 @@ This would break the logging logic and create inconsistencies in the file number
           if (!Number.isNaN(n)) camStart = n;
         }
         const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
-        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id);
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3501,7 +3501,7 @@ This would break the logging logic and create inconsistencies in the file number
               if (!Number.isNaN(n)) camStartForField = n;
             }
             const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
-            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, logSheet.id);
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta);
           }
         }
       }
