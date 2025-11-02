@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Project, Folder, LogSheet, ProjectSettings } from '@/types';
 import { useTokenStore } from './subscriptionStore';
+import { normalizeProjectSettings } from '@/components/CameraHandlers/cameraConfigValidator';
+import { logger } from '@/components/CameraHandlers/logger';
 
 interface ProjectState {
   projects: Project[];
@@ -31,12 +33,15 @@ export const useProjectStore = create<ProjectState>()(
       logSheets: [],
       
       addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => {
+        // Validate and normalize camera configuration
+        const normalizedSettings = normalizeProjectSettings(settings);
+        
         const newProject: Project = {
           id: Date.now().toString(),
           name,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          settings,
+          settings: normalizedSettings,
           logoUri,
         };
         
@@ -46,7 +51,7 @@ export const useProjectStore = create<ProjectState>()(
         // First project and no tokens = trial project
         if (state.projects.length === 0 && tokenStore.trialProjectId === null && tokenStore.tokens === 0) {
           useTokenStore.setState({ trialProjectId: newProject.id });
-          console.log('[addProject] Created trial project:', newProject.id);
+          logger.logDebug('Created trial project', { projectId: newProject.id });
         } 
         // Has tokens = use token and unlock project
         else if (tokenStore.tokens > 0) {
@@ -57,7 +62,7 @@ export const useProjectStore = create<ProjectState>()(
             useTokenStore.setState({ 
               unlockedProjects: updatedUnlockedProjects
             });
-            console.log('[addProject] Project unlocked with token:', newProject.id, 'Unlocked projects:', updatedUnlockedProjects);
+            logger.logDebug('Project unlocked with token', { projectId: newProject.id, unlockedProjects: updatedUnlockedProjects });
           }
         }
         
@@ -160,12 +165,10 @@ export const useProjectStore = create<ProjectState>()(
             }
           }
         });
-        console.log('=== STORE updateLogSheet called ===');
-        console.log('  id:', id);
-        console.log('  data.camera1_from:', data.camera1_from);
-        console.log('  data.camera1_to:', data.camera1_to);
-        console.log('  data.cameraFile:', data.cameraFile);
-        console.log('  data.classification:', data.classification);
+        const existingLogSheet = get().logSheets.find(sheet => sheet.id === id);
+        const previousData = existingLogSheet?.data || {};
+        
+        logger.logFunctionEntry({ logSheetId: id, operation: 'updateLogSheet' });
         
         set((state) => ({
           logSheets: state.logSheets.map((logSheet) => 
@@ -176,10 +179,8 @@ export const useProjectStore = create<ProjectState>()(
         }));
         
         const updated = get().logSheets.find(sheet => sheet.id === id);
-        console.log('=== After store update ===');
-        console.log('  Updated data.camera1_from:', updated?.data?.camera1_from);
-        console.log('  Updated data.camera1_to:', updated?.data?.camera1_to);
-        console.log('  Updated data.cameraFile:', updated?.data?.cameraFile);
+        logger.logSave('updateLogSheet', id, updated?.data || {}, previousData);
+        logger.logFunctionExit(updated);
       },
       
       updateLogSheetName: (id: string, name: string) => {
@@ -239,7 +240,8 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => {
-        console.log('=== updateTakeNumbers called ===', {
+        logger.logFunctionEntry({
+          functionName: 'updateTakeNumbers',
           projectId,
           sceneNumber,
           shotNumber,
@@ -256,7 +258,7 @@ export const useProjectStore = create<ProjectState>()(
               
               // Skip the excluded log (the edited log being moved)
               if (excludeLogId && logSheet.id === excludeLogId) {
-                console.log(`  -> Explicitly skipping excluded log: ${logSheet.id} (take ${logSheet.data?.takeNumber})`);
+                logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id, takeNumber: logSheet.data?.takeNumber });
                 return logSheet;
               }
 

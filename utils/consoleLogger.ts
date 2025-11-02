@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { logger } from '@/components/CameraHandlers/logger';
 
 interface LogEntry {
   timestamp: string;
@@ -95,8 +96,9 @@ class ConsoleLogger {
   async exportLogs(): Promise<boolean> {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `console-logs-${timestamp}`;
+      const filename = `comprehensive-logs-${timestamp}`;
       
+      // Format console logs
       const logText = this.logs
         .map(log => {
           const time = new Date(log.timestamp).toLocaleTimeString();
@@ -104,16 +106,35 @@ class ConsoleLogger {
         })
         .join('\n\n');
 
-      const content = `Console Logs Export
+      // Get comprehensive camera handler logs
+      const cameraHandlerLogs = logger.getLogs();
+      const cameraHandlerLogText = logger.exportLogsAsText();
+
+      // Combine both log sources
+      const content = `COMPREHENSIVE LOGS EXPORT
 Generated: ${new Date().toLocaleString()}
-Total Logs: ${this.logs.length}
 
 ${'='.repeat(80)}
+SECTION 1: CONSOLE LOGS
+${'='.repeat(80)}
+Total Console Logs: ${this.logs.length}
 
 ${logText}
 
 ${'='.repeat(80)}
-End of Logs`;
+SECTION 2: CAMERA HANDLER LOGS (COMPREHENSIVE)
+${'='.repeat(80)}
+Total Camera Handler Logs: ${cameraHandlerLogs.length}
+
+${cameraHandlerLogText}
+
+${'='.repeat(80)}
+END OF COMPREHENSIVE LOGS EXPORT
+${'='.repeat(80)}
+This export includes:
+- Console logs: General application logs
+- Camera Handler logs: Detailed function-level logs with calculations, save operations, and file locations
+`;
 
       if (Platform.OS === 'web') {
         const blob = new Blob([content], { type: 'text/plain' });

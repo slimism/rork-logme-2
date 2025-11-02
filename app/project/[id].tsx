@@ -12,6 +12,7 @@ import { colors } from '@/constants/colors';
 import { exportProjectToPDF } from '@/utils/pdfExport';
 import { ClassificationType } from '@/types';
 import { consoleLogger } from '@/utils/consoleLogger';
+import { logger } from '@/components/CameraHandlers/logger';
 
 export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -141,12 +142,18 @@ export default function ProjectScreen() {
     try {
       const success = await consoleLogger.exportLogs();
       if (!success) {
-        Alert.alert('Error', 'Failed to export console logs. Please try again.');
+        Alert.alert('Error', 'Failed to export comprehensive logs. Please try again.');
       } else {
-        Alert.alert('Success', 'Console logs exported successfully!');
+        const cameraHandlerLogCount = logger.getLogs().length;
+        const consoleLogCount = consoleLogger.getLogs().length;
+        Alert.alert(
+          'Success', 
+          `Comprehensive logs exported successfully!\n\nConsole logs: ${consoleLogCount}\nCamera handler logs: ${cameraHandlerLogCount}`
+        );
       }
-    } catch {
-      Alert.alert('Error', 'Failed to export console logs. Please try again.');
+    } catch (error) {
+      console.error('Export logs error:', error);
+      Alert.alert('Error', 'Failed to export comprehensive logs. Please try again.');
     } finally {
       setIsExportingLogs(false);
     }

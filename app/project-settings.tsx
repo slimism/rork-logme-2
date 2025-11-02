@@ -139,10 +139,15 @@ export default function ProjectSettingsScreen() {
     const enabledFields = logSheetFields.filter(field => field.enabled);
     const validCustomFields = customFields.filter(field => field.trim());
     
+    // Ensure camera configuration is valid (defaults to 1 if invalid)
+    const validCameraConfig = cameraConfiguration && cameraConfiguration > 0 
+      ? cameraConfiguration 
+      : 1;
+    
     const projectSettings = {
       logSheetFields: enabledFields,
       customFields: validCustomFields,
-      cameraConfiguration: cameraConfiguration,
+      cameraConfiguration: validCameraConfig,
       directorName: directorName.trim(),
       cinematographerName: cinematographerName.trim(),
       loggerName: loggerName.trim(),
