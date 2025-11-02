@@ -455,11 +455,22 @@ export const useProjectStore = create<ProjectState>()(
             
             // If we have excluded logs, find the maximum upper bound among them
             // This will be the starting point for cascading shifts
+            // IMPORTANT: We need to get CURRENT state to read updated values
             if (excludeIds.length > 0) {
               let maxUpperBound = fromNumber + increment - 1;
               const excludedBounds: Array<{ id: string; take: string; upper: number }> = [];
               
-              for (const sheet of projectSheets) {
+              // Get the current state to ensure we're reading the most recent updates
+              const currentState = get();
+              const currentProjectSheets = currentState.logSheets
+                .filter(s => s.projectId === projectId)
+                .sort((a, b) => {
+                  const uidA = parseInt(a.data?.uniqueId || '0', 10) || 0;
+                  const uidB = parseInt(b.data?.uniqueId || '0', 10) || 0;
+                  return uidA - uidB;
+                });
+              
+              for (const sheet of currentProjectSheets) {
                 if (excludeIds.includes(sheet.id)) {
                   const bounds = getFileBounds(sheet, fieldId);
                   if (bounds) {
