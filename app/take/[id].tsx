@@ -3294,42 +3294,31 @@ This would break the logging logic and create inconsistencies in the file number
     };
     const soundDelta = calculateSoundDeltaForShifting(soundDeltaInput);
 
-    let newSoundToNum = 0;
+    // Note: Sound file adjustment will be done AFTER updateFileNumbers
+    // to avoid double-shifting. Store calculation values here.
+    // Only adjust sound RANGES - single values are handled by updateFileNumbers
+    let soundRangeAdjustment: { newFromNum: number; newToNum: number; hadInline: boolean } | null = null;
+    
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
-    if (rSound) {
-      const exTo = parseInt(rSound.to, 10) || 0;
-      // Use centralized delta calculator instead of inline calculation
-      const delta = calculateSoundDeltaForShifting({
-        takeData,
-        showRangeMode,
-        rangeData
-      });
-      if (!disabledFields.has('soundFile')) {
-        const bounds = getInsertedBounds('soundFile');
-        const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
-        const newFrom = String(insertedUpper + 1).padStart(4, '0');
-        const newTo = String(exTo + delta).padStart(4, '0');
-        newSoundToNum = exTo + delta;
-        existingEntryUpdates.sound_from = newFrom;
-        existingEntryUpdates.sound_to = newTo;
-        const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
-        if (hadInline) {
-          existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
-        }
-        hasUpdates = true;
+    if (rSound && !disabledFields.has('soundFile')) {
+      // Target has a sound range - calculate adjustment based on original data
+      // Only adjust if the inserted entry also has a range
+      if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+        const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+        const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+        const insertedMax = Math.max(insertedFrom, insertedTo);
+        const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+
+        const oldToNum = parseInt(rSound.to, 10) || 0;
+        const newFromNum = insertedMax + 1;
+        const newToNum = oldToNum + deltaLocal;
+        
+        soundRangeAdjustment = {
+          newFromNum,
+          newToNum,
+          hadInline: typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.includes('-')
+        };
       }
-    } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0 && !disabledFields.has('soundFile')) {
-      // Use centralized delta calculator instead of inline calculation
-      const delta = calculateSoundDeltaForShifting({
-        takeData,
-        showRangeMode,
-        rangeData
-      });
-      const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
-      const newVal = String(exNum + delta).padStart(4, '0');
-      newSoundToNum = exNum + delta;
-      existingEntryUpdates.soundFile = newVal;
-      hasUpdates = true;
     }
 
     if (camCount === 1) {
@@ -3351,10 +3340,12 @@ This would break the logging logic and create inconsistencies in the file number
         ? 0 
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
-      let newCamToNum = 0;
+      // Note: Target range adjustment will be done AFTER updateFileNumbers
+      // to avoid double-shifting. We'll store the calculation values here.
+      let targetRangeAdjustment: { newFromNum: number; newToNum: number; hadInline: boolean } | null = null;
       const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
       if (targetRange && !disabledFields.has('cameraFile')) {
-        // Target has a range - update it regardless of whether new entry is range or single
+        // Target has a range - calculate adjustment based on original data
         let insertedMax: number;
         let deltaLocal: number;
         
@@ -3373,18 +3364,12 @@ This would break the logging logic and create inconsistencies in the file number
         const oldToNum = parseInt(targetRange.to, 10) || 0;
         const newFromNum = insertedMax + 1;
         const newToNum = oldToNum + deltaLocal;
-        newCamToNum = newToNum;
         
-        existingEntryUpdates = {
-          ...existingEntryUpdates,
-          camera1_from: String(newFromNum).padStart(4, '0'),
-          camera1_to: String(newToNum).padStart(4, '0')
+        targetRangeAdjustment = {
+          newFromNum,
+          newToNum,
+          hadInline: typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-')
         };
-        const hadInline = typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-');
-        if (hadInline) {
-          existingEntryUpdates.cameraFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
-        }
-        hasUpdates = true;
       } else {
         // Handle single camera value (not range)
         const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
@@ -3453,43 +3438,37 @@ This would break the logging logic and create inconsistencies in the file number
             ? 0
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
 
-          let newCamToNum = 0;
-          const targetRange = getRangeFromData(existingEntry.data, fieldId);
-          if (targetRange && !disabledFields.has(fieldId)) {
-            // Target has a range - update it regardless of whether new entry is range or single
+          // Note: Target range adjustment will be done AFTER updateFileNumbers
+          // to avoid double-shifting. Store adjustment per field.
+          const targetRangeCam = getRangeFromData(existingEntry.data, fieldId);
+          if (targetRangeCam && !disabledFields.has(fieldId)) {
+            // Calculate adjustment based on original data
             let insertedMax: number;
             let deltaLocal: number;
             
             if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-              // New entry has range
               const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
               const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
               insertedMax = Math.max(insertedFrom, insertedTo);
               deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
             } else {
-              // New entry has single value
               insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
               deltaLocal = 1;
             }
 
-            const oldToNum = parseInt(targetRange.to, 10) || 0;
+            const oldToNum = parseInt(targetRangeCam.to, 10) || 0;
             const newFromNum = insertedMax + 1;
             const newToNum = oldToNum + deltaLocal;
-            newCamToNum = newToNum;
             
-            const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-            const fromKeyLocal = `camera${cameraNum}_from` as const;
-            const toKeyLocal = `camera${cameraNum}_to` as const;
-            existingEntryUpdates = {
-              ...existingEntryUpdates,
-              [fromKeyLocal]: String(newFromNum).padStart(4, '0'),
-              [toKeyLocal]: String(newToNum).padStart(4, '0')
-            };
-            const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-');
-            if (hadInline) {
-              existingEntryUpdates[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
+            // Store for later application after updateFileNumbers
+            if (!existingEntryUpdates._targetRangeAdjustments) {
+              existingEntryUpdates._targetRangeAdjustments = {};
             }
-            hasUpdates = true;
+            existingEntryUpdates._targetRangeAdjustments[fieldId] = {
+              newFromNum,
+              newToNum,
+              hadInline: typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-')
+            };
           } else {
             // Handle single camera value (not range)
             const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
@@ -3650,7 +3629,10 @@ This would break the logging logic and create inconsistencies in the file number
     // Save the current logSheet with edited values
     await updateLogSheet(logSheet.id, updatedData);
 
-    // Update the existingEntry with calculated shifts
+    // Update the existingEntry with calculated shifts (except target range adjustments which come after updateFileNumbers)
+    const targetRangeAdjustments = existingEntryUpdates._targetRangeAdjustments;
+    delete existingEntryUpdates._targetRangeAdjustments;
+    
     if (hasUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
@@ -3659,6 +3641,7 @@ This would break the logging logic and create inconsistencies in the file number
     await new Promise(resolve => setTimeout(resolve, 0));
     
     // Call updateFileNumbers to shift subsequent entries if needed
+    // IMPORTANT: Exclude the target duplicate to avoid double-shifting
     if (!disabledFields.has('soundFile') && soundDelta > 0) {
       // Always use soundStart (the beginning of the duplicate), not the end of the range
       // Pass excludeLogId so store can reliably initialize tempSound from the inserted/edited log
@@ -3678,6 +3661,7 @@ This would break the logging logic and create inconsistencies in the file number
 
       if (!disabledFields.has('cameraFile') && camDelta > 0) {
         // Use camStart (lower bound) directly, not targetRange.to + 1
+        // Exclude the target duplicate to avoid double-shifting
         let camStart = cameraFromNumber;
         if (typeof existingEntry.data?.camera1_from === 'string') {
           const n = parseInt(existingEntry.data.camera1_from, 10);
@@ -3687,6 +3671,33 @@ This would break the logging logic and create inconsistencies in the file number
           if (!Number.isNaN(n)) camStart = n;
         }
         updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta, logSheet.id);
+      }
+      
+      // Apply target adjustments AFTER updateFileNumbers (camera and sound together)
+      if (targetRangeAdjustment || soundRangeAdjustment) {
+        const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+        const currentData = currentLogSheet?.data || existingEntry.data;
+        const updatedData: Record<string, any> = { ...currentData };
+        
+        // Apply camera range adjustment
+        if (targetRangeAdjustment) {
+          updatedData['camera1_from'] = String(targetRangeAdjustment.newFromNum).padStart(4, '0');
+          updatedData['camera1_to'] = String(targetRangeAdjustment.newToNum).padStart(4, '0');
+          if (targetRangeAdjustment.hadInline) {
+            updatedData['cameraFile'] = `${String(targetRangeAdjustment.newFromNum).padStart(4, '0')}-${String(targetRangeAdjustment.newToNum).padStart(4, '0')}`;
+          }
+        }
+        
+        // Apply sound range adjustment (only for ranges, single values handled by updateFileNumbers)
+        if (soundRangeAdjustment) {
+          updatedData.sound_from = String(soundRangeAdjustment.newFromNum).padStart(4, '0');
+          updatedData.sound_to = String(soundRangeAdjustment.newToNum).padStart(4, '0');
+          if (soundRangeAdjustment.hadInline) {
+            updatedData.soundFile = `${String(soundRangeAdjustment.newFromNum).padStart(4, '0')}-${String(soundRangeAdjustment.newToNum).padStart(4, '0')}`;
+          }
+        }
+        
+        await updateLogSheet(existingEntry.id, updatedData);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3704,6 +3715,7 @@ This would break the logging logic and create inconsistencies in the file number
           
           if (!disabledFields.has(fieldId) && camDelta > 0) {
             // Use camStart (lower bound) directly, not targetRange.to + 1
+            // Exclude the target duplicate to avoid double-shifting
             let camStartForField = cameraFromNumber;
             const fromKey = `camera${i}_from` as const;
             const fromVal = existingEntry.data?.[fromKey];
@@ -3718,6 +3730,41 @@ This would break the logging logic and create inconsistencies in the file number
             updateFileNumbers(logSheet.projectId, fieldId, camStartForField, camDelta, logSheet.id);
           }
         }
+      }
+      
+      // Apply target adjustments AFTER updateFileNumbers (camera and sound together)
+      const hasTargetAdjustments = (targetRangeAdjustments && Object.keys(targetRangeAdjustments).length > 0) || 
+                                   soundRangeAdjustment;
+      
+      if (hasTargetAdjustments) {
+        const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+        const currentData = currentLogSheet?.data || existingEntry.data;
+        const updatedData: Record<string, any> = { ...currentData };
+        
+        // Apply camera range adjustments
+        if (targetRangeAdjustments && Object.keys(targetRangeAdjustments).length > 0) {
+          for (const [fieldId, adjustment] of Object.entries(targetRangeAdjustments) as [string, { newFromNum: number; newToNum: number; hadInline: boolean }][]) {
+            const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+            const fromKeyLocal = `camera${cameraNum}_from` as const;
+            const toKeyLocal = `camera${cameraNum}_to` as const;
+            updatedData[fromKeyLocal] = String(adjustment.newFromNum).padStart(4, '0');
+            updatedData[toKeyLocal] = String(adjustment.newToNum).padStart(4, '0');
+            if (adjustment.hadInline) {
+              updatedData[fieldId] = `${String(adjustment.newFromNum).padStart(4, '0')}-${String(adjustment.newToNum).padStart(4, '0')}`;
+            }
+          }
+        }
+        
+        // Apply sound range adjustment (only for ranges, single values handled by updateFileNumbers)
+        if (soundRangeAdjustment) {
+          updatedData.sound_from = String(soundRangeAdjustment.newFromNum).padStart(4, '0');
+          updatedData.sound_to = String(soundRangeAdjustment.newToNum).padStart(4, '0');
+          if (soundRangeAdjustment.hadInline) {
+            updatedData.soundFile = `${String(soundRangeAdjustment.newFromNum).padStart(4, '0')}-${String(soundRangeAdjustment.newToNum).padStart(4, '0')}`;
+          }
+        }
+        
+        await updateLogSheet(existingEntry.id, updatedData);
       }
     }
 
