@@ -2299,28 +2299,47 @@ This would break the logging logic and create inconsistencies in the file number
             const currentSoundLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
             const currentSoundData = currentSoundLogSheet?.data || existingEntry.data;
             
-            // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
+            // Calculate insertedMax (TempSound) from rangeData/showRangeMode
+            // Calculate delta_original from the ORIGINAL target log (before any shifting)
             const targetRange = getRangeFromData(currentSoundData, 'soundFile');
             if (targetRange) {
-              // Target has a range - update it regardless of whether new entry is range or single
+              // Calculate TempSound (insertedMax) from the inserted log
               let insertedMax: number;
-              let deltaLocal: number;
               
               if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
                 // New entry has range
                 const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
                 const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
                 insertedMax = Math.max(insertedFrom, insertedTo);
-                deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
               } else {
                 // New entry has single value
                 insertedMax = parseInt(String(takeData.soundFile), 10) || 0;
-                deltaLocal = 1;
               }
 
-              const oldToNum = parseInt(targetRange.to, 10) || 0;
+              // Calculate delta_original from the ORIGINAL target log (before shifting)
+              // Use existingEntry.data to get the original values before updateFileNumbers changed them
+              const originalTargetRange = getRangeFromData(existingEntry.data, 'soundFile');
+              let deltaOriginal: number;
+              if (originalTargetRange) {
+                // Original target had a range
+                const originalFrom = parseInt(originalTargetRange.from, 10) || 0;
+                const originalTo = parseInt(originalTargetRange.to, 10) || 0;
+                deltaOriginal = Math.abs(originalTo - originalFrom) + 1;
+              } else {
+                // Original target had a single value
+                const originalSingle = existingEntry.data?.soundFile;
+                if (typeof originalSingle === 'string' && originalSingle.trim()) {
+                  deltaOriginal = 1;
+                } else {
+                  // Fallback: use current target range if original not available
+                  const oldToNum = parseInt(targetRange.to, 10) || 0;
+                  const oldFromNum = parseInt(targetRange.from, 10) || 0;
+                  deltaOriginal = Math.abs(oldToNum - oldFromNum) + 1;
+                }
+              }
+
               const newFromNum = insertedMax + 1;
-              const newToNum = oldToNum + deltaLocal;
+              const newToNum = insertedMax + deltaOriginal;
 
               existingEntryUpdates.sound_from = String(newFromNum).padStart(4, '0');
               existingEntryUpdates.sound_to = String(newToNum).padStart(4, '0');
@@ -2431,28 +2450,47 @@ This would break the logging logic and create inconsistencies in the file number
               const currentData = currentLogSheet?.data || existingEntry.data;
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
-              // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
+              // Calculate insertedMax (TempCamera) from rangeData/showRangeMode
+              // Calculate delta_original from the ORIGINAL target log (before any shifting)
               const targetRange = getRangeFromData(currentData, 'cameraFile');
               if (targetRange) {
-                // Target has a range - update it regardless of whether new entry is range or single
+                // Calculate TempCamera (insertedMax) from the inserted log
                 let insertedMax: number;
-                let deltaLocal: number;
                 
                 if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
                   // New entry has range
                   const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
                   const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
                   insertedMax = Math.max(insertedFrom, insertedTo);
-                  deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
                 } else {
                   // New entry has single value
                   insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
-                  deltaLocal = 1;
                 }
 
-                const oldToNum = parseInt(targetRange.to, 10) || 0;
+                // Calculate delta_original from the ORIGINAL target log (before shifting)
+                // Use existingEntry.data to get the original values before updateFileNumbers changed them
+                const originalTargetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+                let deltaOriginal: number;
+                if (originalTargetRange) {
+                  // Original target had a range
+                  const originalFrom = parseInt(originalTargetRange.from, 10) || 0;
+                  const originalTo = parseInt(originalTargetRange.to, 10) || 0;
+                  deltaOriginal = Math.abs(originalTo - originalFrom) + 1;
+                } else {
+                  // Original target had a single value
+                  const originalSingle = existingEntry.data?.cameraFile;
+                  if (typeof originalSingle === 'string' && originalSingle.trim()) {
+                    deltaOriginal = 1;
+                  } else {
+                    // Fallback: use current target range if original not available
+                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    const oldFromNum = parseInt(targetRange.from, 10) || 0;
+                    deltaOriginal = Math.abs(oldToNum - oldFromNum) + 1;
+                  }
+                }
+
                 const newFromNum = insertedMax + 1;
-                const newToNum = oldToNum + deltaLocal;
+                const newToNum = insertedMax + deltaOriginal;
 
                 const updated: Record<string, any> = {
                   ...currentData,
@@ -2529,28 +2567,47 @@ This would break the logging logic and create inconsistencies in the file number
                   const currentData = currentLogSheet?.data || existingEntry.data;
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
-                  // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
+                  // Calculate insertedMax (TempCamera) from rangeData/showRangeMode
+                  // Calculate delta_original from the ORIGINAL target log (before any shifting)
                   const targetRange = getRangeFromData(currentData, fieldId);
                   if (targetRange) {
-                    // Target has a range - update it regardless of whether new entry is range or single
+                    // Calculate TempCamera (insertedMax) from the inserted log
                     let insertedMax: number;
-                    let deltaLocal: number;
                     
                     if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
                       // New entry has range
                       const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
                       const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
                       insertedMax = Math.max(insertedFrom, insertedTo);
-                      deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
                     } else {
                       // New entry has single value
                       insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
-                      deltaLocal = 1;
                     }
 
-                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    // Calculate delta_original from the ORIGINAL target log (before shifting)
+                    // Use existingEntry.data to get the original values before updateFileNumbers changed them
+                    const originalTargetRange = getRangeFromData(existingEntry.data, fieldId);
+                    let deltaOriginal: number;
+                    if (originalTargetRange) {
+                      // Original target had a range
+                      const originalFrom = parseInt(originalTargetRange.from, 10) || 0;
+                      const originalTo = parseInt(originalTargetRange.to, 10) || 0;
+                      deltaOriginal = Math.abs(originalTo - originalFrom) + 1;
+                    } else {
+                      // Original target had a single value
+                      const originalSingle = existingEntry.data?.[fieldId];
+                      if (typeof originalSingle === 'string' && originalSingle.trim()) {
+                        deltaOriginal = 1;
+                      } else {
+                        // Fallback: use current target range if original not available
+                        const oldToNum = parseInt(targetRange.to, 10) || 0;
+                        const oldFromNum = parseInt(targetRange.from, 10) || 0;
+                        deltaOriginal = Math.abs(oldToNum - oldFromNum) + 1;
+                      }
+                    }
+
                     const newFromNum = insertedMax + 1;
-                    const newToNum = oldToNum + deltaLocal;
+                    const newToNum = insertedMax + deltaOriginal;
 
                     const updated: Record<string, any> = {
                       ...currentData,
