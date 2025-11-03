@@ -878,24 +878,22 @@ export const useProjectStore = create<ProjectState>()(
               // For multi-camera: Initialize tempCamera for ALL cameras in the project settings
               // This ensures tempCamera[1], tempCamera[2], tempCamera[3], etc. are all initialized correctly
               // based on the project's camera configuration, not just what's found in the inserted log
+              // IMPORTANT: ALWAYS initialize ALL cameras from the inserted log when processing ANY camera field
+              // This ensures each camera has its own tempCamera value correctly set for sequential shifting
               if (fieldId.startsWith('cameraFile')) {
                 // Initialize tempCamera for ALL cameras in the project (based on cameraConfiguration)
+                // Always initialize from the inserted log to ensure correct base values
                 for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
                   const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
-                  // Only initialize if not already set (to avoid overwriting values from previous updateFileNumbers calls)
-                  if (tempCamera[camNum] === null || tempCamera[camNum] === undefined) {
-                    // Get the current state of this camera field from the inserted log
-                    const camFieldVal = getFieldValue(insertedData, camFieldId);
-                    if (camFieldVal && camFieldVal.value !== null) {
-                      tempCamera[camNum] = camFieldVal.upper;
-                      logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log (Take ${insertedTakeNum}, field ${camFieldId}, file number ${camFieldVal.lower}/${camFieldVal.upper}): ${tempCamera[camNum]}`);
-                    } else {
-                      // Camera field is blank in inserted log - this shouldn't happen for a valid inserted log,
-                      // but if it does, we'll leave tempCamera[camNum] as null/undefined
-                      logger.logWarning(`Inserted log (Take ${insertedTakeNum}) has blank ${camFieldId} - tempCamera[${camNum}] not initialized`);
-                    }
+                  // Get the current state of this camera field from the inserted log
+                  const camFieldVal = getFieldValue(insertedData, camFieldId);
+                  if (camFieldVal && camFieldVal.value !== null) {
+                    tempCamera[camNum] = camFieldVal.upper;
+                    logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log (Take ${insertedTakeNum}, field ${camFieldId}, file number ${camFieldVal.lower}/${camFieldVal.upper}): ${tempCamera[camNum]}`);
                   } else {
-                    logger.logDebug(`tempCamera[${camNum}] already initialized (${tempCamera[camNum]}) - skipping re-initialization`);
+                    // Camera field is blank in inserted log - this shouldn't happen for a valid inserted log,
+                    // but if it does, we'll leave tempCamera[camNum] as null/undefined
+                    logger.logWarning(`Inserted log (Take ${insertedTakeNum}) has blank ${camFieldId} - tempCamera[${camNum}] not initialized`);
                   }
                 }
               }
@@ -1380,28 +1378,34 @@ export const useProjectStore = create<ProjectState>()(
               if (val && val.value !== null) tempSoundGlobal = val.upper;
             }
 
-            // Walk forward from inserted index and sequentially update ALL entries with sound
+            // Walk forward from inserted index and sequentially update ALL entries
+            // This processes ALL logs (including SFX/Ambience) in order, maintaining tempSound across blank entries
             const startIdx = insertedIndex >= 0 ? insertedIndex + 1 : 0;
             for (let i = startIdx; i < projectOrdered.length; i++) {
               const s = projectOrdered[i].s;
               const original = s.data || {} as any;
               const effData = (updatedSheetsMap.get(s.id)?.data) || original; // prefer updated data in this call
               const currentFieldVal = getFieldValue(effData, 'soundFile');
-              if (!currentFieldVal || currentFieldVal.value === null) {
-                // Blank: do not modify, tempSound remains
+              
+              // Only shift entries at/after the insertion point (by file number)
+              // Pre-insertion entries should not affect tempSoundGlobal
+              if (currentFieldVal && currentFieldVal.upper < fromNumber) {
+                // Skip pre-insertion entries but also don't advance tempSoundGlobal
                 continue;
               }
-              // Only shift entries at/after the insertion point (by file number)
-              if (currentFieldVal.upper < fromNumber) {
-                // Do not advance tempSoundGlobal with pre-insertion values
+              
+              if (!currentFieldVal || currentFieldVal.value === null) {
+                // Blank sound (e.g., Waste): do not modify, tempSound remains unchanged (delta = 0)
+                // This ensures subsequent entries can still increment correctly
+                logger.logDebug(`Global sound shift: Log ${s.id} has blank sound - tempSoundGlobal remains ${tempSoundGlobal}`);
                 continue;
               }
 
-              // Calculate delta based on current entry
+              // Calculate delta based on current entry (0 for blank, 1 for single, range span for ranges)
               const soundDeltaInput: DeltaCalculationInput = { logSheetData: effData } as any;
               const delta = calculateSoundDeltaForShifting(soundDeltaInput);
 
-              // Apply sequential rule: base is previous tempSound
+              // Apply sequential rule: base is previous tempSound (which may have been unchanged if previous entry was blank)
               const base = tempSoundGlobal;
               let soundNewLower: number;
               let soundNewUpper: number;
@@ -1429,7 +1433,7 @@ export const useProjectStore = create<ProjectState>()(
               logger.logCalculation(
                 'Global Sound Shift (All Entries)',
                 `Sequential shift for ${s.id} after insertion`,
-                { base, delta, currentLower: currentFieldVal.lower, currentUpper: currentFieldVal.upper },
+                { base: tempSoundGlobal, delta, currentLower: currentFieldVal.lower, currentUpper: currentFieldVal.upper },
                 currentFieldVal.isRange
                   ? `Range: newLower = base(${base}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
                   : `Single: newLower = base(${base}) + delta(${delta}) = ${soundNewLower}`,
@@ -1438,7 +1442,9 @@ export const useProjectStore = create<ProjectState>()(
 
               logger.logSave('updateFileNumbers', s.id, newData, effData);
               updatedSheetsMap.set(s.id, { ...s, data: newData, updatedAt: new Date().toISOString() });
+              // Update tempSoundGlobal with the new upper bound for subsequent calculations
               tempSoundGlobal = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+              logger.logDebug(`Updated tempSoundGlobal to ${tempSoundGlobal} after processing log ${s.id}`);
             }
           }
 
