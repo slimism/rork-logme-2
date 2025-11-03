@@ -510,6 +510,11 @@ export const useProjectStore = create<ProjectState>()(
               const insertedData = insertedLog.data || {};
               const insertedTakeNum = parseInt(insertedData.takeNumber as string || '0', 10);
               
+              // Get project settings to determine number of cameras
+              const project = activeState.projects.find(p => p.id === projectId);
+              const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+              const maxCameras = Math.max(cameraConfiguration, 10); // At least check up to project's camera count, but also up to 10 for safety
+              
               // Initialize the current field's temp variable
               const insertedFieldVal = getFieldValue(insertedData, fieldId);
               if (insertedFieldVal && insertedFieldVal.value !== null) {
@@ -525,23 +530,27 @@ export const useProjectStore = create<ProjectState>()(
                 logger.logWarning(`Inserted log (Take ${insertedTakeNum}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
               }
               
-              // For multi-camera: Also initialize temp variables for ALL other camera fields
-              // IMPORTANT: For other camera fields that have already been processed by previous updateFileNumbers calls,
-              // we should NOT re-initialize them from the inserted log (which has original values).
-              // Instead, we should initialize them from the CURRENT state of the inserted log (which may have been shifted).
-              // However, if a camera field hasn't been processed yet, we should initialize it from the inserted log.
+              // For multi-camera: Initialize tempCamera for ALL cameras in the project settings
+              // This ensures tempCamera[1], tempCamera[2], tempCamera[3], etc. are all initialized correctly
+              // based on the project's camera configuration, not just what's found in the inserted log
               if (fieldId.startsWith('cameraFile')) {
-                // Find all camera fields in the CURRENT state (not just inserted log) and initialize their temp variables
-                // Use the current state of the log, which may have been updated by previous updateFileNumbers calls
-                for (let camNum = 1; camNum <= 10; camNum++) { // Check up to 10 cameras
+                // Initialize tempCamera for ALL cameras in the project (based on cameraConfiguration)
+                for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
                   const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
-                  if (camFieldId !== fieldId) { // Don't re-initialize the current field
-                    // Get the current state of this camera field from the inserted log (which may have been updated)
+                  // Only initialize if not already set (to avoid overwriting values from previous updateFileNumbers calls)
+                  if (tempCamera[camNum] === null || tempCamera[camNum] === undefined) {
+                    // Get the current state of this camera field from the inserted log
                     const camFieldVal = getFieldValue(insertedData, camFieldId);
-                    if (camFieldVal && camFieldVal.value !== null && (tempCamera[camNum] === null || tempCamera[camNum] === undefined)) {
+                    if (camFieldVal && camFieldVal.value !== null) {
                       tempCamera[camNum] = camFieldVal.upper;
                       logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log (Take ${insertedTakeNum}, field ${camFieldId}, file number ${camFieldVal.lower}/${camFieldVal.upper}): ${tempCamera[camNum]}`);
+                    } else {
+                      // Camera field is blank in inserted log - this shouldn't happen for a valid inserted log,
+                      // but if it does, we'll leave tempCamera[camNum] as null/undefined
+                      logger.logWarning(`Inserted log (Take ${insertedTakeNum}) has blank ${camFieldId} - tempCamera[${camNum}] not initialized`);
                     }
+                  } else {
+                    logger.logDebug(`tempCamera[${camNum}] already initialized (${tempCamera[camNum]}) - skipping re-initialization`);
                   }
                 }
               }
@@ -858,21 +867,15 @@ export const useProjectStore = create<ProjectState>()(
                   // But we need to ensure temp variables are set correctly for next calculation
                   
                   if (fieldId === 'soundFile') {
-                    // Sound is blank - tempSound stays as it is (from previous record)
-                    // If tempSound is null, find previous valid sound file
-                    if (tempSound === null) {
-                      const soundHandlerContext: SoundHandlerContext = {
-                        projectId,
-                        projectLogSheets: state.logSheets.filter(s => s.projectId === projectId),
-                        sceneNumber: sceneNum,
-                        shotNumber: shotNum,
-                        takeNumber: takeNum
-                      };
-                      
-                      const previousSoundUpper = getSoundFileValueForSubsequentShift(
-                        soundHandlerContext,
-                        takeNum - 1 // Previous take number
-                      );
+                    // Sound is blank - tempSound should stay as it is (from previous valid record)
+                    // If tempSound is null or undefined, we need to find the previous valid sound file
+                    // This is critical: when a take has blank sound, we still need tempSound to track
+                    // the last valid value so subsequent takes can increment correctly
+                    if (tempSound === null || tempSound === undefined) {
+                      // Use getPreviousValidValue to find the last valid sound file before this take
+                      const excludeIds = new Set<string>([logSheet.id]);
+                      if (excludeLogId) excludeIds.add(excludeLogId);
+                      const previousSoundUpper = getPreviousValidValue(activeState.logSheets, takeNum, sceneNum, shotNum, 'soundFile', excludeIds);
                       
                       if (previousSoundUpper !== null) {
                         tempSound = previousSoundUpper;
@@ -881,18 +884,48 @@ export const useProjectStore = create<ProjectState>()(
                           `Take ${takeNum} has blank sound file, setting tempSound from previous valid upper bound`,
                           {
                             takeNumber: takeNum,
-                            previousTakeNumber: takeNum - 1,
                             previousSoundUpper,
                             tempSound
                           },
-                          `tempSound = ${tempSound} (stays same for next calculation)`,
+                          `tempSound = ${tempSound} (from previous valid take, stays same for next calculation)`,
                           tempSound
                         );
                       } else {
-                        logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found - tempSound remains null`);
+                        // Also try using SoundHandler for more robust lookup
+                        const soundHandlerContext: SoundHandlerContext = {
+                          projectId,
+                          projectLogSheets: activeState.logSheets.filter(s => s.projectId === projectId),
+                          sceneNumber: sceneNum,
+                          shotNumber: shotNum,
+                          takeNumber: takeNum
+                        };
+                        
+                        const handlerSoundUpper = getSoundFileValueForSubsequentShift(
+                          soundHandlerContext,
+                          takeNum - 1 // Previous take number
+                        );
+                        
+                        if (handlerSoundUpper !== null) {
+                          tempSound = handlerSoundUpper;
+                          logger.logCalculation(
+                            'Sound File Blank - Setting tempSound via SoundHandler',
+                            `Take ${takeNum} has blank sound file, setting tempSound via SoundHandler`,
+                            {
+                              takeNumber: takeNum,
+                              handlerSoundUpper,
+                              tempSound
+                            },
+                            `tempSound = ${tempSound} (stays same for next calculation)`,
+                            tempSound
+                          );
+                        } else {
+                          logger.logWarning(`Take ${takeNum} has blank sound file and no previous valid sound file found - tempSound remains null`);
+                        }
                       }
                     } else {
                       // tempSound already set - keep it for next calculation (add 0 = stays same)
+                      // This is correct: blank fields don't change tempSound, so subsequent takes
+                      // can still increment from the last valid value
                       logger.logCalculation(
                         'Sound File Blank - Keeping tempSound',
                         `Take ${takeNum} has blank sound file, tempSound stays unchanged`,
@@ -900,7 +933,7 @@ export const useProjectStore = create<ProjectState>()(
                           takeNumber: takeNum,
                           tempSound
                         },
-                        `tempSound remains ${tempSound} (blank field adds 0, so temp variable stays same)`,
+                        `tempSound remains ${tempSound} (blank field adds 0, so temp variable stays same for next take)`,
                         tempSound
                       );
                     }
