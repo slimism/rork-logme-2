@@ -3805,6 +3805,7 @@ This would break the logging logic and create inconsistencies in the file number
     return fields;
   };
 
+  // Early return if logSheet or project not found
   if (!logSheet || !project) {
     return (
       <View style={styles.container}>
