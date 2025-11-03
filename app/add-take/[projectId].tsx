@@ -2194,51 +2194,51 @@ This would break the logging logic and create inconsistencies in the file number
               }
             }
           }
-          
-          // Also shift sound for multi-camera scenario (ONCE, after all camera processing)
-          try {
-            let soundStartLocal = 0;
-            let soundIncrementLocal = 0;
-            const hasInsertedSoundRange = !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
-            const hasInsertedSoundSingle = !!(takeData.soundFile?.trim());
-            if (hasInsertedSoundRange) {
-              const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
-              const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
-              soundStartLocal = Math.min(newFromS, newToS);
-              soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
-            } else if (hasInsertedSoundSingle) {
-              const n = parseInt(String(takeData.soundFile), 10) || 0;
-              soundStartLocal = n;
-              soundIncrementLocal = 1;
-            } else {
-              const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-              const sameShotTakes = projectLogSheets
-                .filter(sheet => sheet.data?.sceneNumber === tScene && sheet.data?.shotNumber === tShot)
-                .map(sheet => ({ sheet, take: parseInt(sheet.data?.takeNumber || '0', 10) }))
-                .filter(x => !isNaN(x.take) && x.take < tTake)
-                .sort((a, b) => b.take - a.take);
-              for (const entry of sameShotTakes) {
-                const d = entry.sheet.data || {} as any;
-                if (typeof d.sound_from === 'string' && typeof d.sound_to === 'string') {
-                  const fromN = parseInt(d.sound_from, 10) || 0;
-                  const toN = parseInt(d.sound_to, 10) || 0;
-                  soundStartLocal = Math.max(fromN, toN);
-                  break;
-                } else if (typeof d.soundFile === 'string' && d.soundFile.trim().length > 0) {
-                  if (d.soundFile.includes('-')) {
-                    const [s, e] = d.soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
-                    soundStartLocal = Math.max(s, e);
-                  } else {
-                    soundStartLocal = parseInt(d.soundFile, 10) || 0;
-                  }
-                  break;
-                }
-              }
-              soundIncrementLocal = 0;
-            }
-            updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal, insertedLogId);
-          } catch {}
         }
+        
+        // Also shift sound for multi-camera scenario (ONCE, after all camera processing)
+        try {
+          let soundStartLocal = 0;
+          let soundIncrementLocal = 0;
+          const hasInsertedSoundRange = !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
+          const hasInsertedSoundSingle = !!(takeData.soundFile?.trim());
+          if (hasInsertedSoundRange) {
+            const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
+            const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
+            soundStartLocal = Math.min(newFromS, newToS);
+            soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
+          } else if (hasInsertedSoundSingle) {
+            const n = parseInt(String(takeData.soundFile), 10) || 0;
+            soundStartLocal = n;
+            soundIncrementLocal = 1;
+          } else {
+            const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+            const sameShotTakes = projectLogSheets
+              .filter(sheet => sheet.data?.sceneNumber === tScene && sheet.data?.shotNumber === tShot)
+              .map(sheet => ({ sheet, take: parseInt(sheet.data?.takeNumber || '0', 10) }))
+              .filter(x => !isNaN(x.take) && x.take < tTake)
+              .sort((a, b) => b.take - a.take);
+            for (const entry of sameShotTakes) {
+              const d = entry.sheet.data || {} as any;
+              if (typeof d.sound_from === 'string' && typeof d.sound_to === 'string') {
+                const fromN = parseInt(d.sound_from, 10) || 0;
+                const toN = parseInt(d.sound_to, 10) || 0;
+                soundStartLocal = Math.max(fromN, toN);
+                break;
+              } else if (typeof d.soundFile === 'string' && d.soundFile.trim().length > 0) {
+                if (d.soundFile.includes('-')) {
+                  const [s, e] = d.soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                  soundStartLocal = Math.max(s, e);
+                } else {
+                  soundStartLocal = parseInt(d.soundFile, 10) || 0;
+                }
+                break;
+              }
+            }
+            soundIncrementLocal = 0;
+          }
+          updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal, insertedLogId);
+        } catch {}
       }
       // Only shift sound files if the new entry has a sound file (not blank)
       const newEntrySoundBlank = disabledFields.has('soundFile') || !(takeData.soundFile?.trim());
