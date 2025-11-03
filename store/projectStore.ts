@@ -1057,6 +1057,11 @@ export const useProjectStore = create<ProjectState>()(
                 // Blank: do not modify, tempSound remains
                 continue;
               }
+              // Only shift entries at/after the insertion point (by file number)
+              if (currentFieldVal.upper < fromNumber) {
+                // Do not advance tempSoundGlobal with pre-insertion values
+                continue;
+              }
 
               // Calculate delta based on current entry
               const soundDeltaInput: DeltaCalculationInput = { logSheetData: effData } as any;
