@@ -442,51 +442,51 @@ export const useProjectStore = create<ProjectState>()(
             // The inserted log is the one that was inserted before the target duplicate
             // When a log is inserted before Take N with file number X, the inserted log becomes Take N with file number X
             // Then we call updateFileNumbers with fromNumber = X to shift subsequent logs
-            // So the inserted log should have file number = fromNumber, and it should be the one with the LOWEST take number
-            // that matches fromNumber (to handle cases where multiple logs might have the same file number)
+            // IMPORTANT: If excludeLogId is provided, it's the ID of the newly inserted log - use it directly!
+            // This is more reliable than searching by file number, which can match multiple logs
+            let insertedLog: LogSheet | null = null;
             
-            // Strategy 1: Find log with file number matching fromNumber, prioritizing the LOWEST take number
-            // This is the correct approach: inserted log has file number = fromNumber
-            // IMPORTANT: The inserted log is the one that was JUST inserted, which should be the FIRST log
-            // that has file number = fromNumber and needs to be shifted (or is at the insertion point)
-            // We need to find the log with the LOWEST take number that matches fromNumber
-            const matchingLogs = sheets
-              .filter(sheet => {
-                const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
-                if (sheetFieldVal && sheetFieldVal.value !== null) {
-                  // Check if this log's file number matches fromNumber
-                  // The inserted log should have file number = fromNumber
-                  return sheetFieldVal.lower === fromNumber || sheetFieldVal.upper === fromNumber;
-                }
-                return false;
-              })
-              .sort((a, b) => {
-                // Sort by take number (ascending) to get the one with LOWEST take number
-                // This ensures we get the inserted log, not a later log that also has the same file number
-                const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
-                const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
-                return aTake - bTake; // Ascending order: lowest take number first
-              });
-            
-            // The inserted log should be the one with the LOWEST take number that has file number = fromNumber
-            // This is because when inserting before Take N:
-            // - Inserted log becomes Take N with file number = fromNumber
-            // - Original Take N becomes Take N+1 with file number = fromNumber (needs shifting)
-            // So both might match, but we want Take N (the inserted one)
-            // Since we've already sorted by take number ascending, the first match is the one with lowest take number
-            let insertedLog = matchingLogs.length > 0 ? matchingLogs[0] : null;
-            
-            // Additional validation: Ensure the inserted log has take number <= fromNumber (where fromNumber is the file number)
-            // This helps distinguish between the inserted log and logs that were already shifted
-            if (insertedLog && matchingLogs.length > 1) {
-              const insertedTakeNum = parseInt(insertedLog.data?.takeNumber as string || '0', 10);
-              // If the first match has take number > fromNumber, it might be a shifted log, try the next one
-              // But actually, we want the LOWEST take number, so the first one should be correct
-              // The issue might be that fromNumber is the file number, not the take number
-              // So we should just trust the sorting (lowest take number first)
+            // Strategy 1: If excludeLogId is provided, use it directly (most reliable)
+            // The excludeLogId is the newly inserted log that we just saved
+            if (excludeLogId) {
+              insertedLog = sheets.find(sheet => sheet.id === excludeLogId) || null;
+              if (insertedLog) {
+                logger.logDebug(`Found inserted log via excludeLogId: Take ${insertedLog.data?.takeNumber}, ID: ${excludeLogId}`);
+              } else {
+                logger.logWarning(`excludeLogId ${excludeLogId} provided but log not found in sheets - will fall back to search by file number`);
+              }
             }
             
-            // Strategy 2: If not found, try fromNumber - 1 (fallback for edge cases)
+            // Strategy 2: If excludeLogId not provided or not found, search by file number
+            // Find log with file number matching fromNumber, prioritizing the LOWEST take number
+            // This handles edge cases where excludeLogId might not be set
+            if (!insertedLog) {
+              const matchingLogs = sheets
+                .filter(sheet => {
+                  const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
+                  if (sheetFieldVal && sheetFieldVal.value !== null) {
+                    // Check if this log's file number matches fromNumber
+                    // The inserted log should have file number = fromNumber
+                    return sheetFieldVal.lower === fromNumber || sheetFieldVal.upper === fromNumber;
+                  }
+                  return false;
+                })
+                .sort((a, b) => {
+                  // Sort by take number (ascending) to get the one with LOWEST take number
+                  // This ensures we get the inserted log, not a later log that also has the same file number
+                  const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
+                  const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
+                  return aTake - bTake; // Ascending order: lowest take number first
+                });
+              
+              insertedLog = matchingLogs.length > 0 ? matchingLogs[0] : null;
+              
+              if (insertedLog) {
+                logger.logDebug(`Found inserted log via file number search: Take ${insertedLog.data?.takeNumber}, file number ${fromNumber}`);
+              }
+            }
+            
+            // Strategy 3: Final fallback - try fromNumber - 1 (for edge cases)
             if (!insertedLog) {
               const fallbackLogs = sheets
                 .filter(sheet => {
@@ -503,7 +503,11 @@ export const useProjectStore = create<ProjectState>()(
                   return bTake - aTake; // Descending: highest take number first (closest to insertion point)
                 });
               
-              insertedLog = fallbackLogs[0];
+              insertedLog = fallbackLogs[0] || null;
+              
+              if (insertedLog) {
+                logger.logDebug(`Found inserted log via fallback search (fromNumber - 1): Take ${insertedLog.data?.takeNumber}`);
+              }
             }
             
             if (insertedLog) {
