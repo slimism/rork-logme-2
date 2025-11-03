@@ -102,11 +102,26 @@ export const useProjectStore = create<ProjectState>()(
           updated.push(inserted);
           // ACTION: log inserted-before event
           try {
+            const collectCameraFields = (d: any): Record<string, string> => {
+              const out: Record<string, string> = {};
+              // single-cam fallback
+              if (typeof d?.camera1_from === 'string' && typeof d?.camera1_to === 'string') out.camera1 = `${d.camera1_from}-${d.camera1_to}`;
+              else if (typeof d?.cameraFile === 'string' && d.cameraFile.trim()) out.camera1 = d.cameraFile;
+              for (let i = 1; i <= 10; i++) {
+                const fromK = `camera${i}_from` as const;
+                const toK = `camera${i}_to` as const;
+                const fileK = `cameraFile${i}` as const;
+                if (typeof d?.[fromK] === 'string' && typeof d?.[toK] === 'string') out[`camera${i}`] = `${d[fromK]}-${d[toK]}`;
+                else if (typeof d?.[fileK] === 'string' && d[fileK].trim()) out[`camera${i}`] = d[fileK];
+              }
+              return out;
+            };
             const d: any = inserted.data || {};
-            const camera = d.cameraFile || (d.camera1_from ? `${d.camera1_from}-${d.camera1_to}` : '');
-            const sound = d.soundFile || (d.sound_from ? `${d.sound_from}-${d.sound_to}` : '');
+            const camera = (d.camera1_from && d.camera1_to) ? `${d.camera1_from}-${d.camera1_to}` : (d.cameraFile || '');
+            const sound = (d.sound_from && d.sound_to) ? `${d.sound_from}-${d.sound_to}` : (d.soundFile || '');
             const classification = d.classification || '';
-            console.log(`[ACTION] Insert New Before -> projectId=${projectId} targetLocalId=${targetLocal} insertedLocalId=${inserted.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+            const camerasObj = collectCameraFields(d);
+            console.log(`[ACTION] Insert New Before -> projectId=${projectId} targetLocalId=${targetLocal} insertedLocalId=${inserted.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification} cameras=${JSON.stringify(camerasObj)}`);
           } catch {}
           // Snapshot after
           const afterOrder = updated
@@ -117,8 +132,9 @@ export const useProjectStore = create<ProjectState>()(
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
-              camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
-              sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+              camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to) ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : ((s.data as any)?.cameraFile || undefined),
+              sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to) ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : ((s.data as any)?.soundFile || undefined),
+              ...(() => { const d:any=(s as any).data||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
             }));
           console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
           console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
@@ -312,11 +328,23 @@ export const useProjectStore = create<ProjectState>()(
         }));
         // ACTION: log inserted (initial creation) and ORDER AFTER snapshot
         try {
+          const collectCameraFields = (d: any): Record<string, string> => {
+            const out: Record<string, string> = {};
+            if (typeof d?.camera1_from === 'string' && typeof d?.camera1_to === 'string') out.camera1 = `${d.camera1_from}-${d.camera1_to}`;
+            else if (typeof d?.cameraFile === 'string' && d.cameraFile.trim()) out.camera1 = d.cameraFile;
+            for (let i = 1; i <= 10; i++) {
+              const fk = `camera${i}_from` as const; const tk = `camera${i}_to` as const; const ck = `cameraFile${i}` as const;
+              if (typeof d?.[fk] === 'string' && typeof d?.[tk] === 'string') out[`camera${i}`] = `${d[fk]}-${d[tk]}`;
+              else if (typeof d?.[ck] === 'string' && d[ck].trim()) out[`camera${i}`] = d[ck];
+            }
+            return out;
+          };
           const d: any = newLogSheet.data || {};
           const camera = (d.camera1_from && d.camera1_to) ? `${d.camera1_from}-${d.camera1_to}` : (d.cameraFile || '');
           const sound = (d.sound_from && d.sound_to) ? `${d.sound_from}-${d.sound_to}` : (d.soundFile || '');
           const classification = d.classification || '';
-          console.log(`[ACTION] Log Inserted -> projectId=${projectId} projectLocalId=${newLogSheet.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+          const camerasObj = collectCameraFields(d);
+          console.log(`[ACTION] Log Inserted -> projectId=${projectId} projectLocalId=${newLogSheet.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification} cameras=${JSON.stringify(camerasObj)}`);
           const stateAfter = get();
           const orderAfter = stateAfter.logSheets
             .filter(s => s.projectId === projectId)
@@ -329,6 +357,7 @@ export const useProjectStore = create<ProjectState>()(
               camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to) ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : ((s.data as any)?.cameraFile || undefined),
               sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to) ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : ((s.data as any)?.soundFile || undefined),
               classification: (s.data as any)?.classification || undefined,
+              ...(() => { const d:any=(s as any).data||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
             }));
           console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
         } catch {}
@@ -366,13 +395,25 @@ export const useProjectStore = create<ProjectState>()(
         logger.logFunctionExit(updated);
         // ACTION LOG: Always log finalized snapshot after updates
         try {
+          const collectCameraFields = (d: any): Record<string, string> => {
+            const out: Record<string, string> = {};
+            if (typeof d?.camera1_from === 'string' && typeof d?.camera1_to === 'string') out.camera1 = `${d.camera1_from}-${d.camera1_to}`;
+            else if (typeof d?.cameraFile === 'string' && d.cameraFile.trim()) out.camera1 = d.cameraFile;
+            for (let i = 1; i <= 10; i++) {
+              const fk = `camera${i}_from` as const; const tk = `camera${i}_to` as const; const ck = `cameraFile${i}` as const;
+              if (typeof d?.[fk] === 'string' && typeof d?.[tk] === 'string') out[`camera${i}`] = `${d[fk]}-${d[tk]}`;
+              else if (typeof d?.[ck] === 'string' && d[ck].trim()) out[`camera${i}`] = d[ck];
+            }
+            return out;
+          };
           const before: any = previousData || {};
           const after: any = updated?.data || {};
           if (updated) {
             const camera = (after.camera1_from && after.camera1_to) ? `${after.camera1_from}-${after.camera1_to}` : (after.cameraFile || '');
             const sound = (after.sound_from && after.sound_to) ? `${after.sound_from}-${after.sound_to}` : (after.soundFile || '');
             const classification = after.classification || '';
-            console.log(`[ACTION] Log Finalized -> projectId=${updated.projectId} projectLocalId=${updated.projectLocalId || ''} scene=${after.sceneNumber || ''} shot=${after.shotNumber || ''} take=${after.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+            const camerasObj = collectCameraFields(after);
+            console.log(`[ACTION] Log Finalized -> projectId=${updated.projectId} projectLocalId=${updated.projectLocalId || ''} scene=${after.sceneNumber || ''} shot=${after.shotNumber || ''} take=${after.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification} cameras=${JSON.stringify(camerasObj)}`);
             const stateAfterFinalize = get();
             const orderAfterFinalize = stateAfterFinalize.logSheets
               .filter(s => s.projectId === updated.projectId)
@@ -389,6 +430,7 @@ export const useProjectStore = create<ProjectState>()(
                   ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
                   : ((s.data as any)?.soundFile || undefined),
                 classification: (s.data as any)?.classification || undefined,
+                ...(() => { const d:any=(s as any).data||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
               }));
             console.log(`[ACTION] ORDER AFTER -> projectId=${updated.projectId}`, orderAfterFinalize);
           }
@@ -650,6 +692,7 @@ export const useProjectStore = create<ProjectState>()(
                   ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
                   : ((s.data as any)?.soundFile || undefined),
                 classification: (s.data as any)?.classification || undefined,
+                ...(() => { const d:any=(s as any).data||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
               }));
             console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
           } catch {}
