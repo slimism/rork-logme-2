@@ -1046,68 +1046,60 @@ export const useProjectStore = create<ProjectState>()(
               if (val && val.value !== null) tempSoundGlobal = val.upper;
             }
 
-            // Walk forward from inserted index (or from start if not found), updating tempSound on every entry
+            // Walk forward from inserted index and sequentially update ALL entries with sound
             const startIdx = insertedIndex >= 0 ? insertedIndex + 1 : 0;
             for (let i = startIdx; i < projectOrdered.length; i++) {
               const s = projectOrdered[i].s;
               const original = s.data || {} as any;
-              const effData = (updatedSheetsMap.get(s.id)?.data) || original; // prefer already-updated data
-              const cls = effData.classification as string | undefined;
+              const effData = (updatedSheetsMap.get(s.id)?.data) || original; // prefer updated data in this call
               const currentFieldVal = getFieldValue(effData, 'soundFile');
               if (!currentFieldVal || currentFieldVal.value === null) {
-                // Blank: don't change, tempSound unchanged
+                // Blank: do not modify, tempSound remains
                 continue;
               }
 
-              // Only shift SFX/Ambience here; others only advance tempSoundGlobal
-              const isFx = cls === 'Ambience' || cls === 'SFX';
-
-              // Calculate delta
+              // Calculate delta based on current entry
               const soundDeltaInput: DeltaCalculationInput = { logSheetData: effData } as any;
               const delta = calculateSoundDeltaForShifting(soundDeltaInput);
 
-              if (isFx) {
-                const base = tempSoundGlobal;
-                let soundNewLower: number;
-                let soundNewUpper: number;
-                if (currentFieldVal.isRange) {
-                  soundNewLower = base + 1;
-                  soundNewUpper = soundNewLower + delta;
-                } else {
-                  soundNewLower = base + delta;
-                  soundNewUpper = soundNewLower;
-                }
-
-                const newData: Record<string, any> = { ...effData };
-                if (currentFieldVal.isRange) {
-                  newData['sound_from'] = String(soundNewLower).padStart(4, '0');
-                  newData['sound_to'] = String(soundNewUpper).padStart(4, '0');
-                  if (typeof effData.soundFile === 'string' && effData.soundFile.includes('-')) {
-                    newData.soundFile = `${String(soundNewLower).padStart(4, '0')}-${String(soundNewUpper).padStart(4, '0')}`;
-                  }
-                } else {
-                  newData.soundFile = String(soundNewLower).padStart(4, '0');
-                  delete newData['sound_from'];
-                  delete newData['sound_to'];
-                }
-
-                logger.logCalculation(
-                  'Global Sound Shift (Ambience/SFX)',
-                  `Shifting sound for ${s.id} (${cls}) after insertion`,
-                  { base, delta, currentLower: currentFieldVal.lower, currentUpper: currentFieldVal.upper },
-                  currentFieldVal.isRange
-                    ? `Range: newLower = base(${base}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
-                    : `Single: newLower = base(${base}) + delta(${delta}) = ${soundNewLower}`,
-                  { newLower: soundNewLower, newUpper: soundNewUpper }
-                );
-
-                logger.logSave('updateFileNumbers', s.id, newData, effData);
-                updatedSheetsMap.set(s.id, { ...s, data: newData, updatedAt: new Date().toISOString() });
-                tempSoundGlobal = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+              // Apply sequential rule: base is previous tempSound
+              const base = tempSoundGlobal;
+              let soundNewLower: number;
+              let soundNewUpper: number;
+              if (currentFieldVal.isRange) {
+                soundNewLower = base + 1;
+                soundNewUpper = soundNewLower + delta;
               } else {
-                // Not SFX/Ambience: advance tempSoundGlobal based on this entry's (possibly updated) sound
-                tempSoundGlobal = currentFieldVal.upper;
+                soundNewLower = base + delta; // delta=1 for single
+                soundNewUpper = soundNewLower;
               }
+
+              const newData: Record<string, any> = { ...effData };
+              if (currentFieldVal.isRange) {
+                newData['sound_from'] = String(soundNewLower).padStart(4, '0');
+                newData['sound_to'] = String(soundNewUpper).padStart(4, '0');
+                if (typeof effData.soundFile === 'string' && effData.soundFile.includes('-')) {
+                  newData.soundFile = `${String(soundNewLower).padStart(4, '0')}-${String(soundNewUpper).padStart(4, '0')}`;
+                }
+              } else {
+                newData.soundFile = String(soundNewLower).padStart(4, '0');
+                delete newData['sound_from'];
+                delete newData['sound_to'];
+              }
+
+              logger.logCalculation(
+                'Global Sound Shift (All Entries)',
+                `Sequential shift for ${s.id} after insertion`,
+                { base, delta, currentLower: currentFieldVal.lower, currentUpper: currentFieldVal.upper },
+                currentFieldVal.isRange
+                  ? `Range: newLower = base(${base}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
+                  : `Single: newLower = base(${base}) + delta(${delta}) = ${soundNewLower}`,
+                { newLower: soundNewLower, newUpper: soundNewUpper }
+              );
+
+              logger.logSave('updateFileNumbers', s.id, newData, effData);
+              updatedSheetsMap.set(s.id, { ...s, data: newData, updatedAt: new Date().toISOString() });
+              tempSoundGlobal = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
             }
           }
 
