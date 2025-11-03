@@ -104,8 +104,9 @@ export const useProjectStore = create<ProjectState>()(
               camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
               sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
             }));
-          console.log('[ID SHIFT] Insert New Before - ORDER BEFORE:', beforeOrder);
-          console.log('[ID SHIFT] Insert New Before - ORDER AFTER:', afterOrder);
+          console.log(`[ACTION][Project ${projectId}] Insert New Before -> Target ID: ${targetNumeric}`);
+          console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
+          console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
           return {
             logSheets: updated,
             nextLogId: prev.nextLogId + 1,
@@ -161,8 +162,9 @@ export const useProjectStore = create<ProjectState>()(
                 camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
                 sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
               }));
-            console.log('[ID SHIFT] Move Existing Before - ORDER BEFORE:', beforeOrder);
-            console.log('[ID SHIFT] Move Existing Before - ORDER AFTER:', afterOrder);
+            console.log(`[ACTION][Project ${projectId}] Move Existing Before -> Moving ID: ${moving} Target ID: ${target}`);
+            console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
+            console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
             return { logSheets: updated };
           });
         }
@@ -319,6 +321,16 @@ export const useProjectStore = create<ProjectState>()(
         const updated = get().logSheets.find(sheet => sheet.id === id);
         logger.logSave('updateLogSheet', id, updated?.data || {}, previousData);
         logger.logFunctionExit(updated);
+        // ACTION LOG: If this appears to be first population (previous had no take), log summary with Project ID
+        try {
+          const before: any = previousData || {};
+          const after: any = updated?.data || {};
+          if (updated && (!before?.takeNumber && !!after?.takeNumber)) {
+            const camera = after.cameraFile || (after.camera1_from ? `${after.camera1_from}-${after.camera1_to}` : '');
+            const sound = after.soundFile || (after.sound_from ? `${after.sound_from}-${after.sound_to}` : '');
+            console.log(`[ACTION][Project ${updated.projectId}] New Log Finalized -> Scene: ${after.sceneNumber || ''} Shot: ${after.shotNumber || ''} Take: ${after.takeNumber || ''} ID: ${updated.id} Camera: ${camera} Sound: ${sound}`);
+          }
+        } catch {}
       },
       
       updateLogSheetName: (id: string, name: string) => {

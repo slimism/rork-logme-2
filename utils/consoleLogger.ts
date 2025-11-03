@@ -97,22 +97,25 @@ class ConsoleLogger {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `comprehensive-logs-${timestamp}`;
       
-      // Format console logs
-      const logText = this.logs
+      // Keep only ACTION logs with Project context
+      const actionLogs = this.logs.filter(l =>
+        typeof l.message === 'string' && (l.message.includes('[ACTION]') && l.message.includes('[Project '))
+      );
+      const logText = actionLogs
         .map(log => {
           const time = new Date(log.timestamp).toLocaleTimeString();
-          return `[${time}] [${log.level.toUpperCase()}] ${log.message}`;
+          return `[${time}] ${log.message}`;
         })
-        .join('\n\n');
+        .join('\n');
 
       // Minimal export content
       const content = `COMPREHENSIVE LOGS EXPORT
 Generated: ${new Date().toLocaleString()}
 
 ${'='.repeat(80)}
-SECTION: LOGS
+SECTION: PROJECT ACTION LOGS
 ${'='.repeat(80)}
-Total Logs: ${this.logs.length}
+Total Action Logs: ${actionLogs.length}
 
 ${logText}
 
