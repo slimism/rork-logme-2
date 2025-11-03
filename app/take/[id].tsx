@@ -3354,58 +3354,76 @@ This would break the logging logic and create inconsistencies in the file number
       let newCamToNum = 0;
       const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
       if (targetRange && !disabledFields.has('cameraFile')) {
-        const bounds = getInsertedBounds('cameraFile');
-        const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+        // Target has a range - update it regardless of whether new entry is range or single
+        let insertedMax: number;
+        let deltaLocal: number;
+        
+        if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+          // New entry has range
+          const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+          const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+          insertedMax = Math.max(insertedFrom, insertedTo);
+          deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+        } else {
+          // New entry has single value
+          insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
+          deltaLocal = 1;
+        }
+
         const oldToNum = parseInt(targetRange.to, 10) || 0;
-        const delta = camDelta;
-        const newFrom = String(insertedUpper + 1).padStart(4, '0');
-        const newTo = String(oldToNum + delta).padStart(4, '0');
-        newCamToNum = oldToNum + delta;
+        const newFromNum = insertedMax + 1;
+        const newToNum = oldToNum + deltaLocal;
+        newCamToNum = newToNum;
+        
         existingEntryUpdates = {
           ...existingEntryUpdates,
-          camera1_from: newFrom,
-          camera1_to: newTo
+          camera1_from: String(newFromNum).padStart(4, '0'),
+          camera1_to: String(newToNum).padStart(4, '0')
         };
-        const hadInline = typeof existingEntry.data?.cameraFile === 'string' && isRangeString(existingEntry.data.cameraFile);
+        const hadInline = typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.includes('-');
         if (hadInline) {
-          existingEntryUpdates.cameraFile = `${newFrom}-${newTo}`;
+          existingEntryUpdates.cameraFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
         }
         hasUpdates = true;
       } else {
-        // Handle single camera value (not range) - target has single, need to update it
-        const targetHasSingleCamera = typeof existingEntry.data?.cameraFile === 'string' && !isRangeString(existingEntry.data.cameraFile);
-        if (targetHasSingleCamera) {
-          const targetCamNum = parseInt(existingEntry.data.cameraFile as string, 10) || 0;
-          
-          // Check if new entry has range or single value - use edited values
-          let newCamMin: number;
-          let newCamMax: number;
-          if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
-            // New entry has range - use edited range values
-            const a = parseInt(rangeData['cameraFile'].from, 10) || 0;
-            const b = parseInt(rangeData['cameraFile'].to, 10) || 0;
-            newCamMin = Math.min(a, b);
-            newCamMax = Math.max(a, b);
-          } else if (takeData.cameraFile) {
-            // New entry has single value
-            const val = parseInt(String(takeData.cameraFile), 10) || 0;
-            newCamMin = val;
-            newCamMax = val;
-          } else {
-            newCamMin = 0;
-            newCamMax = 0;
+        // Handle single camera value (not range)
+        const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
+        if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+          const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+          // Calculate increment based on new log's range size
+          let camIncrement = 1;
+          const newLogRange = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+            const newFrom = parseInt(newLogRange.from, 10) || 0;
+            const newTo = parseInt(newLogRange.to, 10) || 0;
+            camIncrement = Math.abs(newTo - newFrom) + 1;
           }
           
-          // Only bump if target camera number equals the min of the new range (insert before scenario)
-          const shouldBump = targetCamNum === newCamMin;
-          if (shouldBump) {
-            // Use edited range's max + 1 for calculating bump position
-            existingEntryUpdates = {
-              ...existingEntryUpdates,
-              cameraFile: String(newCamMax + 1).padStart(4, '0'),
-              takeNumber: String(targetTake + 1)
-            };
-            hasUpdates = true;
+          if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+            // New entry has range, target has single value
+            const insFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+            const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+            const min = Math.min(insFrom, insTo);
+            const max = Math.max(insFrom, insTo);
+            if (targetSingleNum >= min && targetSingleNum <= max) {
+              existingEntryUpdates = {
+                ...existingEntryUpdates,
+                cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                takeNumber: String(targetTake + 1)
+              };
+              hasUpdates = true;
+            }
+          } else if (takeData.cameraFile) {
+            // Both have single values
+            const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+            if (newSingle === targetSingleNum) {
+              existingEntryUpdates = {
+                ...existingEntryUpdates,
+                cameraFile: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                takeNumber: String(targetTake + 1)
+              };
+              hasUpdates = true;
+            }
           }
         }
       }
@@ -3438,58 +3456,79 @@ This would break the logging logic and create inconsistencies in the file number
           let newCamToNum = 0;
           const targetRange = getRangeFromData(existingEntry.data, fieldId);
           if (targetRange && !disabledFields.has(fieldId)) {
-            const bounds = getInsertedBounds(fieldId);
-            const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+            // Target has a range - update it regardless of whether new entry is range or single
+            let insertedMax: number;
+            let deltaLocal: number;
+            
+            if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+              // New entry has range
+              const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+              const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+              insertedMax = Math.max(insertedFrom, insertedTo);
+              deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+            } else {
+              // New entry has single value
+              insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
+              deltaLocal = 1;
+            }
+
             const oldToNum = parseInt(targetRange.to, 10) || 0;
-            const delta = camDelta;
-            const newFrom = String(insertedUpper + 1).padStart(4, '0');
-            const newTo = String(oldToNum + delta).padStart(4, '0');
-            newCamToNum = oldToNum + delta;
+            const newFromNum = insertedMax + 1;
+            const newToNum = oldToNum + deltaLocal;
+            newCamToNum = newToNum;
+            
+            const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+            const fromKeyLocal = `camera${cameraNum}_from` as const;
+            const toKeyLocal = `camera${cameraNum}_to` as const;
             existingEntryUpdates = {
               ...existingEntryUpdates,
-              [`camera${i}_from`]: newFrom,
-              [`camera${i}_to`]: newTo
+              [fromKeyLocal]: String(newFromNum).padStart(4, '0'),
+              [toKeyLocal]: String(newToNum).padStart(4, '0')
             };
-            const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+            const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-');
             if (hadInline) {
-              existingEntryUpdates[fieldId] = `${newFrom}-${newTo}`;
+              existingEntryUpdates[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
             }
             hasUpdates = true;
           } else {
-            // Handle single camera value (not range) - target has single, need to update it
-            const targetHasSingleCamera = typeof existingEntry.data?.[fieldId] === 'string' && !isRangeString(existingEntry.data[fieldId]);
-            if (targetHasSingleCamera) {
-              const targetCamNum = parseInt(existingEntry.data[fieldId] as string, 10) || 0;
-              
-              // Check if new entry has range or single value - use edited values
-              let newCamMin: number;
-              let newCamMax: number;
-              if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
-                // New entry has range - use edited range values
-                const a = parseInt(rangeData[fieldId].from, 10) || 0;
-                const b = parseInt(rangeData[fieldId].to, 10) || 0;
-                newCamMin = Math.min(a, b);
-                newCamMax = Math.max(a, b);
-              } else if (takeData[fieldId]) {
-                // New entry has single value
-                const val = parseInt(String(takeData[fieldId]), 10) || 0;
-                newCamMin = val;
-                newCamMax = val;
-              } else {
-                newCamMin = 0;
-                newCamMax = 0;
+            // Handle single camera value (not range)
+            const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+            if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+              const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+              // Calculate increment based on new log's range size
+              let camIncrement = 1;
+              const newLogRange = rangeData[fieldId];
+              if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+                const newFrom = parseInt(newLogRange.from, 10) || 0;
+                const newTo = parseInt(newLogRange.to, 10) || 0;
+                camIncrement = Math.abs(newTo - newFrom) + 1;
               }
               
-              // Only bump if target camera number equals the min of the new range (insert before scenario)
-              const shouldBump = targetCamNum === newCamMin;
-              if (shouldBump) {
-                // Use edited range's max + 1 for calculating bump position
-                existingEntryUpdates = {
-                  ...existingEntryUpdates,
-                  [fieldId]: String(newCamMax + 1).padStart(4, '0'),
-                  takeNumber: String(targetTake + 1)
-                };
-                hasUpdates = true;
+              if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                // New entry has range, target has single value
+                const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                const min = Math.min(insFrom, insTo);
+                const max = Math.max(insFrom, insTo);
+                if (targetSingleNum >= min && targetSingleNum <= max) {
+                  existingEntryUpdates = {
+                    ...existingEntryUpdates,
+                    [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    takeNumber: String(targetTake + 1)
+                  };
+                  hasUpdates = true;
+                }
+              } else if (takeData[fieldId]) {
+                // Both have single values
+                const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                if (newSingle === targetSingleNum) {
+                  existingEntryUpdates = {
+                    ...existingEntryUpdates,
+                    [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
+                    takeNumber: String(targetTake + 1)
+                  };
+                  hasUpdates = true;
+                }
               }
             }
           }
@@ -3638,7 +3677,7 @@ This would break the logging logic and create inconsistencies in the file number
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && camDelta > 0) {
-        const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+        // Use camStart (lower bound) directly, not targetRange.to + 1
         let camStart = cameraFromNumber;
         if (typeof existingEntry.data?.camera1_from === 'string') {
           const n = parseInt(existingEntry.data.camera1_from, 10);
@@ -3647,8 +3686,7 @@ This would break the logging logic and create inconsistencies in the file number
           const n = parseInt(existingEntry.data.cameraFile, 10);
           if (!Number.isNaN(n)) camStart = n;
         }
-        const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart;
-        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta);
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camDelta, logSheet.id);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3665,7 +3703,7 @@ This would break the logging logic and create inconsistencies in the file number
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
           if (!disabledFields.has(fieldId) && camDelta > 0) {
-            const targetRange = getRangeFromData(existingEntry.data, fieldId);
+            // Use camStart (lower bound) directly, not targetRange.to + 1
             let camStartForField = cameraFromNumber;
             const fromKey = `camera${i}_from` as const;
             const fromVal = existingEntry.data?.[fromKey];
@@ -3677,8 +3715,7 @@ This would break the logging logic and create inconsistencies in the file number
               const n = parseInt(val, 10);
               if (!Number.isNaN(n)) camStartForField = n;
             }
-            const camStartShift = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStartForField;
-            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta);
+            updateFileNumbers(logSheet.projectId, fieldId, camStartForField, camDelta, logSheet.id);
           }
         }
       }
