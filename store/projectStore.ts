@@ -100,6 +100,14 @@ export const useProjectStore = create<ProjectState>()(
           // Place new log with the target id
           const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
           updated.push(inserted);
+          // ACTION: log inserted-before event
+          try {
+            const d: any = inserted.data || {};
+            const camera = d.cameraFile || (d.camera1_from ? `${d.camera1_from}-${d.camera1_to}` : '');
+            const sound = d.soundFile || (d.sound_from ? `${d.sound_from}-${d.sound_to}` : '');
+            const classification = d.classification || '';
+            console.log(`[ACTION] Insert New Before -> projectId=${projectId} targetLocalId=${targetLocal} insertedLocalId=${inserted.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+          } catch {}
           // Snapshot after
           const afterOrder = updated
             .filter(s => s.projectId === projectId)
@@ -112,9 +120,8 @@ export const useProjectStore = create<ProjectState>()(
               camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
               sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
             }));
-          console.log(`[ACTION][Project ${projectId}] Insert New Before -> Target Local ID: ${targetLocal}`);
-          console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
-          console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
+          console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
+          console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
           return {
             logSheets: updated,
             nextLogId: prev.nextLogId + 1,
@@ -170,9 +177,9 @@ export const useProjectStore = create<ProjectState>()(
                 camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
                 sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
               }));
-            console.log(`[ACTION][Project ${projectId}] Move Existing Before -> Moving Local ID: ${moving} Target Local ID: ${target}`);
-            console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
-            console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
+            console.log(`[ACTION] Move Existing Before -> projectId=${projectId} movingLocalId=${moving} targetLocalId=${target}`);
+            console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
+            console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
             return { logSheets: updated };
           });
         }
@@ -303,6 +310,14 @@ export const useProjectStore = create<ProjectState>()(
           nextLogId: state.nextLogId + 1,
           projectLocalCounters: { ...state.projectLocalCounters, [projectId]: nextLocal + 1 },
         }));
+        // ACTION: log inserted (initial creation)
+        try {
+          const d: any = newLogSheet.data || {};
+          const camera = d.cameraFile || (d.camera1_from ? `${d.camera1_from}-${d.camera1_to}` : '');
+          const sound = d.soundFile || (d.sound_from ? `${d.sound_from}-${d.sound_to}` : '');
+          const classification = d.classification || '';
+          console.log(`[ACTION] Log Inserted -> projectId=${projectId} projectLocalId=${newLogSheet.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+        } catch {}
         
         return newLogSheet;
       },
@@ -335,14 +350,15 @@ export const useProjectStore = create<ProjectState>()(
         const updated = get().logSheets.find(sheet => sheet.id === id);
         logger.logSave('updateLogSheet', id, updated?.data || {}, previousData);
         logger.logFunctionExit(updated);
-        // ACTION LOG: If this appears to be first population (previous had no take), log summary with Project ID
+        // ACTION LOG: If this appears to be first population (previous had no take), log summary
         try {
           const before: any = previousData || {};
           const after: any = updated?.data || {};
           if (updated && (!before?.takeNumber && !!after?.takeNumber)) {
             const camera = after.cameraFile || (after.camera1_from ? `${after.camera1_from}-${after.camera1_to}` : '');
             const sound = after.soundFile || (after.sound_from ? `${after.sound_from}-${after.sound_to}` : '');
-            console.log(`[ACTION][Project ${updated.projectId}] New Log Finalized -> Scene: ${after.sceneNumber || ''} Shot: ${after.shotNumber || ''} Take: ${after.takeNumber || ''} ID: ${updated.id} Camera: ${camera} Sound: ${sound}`);
+            const classification = after.classification || '';
+            console.log(`[ACTION] Log Finalized -> projectId=${updated.projectId} projectLocalId=${updated.projectLocalId || ''} scene=${after.sceneNumber || ''} shot=${after.shotNumber || ''} take=${after.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
           }
         } catch {}
       },
