@@ -313,8 +313,8 @@ export const useProjectStore = create<ProjectState>()(
         // ACTION: log inserted (initial creation) and ORDER AFTER snapshot
         try {
           const d: any = newLogSheet.data || {};
-          const camera = d.cameraFile || (d.camera1_from ? `${d.camera1_from}-${d.camera1_to}` : '');
-          const sound = d.soundFile || (d.sound_from ? `${d.sound_from}-${d.sound_to}` : '');
+          const camera = (d.camera1_from && d.camera1_to) ? `${d.camera1_from}-${d.camera1_to}` : (d.cameraFile || '');
+          const sound = (d.sound_from && d.sound_to) ? `${d.sound_from}-${d.sound_to}` : (d.soundFile || '');
           const classification = d.classification || '';
           console.log(`[ACTION] Log Inserted -> projectId=${projectId} projectLocalId=${newLogSheet.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
           const stateAfter = get();
@@ -326,8 +326,8 @@ export const useProjectStore = create<ProjectState>()(
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
-              camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
-              sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+              camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to) ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : ((s.data as any)?.cameraFile || undefined),
+              sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to) ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : ((s.data as any)?.soundFile || undefined),
               classification: (s.data as any)?.classification || undefined,
             }));
           console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
@@ -369,8 +369,8 @@ export const useProjectStore = create<ProjectState>()(
           const before: any = previousData || {};
           const after: any = updated?.data || {};
           if (updated) {
-            const camera = after.cameraFile || (after.camera1_from ? `${after.camera1_from}-${after.camera1_to}` : '');
-            const sound = after.soundFile || (after.sound_from ? `${after.sound_from}-${after.sound_to}` : '');
+            const camera = (after.camera1_from && after.camera1_to) ? `${after.camera1_from}-${after.camera1_to}` : (after.cameraFile || '');
+            const sound = (after.sound_from && after.sound_to) ? `${after.sound_from}-${after.sound_to}` : (after.soundFile || '');
             const classification = after.classification || '';
             console.log(`[ACTION] Log Finalized -> projectId=${updated.projectId} projectLocalId=${updated.projectLocalId || ''} scene=${after.sceneNumber || ''} shot=${after.shotNumber || ''} take=${after.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
           }

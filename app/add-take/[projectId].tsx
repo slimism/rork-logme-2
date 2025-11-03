@@ -2305,7 +2305,7 @@ This would break the logging logic and create inconsistencies in the file number
             `Take ${stats.totalTakes + 1}`,
             'take',
             '',
-            () => ({})
+            () => ({ ...newLogData })
           );
           if (inserted) return inserted;
         }
