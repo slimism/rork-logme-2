@@ -2545,6 +2545,14 @@ This would break the logging logic and create inconsistencies in the file number
         const targetTakeNumber = parseInt(existingEntry.data?.takeNumber || '0', 10);
         newLogData.sceneNumber = targetSceneNumber;
         newLogData.shotNumber = targetShotNumber;
+        // Move the existing (edited) log before the target to align projectLocalId ordering
+        try {
+          const movingLocalId = parseInt(String((logSheet as any)?.projectLocalId || ''), 10);
+          const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || ''), 10);
+          if (!Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalId) && movingLocalId !== targetLocalId) {
+            moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalId));
+          }
+        } catch {}
         if (targetSceneNumber && targetShotNumber && !Number.isNaN(targetTakeNumber)) {
           newLogData.takeNumber = existingEntry.data.takeNumber;
           const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
@@ -2663,69 +2671,10 @@ This would break the logging logic and create inconsistencies in the file number
         }
 
         // Shift file numbers starting from target
-        // Use SoundHandler for sound file operations
+        // Process cameras first, then sound ONCE after all camera processing
         console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
         console.log('  Edited log ID:', logSheet.id);
         console.log('  Existing entry ID:', existingEntry.id);
-        
-        // Use SoundHandler to handle sound file operations
-        const soundHandlerContext = {
-          projectId: logSheet.projectId,
-          projectLogSheets: logSheets.filter(s => s.projectId === logSheet.projectId),
-          takeData,
-          showRangeMode,
-          rangeData,
-          existingEntry,
-          sceneNumber: existingEntry.data?.sceneNumber as string,
-          shotNumber: existingEntry.data?.shotNumber as string,
-          takeNumber: targetTakeNumber
-        };
-        
-        const soundFileResult = handleSoundFileForDuplicateInsertion(
-          soundHandlerContext,
-          targetTakeNumber
-        );
-        
-        if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
-          console.log('  SoundHandler: Calling updateFileNumbers for soundFile:', { 
-            start: soundFileResult.soundStart, 
-            delta: soundFileResult.soundDelta 
-          });
-          updateFileNumbers(
-            logSheet.projectId, 
-            'soundFile', 
-            soundFileResult.soundStart!, 
-            soundFileResult.soundDelta
-          );
-          
-          // If target has a range, adjust lower to end after inserted and extend upper by delta
-          if (soundFileResult.shouldShift && existingEntry) {
-            const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-            if (targetRange) {
-              const bounds = getInsertedBounds('soundFile');
-              const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-              const oldToNum = parseInt(targetRange.to, 10) || 0;
-              const newFrom = String(insertedUpper + 1).padStart(4, '0');
-              const newTo = String(oldToNum + soundFileResult.soundDelta).padStart(4, '0');
-              const updated: Record<string, any> = { ...existingEntry.data, sound_from: newFrom, sound_to: newTo };
-              const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
-              if (hadInline) {
-                updated.soundFile = `${newFrom}-${newTo}`;
-              }
-              updateLogSheet(existingEntry.id, updated);
-            } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
-              const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
-              const newVal = String(exNum + soundFileResult.soundDelta).padStart(4, '0');
-              const updated: Record<string, any> = { ...existingEntry.data, soundFile: newVal };
-              updateLogSheet(existingEntry.id, updated);
-            }
-          }
-        } else {
-          console.log('  SoundHandler: Skipping sound file shift', { 
-            shouldCall: soundFileResult.shouldCallUpdateFileNumbers,
-            isDisabled: disabledFields.has('soundFile')
-          });
-        }
 
         console.log('DEBUG - Processing camera shifts for camCount=1');
         if (camCount === 1) {
@@ -2760,8 +2709,12 @@ This would break the logging logic and create inconsistencies in the file number
                 updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
               }
               
+              // Read current state of the log from store (after updateFileNumbers may have updated it)
+              const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+              const currentData = currentLogSheet?.data || existingEntry.data;
+              
               // If target has a range, adjust lower to end after inserted and extend upper by delta
-              const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+              const targetRange = getRangeFromData(currentData, 'cameraFile');
               if (targetRange) {
                 const bounds = getInsertedBounds('cameraFile');
                 const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
@@ -2769,18 +2722,18 @@ This would break the logging logic and create inconsistencies in the file number
                 const newFrom = String(insertedUpper + 1).padStart(4, '0');
                 const newTo = String(oldToNum + camDelta).padStart(4, '0');
                 const updated: Record<string, any> = {
-                  ...existingEntry.data,
+                  ...currentData,
                   camera1_from: newFrom,
                   camera1_to: newTo
                 };
-                const hadInline = typeof existingEntry.data?.cameraFile === 'string' && isRangeString(existingEntry.data.cameraFile);
+                const hadInline = typeof currentData?.cameraFile === 'string' && isRangeString(currentData.cameraFile);
                 if (hadInline) {
                   updated.cameraFile = `${newFrom}-${newTo}`;
                 }
                 updateLogSheet(existingEntry.id, updated);
-              } else if (!targetRange) {
-                // Handle single camera value (not range)
-                const targetSingleStr = existingEntry.data?.cameraFile as string | undefined;
+                  } else if (!targetRange) {
+                    // Handle single camera value (not range)
+                    const targetSingleStr = currentData?.cameraFile as string | undefined;
                 if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                   const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                   if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
@@ -2789,9 +2742,9 @@ This would break the logging logic and create inconsistencies in the file number
                     const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
                     const min = Math.min(insFrom, insTo);
                     const max = Math.max(insFrom, insTo);
-                    if (targetSingleNum >= min && targetSingleNum <= max) {
+                        if (targetSingleNum >= min && targetSingleNum <= max) {
                       const updatedData: Record<string, any> = { 
-                        ...existingEntry.data, 
+                        ...currentData, 
                         cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
                         takeNumber: String(targetTakeNumber + 1)
                       };
@@ -2802,7 +2755,7 @@ This would break the logging logic and create inconsistencies in the file number
                     const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
                     if (newSingle === targetSingleNum) {
                       const updatedData: Record<string, any> = { 
-                        ...existingEntry.data, 
+                        ...currentData, 
                         cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
                         takeNumber: String(targetTakeNumber + 1)
                       };
@@ -2839,8 +2792,12 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!disabledFields.has(fieldId)) {
                   { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
+                  // Read current state of the log from store (after updateFileNumbers may have updated it)
+                  const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+                  const currentData = currentLogSheet?.data || existingEntry.data;
+                  
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
-                  const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                  const targetRange = getRangeFromData(currentData, fieldId);
                   if (targetRange) {
                     const bounds = getInsertedBounds(fieldId);
                     const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
@@ -2848,18 +2805,19 @@ This would break the logging logic and create inconsistencies in the file number
                     const newFrom = String(insertedUpper + 1).padStart(4, '0');
                     const newTo = String(oldToNum + camDelta).padStart(4, '0');
                     const updated: Record<string, any> = {
-                      ...existingEntry.data,
+                      ...currentData,
                       [`camera${i}_from`]: newFrom,
                       [`camera${i}_to`]: newTo
                     };
-                    const hadInline = typeof existingEntry.data?.[fieldId] === 'string' && isRangeString(existingEntry.data[fieldId]);
+                    const hadInline = typeof currentData?.[fieldId] === 'string' && isRangeString(currentData[fieldId]);
                     if (hadInline) {
                       updated[fieldId] = `${newFrom}-${newTo}`;
                     }
+                    updated.takeNumber = String(targetTakeNumber + 1);
                     updateLogSheet(existingEntry.id, updated);
                   } else if (!targetRange) {
                     // Handle single camera value (not range)
-                    const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+                    const targetSingleStr = currentData?.[fieldId] as string | undefined;
                     if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                       const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                       if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
@@ -2870,7 +2828,7 @@ This would break the logging logic and create inconsistencies in the file number
                         const max = Math.max(insFrom, insTo);
                         if (targetSingleNum >= min && targetSingleNum <= max) {
                           const updatedData: Record<string, any> = { 
-                            ...existingEntry.data, 
+                            ...currentData, 
                             [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
                             takeNumber: String(targetTakeNumber + 1)
                           };
@@ -2881,7 +2839,7 @@ This would break the logging logic and create inconsistencies in the file number
                         const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
                         if (newSingle === targetSingleNum) {
                           const updatedData: Record<string, any> = { 
-                            ...existingEntry.data, 
+                            ...currentData, 
                             [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
                             takeNumber: String(targetTakeNumber + 1)
                           };
@@ -2895,6 +2853,63 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
         }
+        
+        // Also shift sound for single and multi-camera scenario (ONCE, after all camera processing)
+        try {
+          let soundStartLocal = 0;
+          let soundIncrementLocal = 0;
+          const hasInsertedSoundRange = !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
+          const hasInsertedSoundSingle = !!(takeData.soundFile?.trim());
+          if (hasInsertedSoundRange) {
+            const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
+            const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
+            soundStartLocal = Math.min(newFromS, newToS);
+            soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
+          } else if (hasInsertedSoundSingle) {
+            const n = parseInt(String(takeData.soundFile), 10) || 0;
+            soundStartLocal = n;
+            soundIncrementLocal = 1;
+          } else {
+            const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
+            const sameShotTakes = projectLogSheets
+              .filter(sheet => sheet.data?.sceneNumber === targetSceneNumber && sheet.data?.shotNumber === targetShotNumber)
+              .map(sheet => ({ sheet, take: parseInt(sheet.data?.takeNumber || '0', 10) }))
+              .filter(x => !isNaN(x.take) && x.take < targetTakeNumber)
+              .sort((a, b) => b.take - a.take);
+            for (const entry of sameShotTakes) {
+              const d = entry.sheet.data || {} as any;
+              if (typeof d.sound_from === 'string' && typeof d.sound_to === 'string') {
+                const fromN = parseInt(d.sound_from, 10) || 0;
+                const toN = parseInt(d.sound_to, 10) || 0;
+                soundStartLocal = Math.max(fromN, toN);
+                break;
+              } else if (typeof d.soundFile === 'string' && d.soundFile.trim().length > 0) {
+                if (d.soundFile.includes('-')) {
+                  const [s, e] = d.soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                  soundStartLocal = Math.max(s, e);
+                } else {
+                  soundStartLocal = parseInt(d.soundFile, 10) || 0;
+                }
+                break;
+              }
+            }
+            soundIncrementLocal = 0;
+          }
+          if (!disabledFields.has('soundFile') && (soundStartLocal > 0 || soundIncrementLocal > 0)) {
+            // Use target duplicate's sound value as the start if it exists
+            let soundStartForShift = soundStartLocal;
+            if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
+              if (typeof existingEntry.data?.sound_from === 'string') {
+                const n = parseInt(existingEntry.data.sound_from, 10);
+                if (!Number.isNaN(n)) soundStartForShift = n;
+              } else if (typeof existingEntry.data?.soundFile === 'string') {
+                const n = parseInt(existingEntry.data.soundFile, 10);
+                if (!Number.isNaN(n)) soundStartForShift = n;
+              }
+            }
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStartForShift, soundIncrementLocal, logSheet.id);
+          }
+        } catch {}
       }
 
       // Note: For type='file', the log was already saved at line 2509 with correct range persistence
