@@ -97,14 +97,11 @@ class ConsoleLogger {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `comprehensive-logs-${timestamp}`;
       
-      // Keep only ACTION logs with Project context
-      const actionLogs = this.logs.filter(l =>
-        typeof l.message === 'string' && l.message.includes('[ACTION]')
-      );
-      const logText = actionLogs
+      // Include all logs without filtering
+      const logText = this.logs
         .map(log => {
           const time = new Date(log.timestamp).toLocaleTimeString();
-          return `[${time}] ${log.message}`;
+          return `[${time}] [${log.level.toUpperCase()}] ${log.message}`;
         })
         .join('\n');
 
@@ -113,9 +110,9 @@ class ConsoleLogger {
 Generated: ${new Date().toLocaleString()}
 
 ${'='.repeat(80)}
-SECTION: PROJECT ACTION LOGS
+SECTION: LOGS
 ${'='.repeat(80)}
-Total Action Logs: ${actionLogs.length}
+Total Logs: ${this.logs.length}
 
 ${logText}
 
