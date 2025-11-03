@@ -99,7 +99,7 @@ class ConsoleLogger {
       
       // Keep only ACTION logs with Project context
       const actionLogs = this.logs.filter(l =>
-        typeof l.message === 'string' && (l.message.includes('[ACTION]') && l.message.includes('[Project '))
+        typeof l.message === 'string' && l.message.includes('[ACTION]')
       );
       const logText = actionLogs
         .map(log => {
