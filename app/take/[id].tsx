@@ -3460,7 +3460,8 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0) {
       // Always use soundStart (the beginning of the duplicate), not the end of the range
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+      // Pass excludeLogId so store can reliably initialize tempSound from the inserted/edited log
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
     }
     
     if (camCount === 1) {
