@@ -2400,6 +2400,8 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
+    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+
     router.back();
   };
 
@@ -2726,6 +2728,8 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
+
+    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
 
     router.back();
   };
@@ -3261,6 +3265,8 @@ This would break the logging logic and create inconsistencies in the file number
       insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
     };
+  
+  try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
     
     router.back();
   };
