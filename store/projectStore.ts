@@ -44,6 +44,17 @@ export const useProjectStore = create<ProjectState>()(
 
         const state = get();
         const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
+        // Snapshot before
+        const beforeOrder = [...projectLogs]
+          .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+          .map(s => ({
+            id: s.id,
+            scene: (s.data as any)?.sceneNumber,
+            shot: (s.data as any)?.shotNumber,
+            take: (s.data as any)?.takeNumber,
+            camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+            sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+          }));
         // Determine nextLogId baseline as max(existing)+1
         const maxExistingId = projectLogs.reduce((m, s) => Math.max(m, parseInt(s.id as string, 10) || 0), 0);
         if (state.nextLogId <= maxExistingId) {
@@ -81,6 +92,20 @@ export const useProjectStore = create<ProjectState>()(
           // Place new log with the target id
           const inserted: LogSheet = { ...newLog, id: targetNumeric.toString() };
           updated.push(inserted);
+          // Snapshot after
+          const afterOrder = updated
+            .filter(s => s.projectId === projectId)
+            .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+            .map(s => ({
+              id: s.id,
+              scene: (s.data as any)?.sceneNumber,
+              shot: (s.data as any)?.shotNumber,
+              take: (s.data as any)?.takeNumber,
+              camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+              sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+            }));
+          console.log('[ID SHIFT] Insert New Before - ORDER BEFORE:', beforeOrder);
+          console.log('[ID SHIFT] Insert New Before - ORDER AFTER:', afterOrder);
           return {
             logSheets: updated,
             nextLogId: prev.nextLogId + 1,
@@ -98,6 +123,18 @@ export const useProjectStore = create<ProjectState>()(
 
         // Only handle moving from later to earlier (decreasing id)
         if (moving > target) {
+          const state = get();
+          const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
+          const beforeOrder = [...projectLogs]
+            .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+            .map(s => ({
+              id: s.id,
+              scene: (s.data as any)?.sceneNumber,
+              shot: (s.data as any)?.shotNumber,
+              take: (s.data as any)?.takeNumber,
+              camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+              sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+            }));
           set((prev) => {
             const updated = prev.logSheets.map(s => {
               if (s.projectId !== projectId) return s;
@@ -113,6 +150,19 @@ export const useProjectStore = create<ProjectState>()(
               }
               return s;
             });
+            const afterOrder = updated
+              .filter(s => s.projectId === projectId)
+              .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+              .map(s => ({
+                id: s.id,
+                scene: (s.data as any)?.sceneNumber,
+                shot: (s.data as any)?.shotNumber,
+                take: (s.data as any)?.takeNumber,
+                camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+                sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+              }));
+            console.log('[ID SHIFT] Move Existing Before - ORDER BEFORE:', beforeOrder);
+            console.log('[ID SHIFT] Move Existing Before - ORDER AFTER:', afterOrder);
             return { logSheets: updated };
           });
         }

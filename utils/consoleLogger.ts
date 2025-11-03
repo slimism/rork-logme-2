@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import { logger } from '@/components/CameraHandlers/logger';
+// Minimal logging only; remove camera handler logs aggregation
 
 interface LogEntry {
   timestamp: string;
@@ -105,34 +105,22 @@ class ConsoleLogger {
         })
         .join('\n\n');
 
-      // Get comprehensive camera handler logs
-      const cameraHandlerLogs = logger.getLogs();
-      const cameraHandlerLogText = logger.exportLogsAsText();
-
-      // Combine both log sources
+      // Minimal export content
       const content = `COMPREHENSIVE LOGS EXPORT
 Generated: ${new Date().toLocaleString()}
 
 ${'='.repeat(80)}
-SECTION 1: CONSOLE LOGS
+SECTION: LOGS
 ${'='.repeat(80)}
-Total Console Logs: ${this.logs.length}
+Total Logs: ${this.logs.length}
 
 ${logText}
-
-${'='.repeat(80)}
-SECTION 2: CAMERA HANDLER LOGS (COMPREHENSIVE)
-${'='.repeat(80)}
-Total Camera Handler Logs: ${cameraHandlerLogs.length}
-
-${cameraHandlerLogText}
 
 ${'='.repeat(80)}
 END OF COMPREHENSIVE LOGS EXPORT
 ${'='.repeat(80)}
 This export includes:
-- Console logs: General application logs
-- Camera Handler logs: Detailed function-level logs with calculations, save operations, and file locations
+- Minimal logs only
 `;
 
       if (Platform.OS === 'web') {
