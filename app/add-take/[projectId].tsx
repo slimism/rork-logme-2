@@ -2126,7 +2126,12 @@ This would break the logging logic and create inconsistencies in the file number
             
             updateFileNumbers(projectId, fieldId, camStart, camIncrement, insertedLogId);
 
-            const targetRange = getRangeFromData(existingEntry.data, fieldId);
+            // Read current state of the log from store (after updateFileNumbers may have updated it)
+            // Use getState() to get the latest state synchronously after updateFileNumbers
+            const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+            const currentData = currentLogSheet?.data || existingEntry.data;
+
+            const targetRange = getRangeFromData(currentData, fieldId);
             if (targetRange) {
               // Target has a range - update it regardless of whether new entry is range or single
               let insertedMax: number;
@@ -2151,18 +2156,18 @@ This would break the logging logic and create inconsistencies in the file number
               const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
               const fromKey = `camera${cameraNum}_from` as const;
               const toKey = `camera${cameraNum}_to` as const;
-              const updatedData: Record<string, any> = { ...existingEntry.data };
+              const updatedData: Record<string, any> = { ...currentData };
               updatedData[fromKey] = String(newFromNum).padStart(4, '0');
               updatedData[toKey] = String(newToNum).padStart(4, '0');
 
-              if (typeof existingEntry.data?.[fieldId] === 'string' && (existingEntry.data as any)[fieldId].includes('-')) {
+              if (typeof currentData?.[fieldId] === 'string' && (currentData as any)[fieldId].includes('-')) {
                 updatedData[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
               }
               updatedData.takeNumber = String(tTake + 1);
               updateLogSheet(existingEntry.id, updatedData);
             } else {
               // Handle single camera value (not range)
-              const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
+              const targetSingleStr = currentData?.[fieldId] as string | undefined;
               if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                 const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
                 if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
@@ -2173,7 +2178,7 @@ This would break the logging logic and create inconsistencies in the file number
                   const max = Math.max(insFrom, insTo);
                   if (targetSingleNum >= min && targetSingleNum <= max) {
                     const updatedData: Record<string, any> = { 
-                      ...existingEntry.data, 
+                      ...currentData, 
                       [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
                       takeNumber: String(tTake + 1)
                     };
@@ -2184,7 +2189,7 @@ This would break the logging logic and create inconsistencies in the file number
                   const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
                   if (newSingle === targetSingleNum) {
                     const updatedData: Record<string, any> = { 
-                      ...existingEntry.data, 
+                      ...currentData, 
                       [fieldId]: String(targetSingleNum + camIncrement).padStart(4, '0'),
                       takeNumber: String(tTake + 1)
                     };
