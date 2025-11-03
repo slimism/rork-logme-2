@@ -13,6 +13,7 @@ interface ProjectState {
   folders: Folder[];
   logSheets: LogSheet[];
   nextLogId: number;
+  projectLocalCounters: Record<string, number>;
   // ID shifting utilities
   insertNewLogBefore: (projectId: string, targetLogId: string, name: string, type: string, folderId: string, buildData?: () => any) => LogSheet | null;
   moveExistingLogBefore: (projectId: string, movingLogId: string, targetLogId: string) => void;
@@ -38,6 +39,7 @@ export const useProjectStore = create<ProjectState>()(
       folders: [],
       logSheets: [],
       nextLogId: 1,
+      projectLocalCounters: {},
       insertNewLogBefore: (projectId: string, targetLogId: string, name: string, type: string, folderId: string, buildData?: () => any) => {
         const targetNumeric = parseInt(targetLogId, 10);
         if (Number.isNaN(targetNumeric)) return null;
@@ -60,6 +62,11 @@ export const useProjectStore = create<ProjectState>()(
         if (state.nextLogId <= maxExistingId) {
           set({ nextLogId: maxExistingId + 1 });
         }
+        // Determine next project-local id baseline
+        const maxLocalId = projectLogs.reduce((m, s) => Math.max(m, parseInt(s.projectLocalId as string, 10) || 0), 0);
+        if ((state.projectLocalCounters[projectId] ?? 1) <= maxLocalId) {
+          set({ projectLocalCounters: { ...state.projectLocalCounters, [projectId]: maxLocalId + 1 } });
+        }
 
         // Create the new log with temporary unique id (nextLogId), then we'll reassign
         const tempId = (get().nextLogId).toString();
@@ -75,36 +82,37 @@ export const useProjectStore = create<ProjectState>()(
         };
 
         // Prepare shifted logs: increment ids of logs with id >= targetNumeric, descending to avoid collisions
-        const affected = projectLogs
-          .filter(s => (parseInt(s.id as string, 10) || 0) >= targetNumeric)
-          .sort((a, b) => (parseInt(b.id as string, 10) || 0) - (parseInt(a.id as string, 10) || 0));
+        // Resolve target by projectLocalId first, fallback to id
+        const targetLog = projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
+                          projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
+        const targetLocal = targetLog ? (parseInt(targetLog.projectLocalId as string, 10) || targetNumeric) : targetNumeric;
 
         set((prev) => {
           const updated: LogSheet[] = prev.logSheets.map(s => {
             if (s.projectId !== projectId) return s;
-            const n = parseInt(s.id as string, 10) || 0;
-            if (n >= targetNumeric) {
-              const newId = (n + 1).toString();
-              return { ...s, id: newId, updatedAt: new Date().toISOString() };
+            const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
+            if (nLocal >= targetLocal) {
+              const newLocal = (nLocal + 1).toString();
+              return { ...s, projectLocalId: newLocal, updatedAt: new Date().toISOString() };
             }
             return s;
           });
           // Place new log with the target id
-          const inserted: LogSheet = { ...newLog, id: targetNumeric.toString() };
+          const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
           updated.push(inserted);
           // Snapshot after
           const afterOrder = updated
             .filter(s => s.projectId === projectId)
-            .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+            .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
             .map(s => ({
-              id: s.id,
+              id: s.projectLocalId || s.id,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
               camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
               sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
             }));
-          console.log(`[ACTION][Project ${projectId}] Insert New Before -> Target ID: ${targetNumeric}`);
+          console.log(`[ACTION][Project ${projectId}] Insert New Before -> Target Local ID: ${targetLocal}`);
           console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
           console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
           return {
@@ -113,7 +121,7 @@ export const useProjectStore = create<ProjectState>()(
           };
         });
 
-        return { ...newLog, id: targetNumeric.toString() };
+        return { ...newLog, projectLocalId: targetLocal.toString() };
       },
 
       moveExistingLogBefore: (projectId: string, movingLogId: string, targetLogId: string) => {
@@ -139,30 +147,30 @@ export const useProjectStore = create<ProjectState>()(
           set((prev) => {
             const updated = prev.logSheets.map(s => {
               if (s.projectId !== projectId) return s;
-              const n = parseInt(s.id as string, 10) || 0;
-              // Increment the closed range [target, moving-1]
-              if (n >= target && n < moving) {
-                return { ...s, id: (n + 1).toString(), updatedAt: new Date().toISOString() };
+              const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
+              // Increment the closed range [target, moving-1] on local IDs
+              if (nLocal >= target && nLocal < moving) {
+                return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
               }
               return s;
             }).map(s => {
-              if (s.projectId === projectId && s.id === movingLogId) {
-                return { ...s, id: target.toString(), updatedAt: new Date().toISOString() };
+              if (s.projectId === projectId && (s.projectLocalId === movingLogId || s.id === movingLogId)) {
+                return { ...s, projectLocalId: target.toString(), updatedAt: new Date().toISOString() };
               }
               return s;
             });
             const afterOrder = updated
               .filter(s => s.projectId === projectId)
-              .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+              .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
               .map(s => ({
-                id: s.id,
+                id: s.projectLocalId || s.id,
                 scene: (s.data as any)?.sceneNumber,
                 shot: (s.data as any)?.shotNumber,
                 take: (s.data as any)?.takeNumber,
                 camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
                 sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
               }));
-            console.log(`[ACTION][Project ${projectId}] Move Existing Before -> Moving ID: ${moving} Target ID: ${target}`);
+            console.log(`[ACTION][Project ${projectId}] Move Existing Before -> Moving Local ID: ${moving} Target Local ID: ${target}`);
             console.log(`[ACTION][Project ${projectId}] ORDER BEFORE:`, beforeOrder);
             console.log(`[ACTION][Project ${projectId}] ORDER AFTER:`, afterOrder);
             return { logSheets: updated };
@@ -206,6 +214,7 @@ export const useProjectStore = create<ProjectState>()(
         
         set((state) => ({
           projects: [...state.projects, newProject],
+          projectLocalCounters: { ...state.projectLocalCounters, [newProject.id]: 1 },
         }));
         
         return newProject;
@@ -236,6 +245,7 @@ export const useProjectStore = create<ProjectState>()(
           projects: state.projects.filter((project) => project.id !== id),
           folders: state.folders.filter((folder) => folder.projectId !== id),
           logSheets: state.logSheets.filter((logSheet) => logSheet.projectId !== id),
+          projectLocalCounters: Object.fromEntries(Object.entries(state.projectLocalCounters).filter(([k]) => k !== id)),
         }));
       },
       
@@ -274,8 +284,11 @@ export const useProjectStore = create<ProjectState>()(
       
       addLogSheet: (name: string, type: string, folderId: string, projectId: string) => {
         const currentId = get().nextLogId;
+        const localCounters = get().projectLocalCounters;
+        const nextLocal = (localCounters[projectId] ?? 1);
         const newLogSheet: LogSheet = {
           id: currentId.toString(),
+          projectLocalId: nextLocal.toString(),
           name,
           type: type as any,
           folderId,
@@ -288,6 +301,7 @@ export const useProjectStore = create<ProjectState>()(
         set((state) => ({
           logSheets: [...state.logSheets, newLogSheet],
           nextLogId: state.nextLogId + 1,
+          projectLocalCounters: { ...state.projectLocalCounters, [projectId]: nextLocal + 1 },
         }));
         
         return newLogSheet;

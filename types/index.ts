@@ -42,6 +42,7 @@ export interface Folder {
 
 export interface LogSheet {
   id: string;
+  projectLocalId?: string;
   name: string;
   type: LogSheetType | string;
   createdAt: string;
