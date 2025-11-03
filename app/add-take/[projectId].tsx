@@ -1757,6 +1757,36 @@ This would break the logging logic and create inconsistencies in the file number
               }
               updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement);
 
+                // Also shift sound if applicable (new entry provides sound and target has sound)
+                try {
+                  const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) ||
+                                           !!(typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim());
+                  const newEntryHasSound = !!(takeData.soundFile?.trim()) || !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
+                  if (targetSoundExists && newEntryHasSound) {
+                    let soundStartLocal = parseInt(String(duplicateInfo.number || 0), 10) || 0;
+                    const hasSoundRangeAtTarget = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
+                    if (hasSoundRangeAtTarget) {
+                      const lower = parseInt(existingEntry.data.sound_from, 10);
+                      if (!Number.isNaN(lower)) soundStartLocal = lower;
+                    } else if (typeof existingEntry.data?.soundFile === 'string') {
+                      const n = parseInt(existingEntry.data.soundFile, 10);
+                      if (!Number.isNaN(n)) soundStartLocal = n;
+                    } else if (typeof existingEntry.data?.sound_from === 'string') {
+                      const n = parseInt(existingEntry.data.sound_from, 10);
+                      if (!Number.isNaN(n)) soundStartLocal = n;
+                    }
+
+                    let soundIncrementLocal = 1;
+                    const newSoundRange = rangeData['soundFile'];
+                    if (showRangeMode['soundFile'] && newSoundRange?.from && newSoundRange?.to) {
+                      const newFromS = parseInt(newSoundRange.from, 10) || 0;
+                      const newToS = parseInt(newSoundRange.to, 10) || 0;
+                      soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
+                    }
+                    updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal);
+                  }
+                } catch {}
+
               const targetRangeCam = getRangeFromData(existingEntry.data, 'cameraFile');
               if (targetRangeCam && showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
                 const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
