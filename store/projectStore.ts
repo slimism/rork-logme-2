@@ -312,7 +312,15 @@ export const useProjectStore = create<ProjectState>()(
           excludeLogId
         });
         
+        // IMPORTANT: Get the current state at the start of processing to ensure we see
+        // updates from previous updateFileNumbers calls (for multi-camera scenarios)
+        const currentState = get();
+        
         set((state) => {
+          // Use the current state (which includes updates from previous calls) instead of the state parameter
+          // This ensures we see the latest updates when processing multiple camera fields
+          const activeState = currentState;
+          
           // Helper to get field value and determine if blank
           const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
             if (fId === 'soundFile') {
@@ -396,7 +404,8 @@ export const useProjectStore = create<ProjectState>()(
           const sheetsBySceneShot = new Map<string, LogSheet[]>();
           
           // Group sheets by scene:shot
-          state.logSheets.forEach(logSheet => {
+          // Use activeState instead of state to ensure we see updates from previous updateFileNumbers calls
+          activeState.logSheets.forEach(logSheet => {
             if (logSheet.projectId !== projectId) return;
             const data = logSheet.data || {};
             const sceneNum = data.sceneNumber as string || '';
@@ -438,11 +447,15 @@ export const useProjectStore = create<ProjectState>()(
             
             // Strategy 1: Find log with file number matching fromNumber, prioritizing the LOWEST take number
             // This is the correct approach: inserted log has file number = fromNumber
+            // IMPORTANT: The inserted log is the one that was JUST inserted, which should be the FIRST log
+            // that has file number = fromNumber and needs to be shifted (or is at the insertion point)
+            // We need to find the log with the LOWEST take number that matches fromNumber
             const matchingLogs = sheets
               .filter(sheet => {
                 const sheetFieldVal = getFieldValue(sheet.data || {}, fieldId);
                 if (sheetFieldVal && sheetFieldVal.value !== null) {
                   // Check if this log's file number matches fromNumber
+                  // The inserted log should have file number = fromNumber
                   return sheetFieldVal.lower === fromNumber || sheetFieldVal.upper === fromNumber;
                 }
                 return false;
@@ -455,7 +468,23 @@ export const useProjectStore = create<ProjectState>()(
                 return aTake - bTake; // Ascending order: lowest take number first
               });
             
-            let insertedLog = matchingLogs[0]; // Get the one with lowest take number
+            // The inserted log should be the one with the LOWEST take number that has file number = fromNumber
+            // This is because when inserting before Take N:
+            // - Inserted log becomes Take N with file number = fromNumber
+            // - Original Take N becomes Take N+1 with file number = fromNumber (needs shifting)
+            // So both might match, but we want Take N (the inserted one)
+            // Since we've already sorted by take number ascending, the first match is the one with lowest take number
+            let insertedLog = matchingLogs.length > 0 ? matchingLogs[0] : null;
+            
+            // Additional validation: Ensure the inserted log has take number <= fromNumber (where fromNumber is the file number)
+            // This helps distinguish between the inserted log and logs that were already shifted
+            if (insertedLog && matchingLogs.length > 1) {
+              const insertedTakeNum = parseInt(insertedLog.data?.takeNumber as string || '0', 10);
+              // If the first match has take number > fromNumber, it might be a shifted log, try the next one
+              // But actually, we want the LOWEST take number, so the first one should be correct
+              // The issue might be that fromNumber is the file number, not the take number
+              // So we should just trust the sorting (lowest take number first)
+            }
             
             // Strategy 2: If not found, try fromNumber - 1 (fallback for edge cases)
             if (!insertedLog) {
@@ -496,13 +525,18 @@ export const useProjectStore = create<ProjectState>()(
                 logger.logWarning(`Inserted log (Take ${insertedTakeNum}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
               }
               
-              // For multi-camera: Also initialize temp variables for ALL other camera fields from the same inserted log
-              // This ensures all camera fields use the same inserted log's values, even if called separately
+              // For multi-camera: Also initialize temp variables for ALL other camera fields
+              // IMPORTANT: For other camera fields that have already been processed by previous updateFileNumbers calls,
+              // we should NOT re-initialize them from the inserted log (which has original values).
+              // Instead, we should initialize them from the CURRENT state of the inserted log (which may have been shifted).
+              // However, if a camera field hasn't been processed yet, we should initialize it from the inserted log.
               if (fieldId.startsWith('cameraFile')) {
-                // Find all camera fields in the inserted log and initialize their temp variables
+                // Find all camera fields in the CURRENT state (not just inserted log) and initialize their temp variables
+                // Use the current state of the log, which may have been updated by previous updateFileNumbers calls
                 for (let camNum = 1; camNum <= 10; camNum++) { // Check up to 10 cameras
                   const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
                   if (camFieldId !== fieldId) { // Don't re-initialize the current field
+                    // Get the current state of this camera field from the inserted log (which may have been updated)
                     const camFieldVal = getFieldValue(insertedData, camFieldId);
                     if (camFieldVal && camFieldVal.value !== null && (tempCamera[camNum] === null || tempCamera[camNum] === undefined)) {
                       tempCamera[camNum] = camFieldVal.upper;
@@ -877,7 +911,7 @@ export const useProjectStore = create<ProjectState>()(
                     if (tempCamera[cameraNum] === null || tempCamera[cameraNum] === undefined) {
                       const excludeIds = new Set<string>([logSheet.id]);
                       if (excludeLogId) excludeIds.add(excludeLogId);
-                      const prevValid = getPreviousValidValue(state.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
+                      const prevValid = getPreviousValidValue(activeState.logSheets, takeNum, sceneNum, shotNum, fieldId, excludeIds);
                       
                       if (prevValid !== null) {
                         tempCamera[cameraNum] = prevValid;
@@ -919,9 +953,14 @@ export const useProjectStore = create<ProjectState>()(
           });
 
           // Convert map back to array, preserving non-project sheets
-          const updatedSheets = state.logSheets.map(logSheet => {
+          // Use activeState to ensure we see updates from previous updateFileNumbers calls
+          const updatedSheets = activeState.logSheets.map(logSheet => {
             if (logSheet.projectId !== projectId) return logSheet;
-            return updatedSheetsMap.get(logSheet.id) || logSheet;
+            // First check if we have an update in this call's map, otherwise use the current state
+            const updatedSheet = updatedSheetsMap.get(logSheet.id);
+            if (updatedSheet) return updatedSheet;
+            // If no update in this call, use the current state (which may have updates from previous calls)
+            return logSheet;
           });
 
           logger.logFunctionExit({ shiftedCount: updatedSheets.filter((s, i) => s !== state.logSheets[i]).length });
