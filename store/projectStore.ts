@@ -13,6 +13,9 @@ interface ProjectState {
   folders: Folder[];
   logSheets: LogSheet[];
   nextLogId: number;
+  // ID shifting utilities
+  insertNewLogBefore: (projectId: string, targetLogId: string, name: string, type: string, folderId: string, buildData?: () => any) => LogSheet | null;
+  moveExistingLogBefore: (projectId: string, movingLogId: string, targetLogId: string) => void;
   addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => Project;
   updateProject: (id: string, name: string) => void;
   updateProjectLogo: (id: string, logoUri: string) => void;
@@ -35,6 +38,85 @@ export const useProjectStore = create<ProjectState>()(
       folders: [],
       logSheets: [],
       nextLogId: 1,
+      insertNewLogBefore: (projectId: string, targetLogId: string, name: string, type: string, folderId: string, buildData?: () => any) => {
+        const targetNumeric = parseInt(targetLogId, 10);
+        if (Number.isNaN(targetNumeric)) return null;
+
+        const state = get();
+        const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
+        // Determine nextLogId baseline as max(existing)+1
+        const maxExistingId = projectLogs.reduce((m, s) => Math.max(m, parseInt(s.id as string, 10) || 0), 0);
+        if (state.nextLogId <= maxExistingId) {
+          set({ nextLogId: maxExistingId + 1 });
+        }
+
+        // Create the new log with temporary unique id (nextLogId), then we'll reassign
+        const tempId = (get().nextLogId).toString();
+        const newLog: LogSheet = {
+          id: tempId,
+          name,
+          type: type as any,
+          folderId,
+          projectId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          data: buildData ? buildData() : {},
+        };
+
+        // Prepare shifted logs: increment ids of logs with id >= targetNumeric, descending to avoid collisions
+        const affected = projectLogs
+          .filter(s => (parseInt(s.id as string, 10) || 0) >= targetNumeric)
+          .sort((a, b) => (parseInt(b.id as string, 10) || 0) - (parseInt(a.id as string, 10) || 0));
+
+        set((prev) => {
+          const updated: LogSheet[] = prev.logSheets.map(s => {
+            if (s.projectId !== projectId) return s;
+            const n = parseInt(s.id as string, 10) || 0;
+            if (n >= targetNumeric) {
+              const newId = (n + 1).toString();
+              return { ...s, id: newId, updatedAt: new Date().toISOString() };
+            }
+            return s;
+          });
+          // Place new log with the target id
+          const inserted: LogSheet = { ...newLog, id: targetNumeric.toString() };
+          updated.push(inserted);
+          return {
+            logSheets: updated,
+            nextLogId: prev.nextLogId + 1,
+          };
+        });
+
+        return { ...newLog, id: targetNumeric.toString() };
+      },
+
+      moveExistingLogBefore: (projectId: string, movingLogId: string, targetLogId: string) => {
+        const moving = parseInt(movingLogId, 10);
+        const target = parseInt(targetLogId, 10);
+        if (Number.isNaN(moving) || Number.isNaN(target)) return;
+        if (moving === target) return;
+
+        // Only handle moving from later to earlier (decreasing id)
+        if (moving > target) {
+          set((prev) => {
+            const updated = prev.logSheets.map(s => {
+              if (s.projectId !== projectId) return s;
+              const n = parseInt(s.id as string, 10) || 0;
+              // Increment the closed range [target, moving-1]
+              if (n >= target && n < moving) {
+                return { ...s, id: (n + 1).toString(), updatedAt: new Date().toISOString() };
+              }
+              return s;
+            }).map(s => {
+              if (s.projectId === projectId && s.id === movingLogId) {
+                return { ...s, id: target.toString(), updatedAt: new Date().toISOString() };
+              }
+              return s;
+            });
+            return { logSheets: updated };
+          });
+        }
+      },
       
       addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => {
         // Validate and normalize camera configuration
