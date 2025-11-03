@@ -3270,6 +3270,13 @@ This would break the logging logic and create inconsistencies in the file number
       if (!Number.isNaN(n)) soundStart = n;
     }
 
+    // Track camera and sound upper bounds for subsequent log shifting
+    let newCamToNum = 0;
+    let newSoundToNum = 0;
+    // Track original target log's delta for subsequent log shifting
+    let targetCamDelta = 0;
+    let targetSoundDelta = 0;
+
     // Use centralized delta calculator instead of inline calculation
     const soundDeltaInput = {
       takeData,
@@ -3284,6 +3291,7 @@ This would break the logging logic and create inconsistencies in the file number
       const exTo = parseInt(rSound.to, 10) || 0;
       // Use delta of ORIGINAL target log, not the inserted log's delta
       const deltaOriginal = Math.abs(exTo - exFrom) + 1;
+      targetSoundDelta = deltaOriginal; // Store for subsequent log shifting
       if (!disabledFields.has('soundFile')) {
         const bounds = getInsertedBounds('soundFile');
         const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
@@ -3304,13 +3312,10 @@ This would break the logging logic and create inconsistencies in the file number
       const insertedUpper = bounds?.max ?? (parseInt(existingEntry.data.soundFile, 10) || 0);
       const newVal = String(insertedUpper + 1).padStart(4, '0');
       newSoundToNum = insertedUpper + 1;
+      targetSoundDelta = 1; // Store for subsequent log shifting
       existingEntryUpdates.soundFile = newVal;
       hasUpdates = true;
     }
-
-    // Track camera and sound upper bounds for subsequent log shifting
-    let newCamToNum = 0;
-    let newSoundToNum = 0;
 
     if (camCount === 1) {
       let camStart = cameraFromNumber;
@@ -3339,6 +3344,7 @@ This would break the logging logic and create inconsistencies in the file number
         const oldToNum = parseInt(targetRange.to, 10) || 0;
         // Use delta of ORIGINAL target log, not the inserted log's delta
         const deltaOriginal = Math.abs(oldToNum - oldFromNum) + 1;
+        targetCamDelta = deltaOriginal; // Store for subsequent log shifting
         const newFrom = String(insertedUpper + 1).padStart(4, '0');
         const newTo = String(insertedUpper + deltaOriginal).padStart(4, '0');
         newCamToNum = insertedUpper + deltaOriginal;
@@ -3381,11 +3387,15 @@ This would break the logging logic and create inconsistencies in the file number
           const shouldBump = targetCamNum === newCamMin;
           if (shouldBump) {
             // Use edited range's max + 1 for calculating bump position
+            const newCamValue = newCamMax + 1;
             existingEntryUpdates = {
               ...existingEntryUpdates,
-              cameraFile: String(newCamMax + 1).padStart(4, '0'),
+              cameraFile: String(newCamValue).padStart(4, '0'),
               takeNumber: String(targetTake + 1)
             };
+            // For single camera value, delta is always 1
+            targetCamDelta = 1;
+            newCamToNum = newCamValue; // Track for subsequent log shifting
             hasUpdates = true;
           }
         }
@@ -3416,7 +3426,7 @@ This would break the logging logic and create inconsistencies in the file number
             ? 0
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
 
-          let newCamToNum = 0;
+          let fieldCamToNum = 0;
           const targetRange = getRangeFromData(existingEntry.data, fieldId);
           if (targetRange && !disabledFields.has(fieldId)) {
             const bounds = getInsertedBounds(fieldId);
@@ -3425,6 +3435,10 @@ This would break the logging logic and create inconsistencies in the file number
             const oldToNum = parseInt(targetRange.to, 10) || 0;
             // Use delta of ORIGINAL target log, not the inserted log's delta
             const deltaOriginal = Math.abs(oldToNum - oldFromNum) + 1;
+            // Track the maximum delta across all cameras for subsequent log shifting
+            if (deltaOriginal > targetCamDelta) {
+              targetCamDelta = deltaOriginal;
+            }
             const newFrom = String(insertedUpper + 1).padStart(4, '0');
             const newTo = String(insertedUpper + deltaOriginal).padStart(4, '0');
             fieldCamToNum = insertedUpper + deltaOriginal;
@@ -3471,11 +3485,20 @@ This would break the logging logic and create inconsistencies in the file number
               const shouldBump = targetCamNum === newCamMin;
               if (shouldBump) {
                 // Use edited range's max + 1 for calculating bump position
+                const newCamValue = newCamMax + 1;
                 existingEntryUpdates = {
                   ...existingEntryUpdates,
-                  [fieldId]: String(newCamMax + 1).padStart(4, '0'),
+                  [fieldId]: String(newCamValue).padStart(4, '0'),
                   takeNumber: String(targetTake + 1)
                 };
+                // For single camera value, delta is always 1
+                if (targetCamDelta === 0) {
+                  targetCamDelta = 1;
+                }
+                // Track the maximum camera value across all cameras for subsequent log shifting
+                if (newCamValue > newCamToNum) {
+                  newCamToNum = newCamValue;
+                }
                 hasUpdates = true;
               }
             }
@@ -3607,12 +3630,13 @@ This would break the logging logic and create inconsistencies in the file number
     await new Promise(resolve => setTimeout(resolve, 0));
     
     // Call updateFileNumbers to shift subsequent entries if needed
-    if (!disabledFields.has('soundFile') && soundDelta > 0) {
+    if (!disabledFields.has('soundFile') && (targetSoundDelta > 0 || soundDelta > 0)) {
       // Use the updated target entry's new upper bound (newSoundToNum) to start shifting subsequent logs
-      // If target had a range, newSoundToNum was calculated; otherwise use the inserted sound's upper bound + 1
+      // Use the ORIGINAL target log's delta (targetSoundDelta) for shifting, not the inserted log's delta
       const soundStartShift = newSoundToNum > 0 ? (newSoundToNum + 1) : soundStart;
+      const deltaToUse = targetSoundDelta > 0 ? targetSoundDelta : soundDelta;
       // Pass excludeLogId so store can reliably initialize tempSound from the inserted/edited log
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStartShift, soundDelta, logSheet.id);
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStartShift, deltaToUse, logSheet.id);
     }
     
     if (camCount === 1) {
@@ -3626,13 +3650,14 @@ This would break the logging logic and create inconsistencies in the file number
         ? 0
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
-      if (!disabledFields.has('cameraFile') && camDelta > 0) {
+      if (!disabledFields.has('cameraFile') && (targetCamDelta > 0 || camDelta > 0)) {
         // Use the updated target entry's new upper bound (newCamToNum) to start shifting subsequent logs
-        // If target had a range, newCamToNum was calculated; otherwise use the original target value + camDelta
+        // Use the ORIGINAL target log's delta (targetCamDelta) for shifting, not the inserted log's delta
         const bounds = getInsertedBounds('cameraFile');
         const insertedUpper = bounds?.max ?? cameraFromNumber;
-        const camStartShift = newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + camDelta);
-        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, camDelta, logSheet.id);
+        const camStartShift = newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + (targetCamDelta || camDelta));
+        const deltaToUse = targetCamDelta > 0 ? targetCamDelta : camDelta;
+        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, deltaToUse, logSheet.id);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3648,13 +3673,14 @@ This would break the logging logic and create inconsistencies in the file number
             ? 0
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
-          if (!disabledFields.has(fieldId) && camDelta > 0) {
+          if (!disabledFields.has(fieldId) && (targetCamDelta > 0 || camDelta > 0)) {
             // Use the updated target entry's new upper bound (newCamToNum) to start shifting subsequent logs
-            // If target had a range, newCamToNum was calculated; otherwise use the original target value + camDelta
+            // Use the ORIGINAL target log's delta (targetCamDelta) for shifting, not the inserted log's delta
             const bounds = getInsertedBounds(fieldId);
             const insertedUpper = bounds?.max ?? cameraFromNumber;
-            const camStartShift = newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + camDelta);
-            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, camDelta, logSheet.id);
+            const camStartShift = newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + (targetCamDelta || camDelta));
+            const deltaToUse = targetCamDelta > 0 ? targetCamDelta : camDelta;
+            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, deltaToUse, logSheet.id);
           }
         }
       }
