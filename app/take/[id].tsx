@@ -20,7 +20,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers, moveExistingLogBefore } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
