@@ -428,11 +428,9 @@ export const useProjectStore = create<ProjectState>()(
           });
           
           const updatedSheetsMap = new Map<string, LogSheet>();
-
-          // For sound shifting, skip per scene/shot processing and defer to the global sequential pass below
-          if (fieldId !== 'soundFile') {
-            // Process each scene/shot group sequentially
-            sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
+          
+          // Process each scene/shot group sequentially
+          sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
             const [sceneNum, shotNum] = sceneShotKey.split(':');
             
             // Separate temp variables for tracking upper bounds used in calculations
