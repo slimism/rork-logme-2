@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet } = useProjectStore();
+  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet, insertNewLogBefore } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -2295,12 +2295,29 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    const logSheet = addLogSheet(
-      `Take ${stats.totalTakes + 1}`,
-      'take',
-      '',
-      projectId
-    );
+    const logSheet = (() => {
+      try {
+        // When inserting before an existing entry, create at target ID and shift IDs
+        if (duplicateInfo && position === 'before' && existingEntry?.id) {
+          const inserted = insertNewLogBefore(
+            projectId,
+            String(existingEntry.id),
+            `Take ${stats.totalTakes + 1}`,
+            'take',
+            '',
+            () => ({})
+          );
+          if (inserted) return inserted;
+        }
+      } catch {}
+      // Fallback: normal append
+      return addLogSheet(
+        `Take ${stats.totalTakes + 1}`,
+        'take',
+        '',
+        projectId
+      );
+    })();
 
     let finalTakeData = { ...newLogData };
     if (camCount > 1) {
