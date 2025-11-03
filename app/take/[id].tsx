@@ -3621,204 +3621,82 @@ This would break the logging logic and create inconsistencies in the file number
     // Save the current logSheet with edited values
     await updateLogSheet(logSheet.id, updatedData);
 
-    // Update the existingEntry with calculated shifts
-    if (hasUpdates) {
-      await updateLogSheet(existingEntry.id, existingEntryUpdates);
-    }
+    // CRITICAL: Use the same shifting technique as "insert new log"
+    // 1. Call updateFileNumbers FIRST to shift ALL subsequent logs (including target and Take 5, Take 6, etc.)
+    // 2. Then manually update ONLY the target entry to position it correctly after the inserted log
+    // This ensures sequential shifting is handled correctly by updateFileNumbers
     
-    // Use Promise to ensure Zustand state has propagated
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
-    // CRITICAL: Find and update Take 5 (the log immediately after Take 4) BEFORE calling updateFileNumbers
-    // This ensures Take 5 is calculated based on Take 4's NEW position, not its old position
-    // Take 4 is now at targetTake + 1, so Take 5 is at targetTake + 2
-    const nextTakeNumber = targetTake + 2;
-    const nextLog = logSheets.find(log => {
-      const logScene = log.data?.sceneNumber as string;
-      const logShot = log.data?.shotNumber as string;
-      const logTake = parseInt(log.data?.takeNumber || '0', 10);
-      return log.projectId === logSheet.projectId &&
-             logScene === targetSceneNumber &&
-             logShot === targetShotNumber &&
-             logTake === nextTakeNumber &&
-             log.id !== logSheet.id && // Exclude the inserted log
-             log.id !== existingEntry.id; // Exclude the target entry (Take 4)
+    // Calculate deltas for the inserted log (for updateFileNumbers)
+    const insertedSoundDelta = calculateSoundDeltaForShifting({
+      takeData,
+      showRangeMode,
+      rangeData
     });
     
-    // Track Take 5's new upper bounds for subsequent log shifting
-    let nextLogCamToNum = 0;
-    let nextLogSoundToNum = 0;
-    
-    if (nextLog) {
-      console.log('DEBUG handleSaveWithDuplicatePair - Found next log (Take 5) to update:', {
-        nextLogId: nextLog.id,
-        nextTakeNumber,
-        'nextLog.cameraFile': nextLog.data?.cameraFile,
-        newCamToNum,
-        newSoundToNum
-      });
-      
-      const nextLogUpdates: Record<string, any> = {};
-      let hasNextLogUpdates = false;
-      
-      // Update camera file for Take 5 based on Take 4's new upper bound
-      if (!disabledFields.has('cameraFile') && newCamToNum > 0) {
-        if (camCount === 1) {
-          const nextLogRange = getRangeFromData(nextLog.data, 'cameraFile');
-          if (nextLogRange) {
-            // Take 5 has a range - calculate new range starting from newCamToNum + 1
-            const oldFromNum = parseInt(nextLogRange.from, 10) || 0;
-            const oldToNum = parseInt(nextLogRange.to, 10) || 0;
-            const nextLogDelta = Math.abs(oldToNum - oldFromNum) + 1;
-            const newFrom = String(newCamToNum + 1).padStart(4, '0');
-            const newTo = String(newCamToNum + nextLogDelta).padStart(4, '0');
-            nextLogCamToNum = newCamToNum + nextLogDelta; // Track for subsequent shifting
-            nextLogUpdates.camera1_from = newFrom;
-            nextLogUpdates.camera1_to = newTo;
-            const hadInline = typeof nextLog.data?.cameraFile === 'string' && isRangeString(nextLog.data.cameraFile);
-            if (hadInline) {
-              nextLogUpdates.cameraFile = `${newFrom}-${newTo}`;
-            }
-            hasNextLogUpdates = true;
-          } else if (typeof nextLog.data?.cameraFile === 'string' && nextLog.data.cameraFile.trim().length > 0) {
-            // Take 5 has single camera value - set to newCamToNum + 1
-            const newVal = newCamToNum + 1;
-            nextLogUpdates.cameraFile = String(newVal).padStart(4, '0');
-            nextLogCamToNum = newVal; // Track for subsequent shifting
-            delete nextLogUpdates.camera1_from;
-            delete nextLogUpdates.camera1_to;
-            hasNextLogUpdates = true;
-          }
-        } else {
-          // Multi-camera: update each camera field
-          for (let i = 1; i <= camCount; i++) {
-            const fieldId = `cameraFile${i}`;
-            if (!disabledFields.has(fieldId)) {
-              const nextLogRange = getRangeFromData(nextLog.data, fieldId);
-              if (nextLogRange) {
-                const oldFromNum = parseInt(nextLogRange.from, 10) || 0;
-                const oldToNum = parseInt(nextLogRange.to, 10) || 0;
-                const nextLogDelta = Math.abs(oldToNum - oldFromNum) + 1;
-                const newFrom = String(newCamToNum + 1).padStart(4, '0');
-                const newTo = String(newCamToNum + nextLogDelta).padStart(4, '0');
-                const fieldCamToNum = newCamToNum + nextLogDelta;
-                // Track the maximum camera upper bound across all cameras for subsequent shifting
-                if (fieldCamToNum > nextLogCamToNum) {
-                  nextLogCamToNum = fieldCamToNum;
-                }
-                nextLogUpdates[`camera${i}_from`] = newFrom;
-                nextLogUpdates[`camera${i}_to`] = newTo;
-                const hadInline = typeof nextLog.data?.[fieldId] === 'string' && isRangeString(nextLog.data[fieldId]);
-                if (hadInline) {
-                  nextLogUpdates[fieldId] = `${newFrom}-${newTo}`;
-                }
-                hasNextLogUpdates = true;
-              } else if (typeof nextLog.data?.[fieldId] === 'string' && nextLog.data[fieldId].trim().length > 0) {
-                const newVal = newCamToNum + 1;
-                nextLogUpdates[fieldId] = String(newVal).padStart(4, '0');
-                // Track the maximum camera value across all cameras for subsequent shifting
-                if (newVal > nextLogCamToNum) {
-                  nextLogCamToNum = newVal;
-                }
-                delete nextLogUpdates[`camera${i}_from`];
-                delete nextLogUpdates[`camera${i}_to`];
-                hasNextLogUpdates = true;
-              }
-            }
-          }
-        }
-      }
-      
-      // Update sound file for Take 5 based on Take 4's new upper bound
-      if (!disabledFields.has('soundFile') && newSoundToNum > 0) {
-        const nextLogRange = getRangeFromData(nextLog.data, 'soundFile');
-        if (nextLogRange) {
-          // Take 5 has a range - calculate new range starting from newSoundToNum + 1
-          const oldFromNum = parseInt(nextLogRange.from, 10) || 0;
-          const oldToNum = parseInt(nextLogRange.to, 10) || 0;
-          const nextLogDelta = Math.abs(oldToNum - oldFromNum) + 1;
-          const newFrom = String(newSoundToNum + 1).padStart(4, '0');
-          const newTo = String(newSoundToNum + nextLogDelta).padStart(4, '0');
-          nextLogSoundToNum = newSoundToNum + nextLogDelta; // Track for subsequent shifting
-          nextLogUpdates.sound_from = newFrom;
-          nextLogUpdates.sound_to = newTo;
-          const hadInline = typeof nextLog.data?.soundFile === 'string' && isRangeString(nextLog.data.soundFile);
-          if (hadInline) {
-            nextLogUpdates.soundFile = `${newFrom}-${newTo}`;
-          }
-          hasNextLogUpdates = true;
-        } else if (typeof nextLog.data?.soundFile === 'string' && nextLog.data.soundFile.trim().length > 0) {
-          // Take 5 has single sound value - set to newSoundToNum + 1
-          const newVal = newSoundToNum + 1;
-          nextLogSoundToNum = newVal; // Track for subsequent shifting
-          nextLogUpdates.soundFile = String(newVal).padStart(4, '0');
-          delete nextLogUpdates.sound_from;
-          delete nextLogUpdates.sound_to;
-          hasNextLogUpdates = true;
-        }
-      }
-      
-      if (hasNextLogUpdates) {
-        console.log('DEBUG handleSaveWithDuplicatePair - Updating next log (Take 5):', nextLogUpdates);
-        await updateLogSheet(nextLog.id, nextLogUpdates);
-        // Wait for state to propagate
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-    }
-    
-    // Call updateFileNumbers to shift subsequent entries (Take 6 and beyond) if needed
-    // Use Take 5's new position if it was updated, otherwise use Take 4's position
-    if (!disabledFields.has('soundFile') && (targetSoundDelta > 0 || soundDelta > 0)) {
-      // Use Take 5's new upper bound if it was updated, otherwise use Take 4's new upper bound
-      const soundStartShift = nextLogSoundToNum > 0 ? (nextLogSoundToNum + 1) : (newSoundToNum > 0 ? (newSoundToNum + 1) : soundStart);
-      const deltaToUse = targetSoundDelta > 0 ? targetSoundDelta : soundDelta;
-      // Pass excludeLogId so store can reliably initialize tempSound from the inserted/edited log
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStartShift, deltaToUse, logSheet.id);
+    // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
+    // The excludeLogId ensures the inserted log is not shifted
+    // This uses sequential shifting logic that handles all subsequent logs automatically
+    if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
     }
     
     if (camCount === 1) {
-      // Use centralized delta calculator instead of inline calculation
       const cameraDeltaInput = {
         takeData,
         showRangeMode,
         rangeData
       };
-      const camDelta = disabledFields.has('cameraFile')
+      const insertedCamDelta = disabledFields.has('cameraFile')
         ? 0
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
-      if (!disabledFields.has('cameraFile') && (targetCamDelta > 0 || camDelta > 0)) {
-        // Use Take 5's new upper bound if it was updated, otherwise use Take 4's new upper bound
-        const bounds = getInsertedBounds('cameraFile');
-        const insertedUpper = bounds?.max ?? cameraFromNumber;
-        const camStartShift = nextLogCamToNum > 0 ? (nextLogCamToNum + 1) : (newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + (targetCamDelta || camDelta)));
-        const deltaToUse = targetCamDelta > 0 ? targetCamDelta : camDelta;
-        updateFileNumbers(logSheet.projectId, 'cameraFile', camStartShift, deltaToUse, logSheet.id);
+      if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
+        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-          // Use centralized delta calculator instead of inline calculation
           const cameraDeltaInput = {
             takeData,
             showRangeMode,
             rangeData
           };
-          const camDelta = disabledFields.has(fieldId)
+          const insertedCamDelta = disabledFields.has(fieldId)
             ? 0
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
-          if (!disabledFields.has(fieldId) && (targetCamDelta > 0 || camDelta > 0)) {
-            // Use Take 5's new upper bound if it was updated, otherwise use Take 4's new upper bound
-            const bounds = getInsertedBounds(fieldId);
-            const insertedUpper = bounds?.max ?? cameraFromNumber;
-            const camStartShift = nextLogCamToNum > 0 ? (nextLogCamToNum + 1) : (newCamToNum > 0 ? (newCamToNum + 1) : (insertedUpper + (targetCamDelta || camDelta)));
-            const deltaToUse = targetCamDelta > 0 ? targetCamDelta : camDelta;
-            updateFileNumbers(logSheet.projectId, fieldId, camStartShift, deltaToUse, logSheet.id);
+          if (!disabledFields.has(fieldId) && insertedCamDelta > 0) {
+            let camStart = cameraFromNumber;
+            const fromKey = `camera${i}_from` as const;
+            const fromVal = existingEntry.data?.[fromKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            }
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id);
           }
         }
       }
+    }
+    
+    // Use Promise to ensure Zustand state has propagated after updateFileNumbers
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // Now manually update ONLY the target entry to position it correctly after the inserted log
+    // Read current state after updateFileNumbers may have updated it
+    const currentState = useProjectStore.getState();
+    const currentTargetLogSheet = currentState.logSheets.find(sheet => sheet.id === existingEntry.id);
+    const currentTargetData = currentTargetLogSheet?.data || existingEntry.data;
+    
+    if (hasUpdates) {
+      // Merge with updates calculated earlier (these position the target after the inserted log)
+      const finalTargetUpdates = { ...currentTargetData, ...existingEntryUpdates };
+      await updateLogSheet(existingEntry.id, finalTargetUpdates);
     }
 
     router.back();
