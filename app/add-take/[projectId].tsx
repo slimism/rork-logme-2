@@ -1594,27 +1594,12 @@ This would break the logging logic and create inconsistencies in the file number
       const targetSceneNumber = existingEntry.data?.sceneNumber;
       const targetShotNumber = existingEntry.data?.shotNumber;
 
-      if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
-        const originalTargetTakeNumber = existingEntry.data?.takeNumber;
-        if (originalTargetTakeNumber) {
-          newLogData.takeNumber = originalTargetTakeNumber;
-        }
-      } else {
-        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-        const sameShotTakes = projectLogSheets.filter(sheet =>
-          sheet.data?.sceneNumber === currentSceneNumber &&
-          sheet.data?.shotNumber === currentShotNumber
-        );
-
-        let lastTakeNumber = 0;
-        sameShotTakes.forEach(sheet => {
-          const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);
-          if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
-            lastTakeNumber = takeNum;
-          }
-        });
-
-        newLogData.takeNumber = (lastTakeNumber + 1).toString();
+      // Always insert into the target's scene and shot when inserting before
+      newLogData.sceneNumber = targetSceneNumber;
+      newLogData.shotNumber = targetShotNumber;
+      const originalTargetTakeNumber = existingEntry.data?.takeNumber;
+      if (originalTargetTakeNumber) {
+        newLogData.takeNumber = originalTargetTakeNumber;
       }
     } else if (duplicateInfo.type === 'file') {
       // Preserve user-entered values; do not overwrite unrelated file fields
@@ -1625,26 +1610,11 @@ This would break the logging logic and create inconsistencies in the file number
       const targetSceneNumber = existingEntry.data?.sceneNumber;
       const targetShotNumber = existingEntry.data?.shotNumber;
 
-      if (currentSceneNumber === targetSceneNumber && currentShotNumber === targetShotNumber) {
-        if (existingEntry.data?.takeNumber) {
-          newLogData.takeNumber = existingEntry.data.takeNumber;
-        }
-      } else {
-        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-        const sameShotTakes = projectLogSheets.filter(sheet =>
-          sheet.data?.sceneNumber === currentSceneNumber &&
-          sheet.data?.shotNumber === currentShotNumber
-        );
-
-        let lastTakeNumber = 0;
-        sameShotTakes.forEach(sheet => {
-          const takeNum = parseInt(sheet.data?.takeNumber || '0', 10);
-          if (!isNaN(takeNum) && takeNum > lastTakeNumber) {
-            lastTakeNumber = takeNum;
-          }
-        });
-
-        newLogData.takeNumber = (lastTakeNumber + 1).toString();
+      // Always insert into the target's scene and shot when inserting before
+      newLogData.sceneNumber = targetSceneNumber;
+      newLogData.shotNumber = targetShotNumber;
+      if (existingEntry.data?.takeNumber) {
+        newLogData.takeNumber = existingEntry.data.takeNumber;
       }
     }
 
@@ -1652,7 +1622,8 @@ This would break the logging logic and create inconsistencies in the file number
     const tScene = existingEntry.data?.sceneNumber as string | undefined;
     const tShot = existingEntry.data?.shotNumber as string | undefined;
     const tTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
-    const sameSceneShot = takeData.sceneNumber === tScene && takeData.shotNumber === tShot;
+    // Compare against the new logData's scene/shot to decide shifting
+    const sameSceneShot = newLogData.sceneNumber === tScene && newLogData.shotNumber === tShot;
     if (sameSceneShot && !Number.isNaN(tTake)) {
       updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
     }
