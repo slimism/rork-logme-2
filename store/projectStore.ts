@@ -373,6 +373,24 @@ export const useProjectStore = create<ProjectState>()(
             const sound = (after.sound_from && after.sound_to) ? `${after.sound_from}-${after.sound_to}` : (after.soundFile || '');
             const classification = after.classification || '';
             console.log(`[ACTION] Log Finalized -> projectId=${updated.projectId} projectLocalId=${updated.projectLocalId || ''} scene=${after.sceneNumber || ''} shot=${after.shotNumber || ''} take=${after.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+            const stateAfterFinalize = get();
+            const orderAfterFinalize = stateAfterFinalize.logSheets
+              .filter(s => s.projectId === updated.projectId)
+              .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
+              .map(s => ({
+                id: s.projectLocalId || s.id,
+                scene: (s.data as any)?.sceneNumber,
+                shot: (s.data as any)?.shotNumber,
+                take: (s.data as any)?.takeNumber,
+                camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
+                  ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
+                  : ((s.data as any)?.cameraFile || undefined),
+                sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
+                  ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
+                  : ((s.data as any)?.soundFile || undefined),
+                classification: (s.data as any)?.classification || undefined,
+              }));
+            console.log(`[ACTION] ORDER AFTER -> projectId=${updated.projectId}`, orderAfterFinalize);
           }
         } catch {}
       },
