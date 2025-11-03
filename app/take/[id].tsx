@@ -8,6 +8,7 @@ import { useColors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType } from '@/types';
 import Toast from 'react-native-toast-message';
 import { handleSoundFileForDuplicateInsertion } from '@/components/CameraHandlers/SoundHandler';
+import { calculateSoundDeltaForShifting, calculateCameraDeltaForShifting } from '@/components/CameraHandlers/deltaCalculator';
 
 interface FieldType {
   id: string;
@@ -1729,14 +1730,35 @@ This would break the logging logic and create inconsistencies in the file number
         targetTakeNumber
       );
       
+      console.log('🔍 DEBUG [handleSaveWithSelectiveDuplicateHandling] Sound file handling:', {
+        shouldCallUpdateFileNumbers: soundFileResult.shouldCallUpdateFileNumbers,
+        soundStart: soundFileResult.soundStart,
+        soundDelta: soundFileResult.soundDelta,
+        isDisabled: disabledFields.has('soundFile'),
+        targetFieldId: targetFieldId,
+        existingEntrySoundFile: existingEntry.data?.soundFile,
+        existingEntrySoundFrom: existingEntry.data?.sound_from,
+        insertedSoundFile: takeData.soundFile
+      });
+      
       if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
-        console.log('  Selective: SoundHandler calling updateFileNumbers for soundFile:', { 
+        console.log('✅ [handleSaveWithSelectiveDuplicateHandling] Calling updateFileNumbers for soundFile:', { 
           start: soundFileResult.soundStart, 
-          delta: soundFileResult.soundDelta 
+          delta: soundFileResult.soundDelta,
+          projectId: logSheet.projectId,
+          fieldId: 'soundFile'
         });
         updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta);
-        
-        // If target has a range, adjust lower to end after inserted and extend upper by delta
+      } else {
+        console.log('❌ [handleSaveWithSelectiveDuplicateHandling] NOT calling updateFileNumbers for soundFile:', {
+          reason: !soundFileResult.shouldCallUpdateFileNumbers ? 'shouldCallUpdateFileNumbers=false' : 'soundFile is disabled',
+          shouldCallUpdateFileNumbers: soundFileResult.shouldCallUpdateFileNumbers,
+          isDisabled: disabledFields.has('soundFile')
+        });
+      }
+      
+      // If target has a range, adjust lower to end after inserted and extend upper by delta
+      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
         if (targetRange) {
           const bounds = getInsertedBounds('soundFile');
@@ -1780,25 +1802,21 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      // Calculate delta based on range size being inserted
-      camDelta = (() => {
-        // Check rangeData FIRST (for range mode), then fallback to takeData (for single value mode)
-        const r = rangeData[targetFieldId];
-        if (showRangeMode[targetFieldId] && r?.from && r?.to) {
-          // Range mode - calculate delta from range size
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
-        }
-        
-        // Single value mode - check if takeData has value
-        const inputCameraField = targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId];
-        if (!inputCameraField || !inputCameraField.trim()) {
-          // Input camera is blank, so delta is 0 (don't shift camera files)
-          return 0;
-        }
-        return 1;
-      })();
+      // Use centralized delta calculator instead of inline calculation
+      const cameraDeltaInput = {
+        takeData,
+        showRangeMode,
+        rangeData
+      };
+      camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, targetFieldId);
+      
+      console.log('🔍 DEBUG [handleSaveWithSelectiveDuplicateHandling] Using centralized calculateCameraDeltaForShifting:', {
+        camDelta,
+        targetFieldId,
+        takeDataField: targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId],
+        showRangeMode: showRangeMode[targetFieldId],
+        rangeData: rangeData[targetFieldId]
+      });
       
       // Calculate existingEntry updates
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
@@ -2212,7 +2230,19 @@ This would break the logging logic and create inconsistencies in the file number
 
         // Shift file numbers starting from target
         // Shift sound files starting from the correct number
+        console.log('🔍 DEBUG [handleSaveWithDuplicateHandling] Sound file branch check:', {
+          hasSoundFile: !!existingEntry.data?.soundFile,
+          hasSoundFrom: !!existingEntry.data?.sound_from,
+          existingEntrySoundFile: existingEntry.data?.soundFile,
+          existingEntrySoundFrom: existingEntry.data?.sound_from,
+          insertedSoundFile: takeData.soundFile,
+          newLogDataSoundFile: newLogData.soundFile,
+          isDisabled: disabledFields.has('soundFile'),
+          targetTakeNumber
+        });
+        
         if (existingEntry.data?.soundFile || existingEntry.data?.sound_from) {
+          console.log('✅ [handleSaveWithDuplicateHandling] Target has sound file - entering sound file branch');
           let soundStart = targetTakeNumber;
           if (typeof existingEntry.data?.sound_from === 'string') {
             const n = parseInt(existingEntry.data.sound_from, 10);
@@ -2221,22 +2251,40 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
           }
-          const soundDelta = (() => {
-            const r = rangeData['soundFile'];
-            if (showRangeMode['soundFile'] && r?.from && r?.to) {
-              const a = parseInt(r.from, 10) || 0;
-              const b = parseInt(r.to, 10) || 0;
-              return Math.abs(b - a) + 1;
-            }
-            // If input sound field is blank, don't shift sound files
-            if (!takeData.soundFile || !takeData.soundFile.trim()) {
-              return 0;
-            }
-            return 1;
-          })();
+          // Use centralized delta calculator instead of inline calculation
+          const soundDeltaInput = {
+            takeData,
+            showRangeMode,
+            rangeData
+          };
+          const soundDelta = calculateSoundDeltaForShifting(soundDeltaInput);
+          
+          console.log('🔍 DEBUG [handleSaveWithDuplicateHandling] Using centralized calculateSoundDeltaForShifting:', {
+            soundDelta,
+            takeDataSoundFile: takeData.soundFile,
+            showRangeMode: showRangeMode['soundFile'],
+            rangeData: rangeData['soundFile']
+          });
+          
+          console.log('🔍 DEBUG [handleSaveWithDuplicateHandling] Sound file calculation (target has sound):', {
+            soundStart,
+            soundDelta,
+            isDisabled: disabledFields.has('soundFile'),
+            willCallUpdateFileNumbers: !disabledFields.has('soundFile')
+          });
+          
           if (!disabledFields.has('soundFile')) {
+            console.log('✅ [handleSaveWithDuplicateHandling] Calling updateFileNumbers for soundFile (target has sound):', {
+              projectId: logSheet.projectId,
+              fieldId: 'soundFile',
+              start: soundStart,
+              delta: soundDelta
+            });
             // Always use soundStart (the beginning of the duplicate), not the end of the range
             updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
+          } else {
+            console.log('❌ [handleSaveWithDuplicateHandling] NOT calling updateFileNumbers for soundFile (disabled)');
+          }
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
             const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
@@ -2261,37 +2309,74 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
         } else {
+          console.log('✅ [handleSaveWithDuplicateHandling] Target has BLANK sound file - entering blank sound branch');
           // Target duplicate has blank sound: still shift subsequent sound files.
           // Fallback to the new log's sound number if available.
           let soundStart: number | null = null;
           if (typeof existingEntry.data?.sound_from === 'string') {
             const n = parseInt(existingEntry.data.sound_from, 10);
             if (!Number.isNaN(n)) soundStart = n;
+            console.log('  Blank sound branch: found sound_from =', n);
           } else if (typeof existingEntry.data?.soundFile === 'string') {
             const n = parseInt(existingEntry.data.soundFile, 10);
             if (!Number.isNaN(n)) soundStart = n;
+            console.log('  Blank sound branch: found soundFile =', n);
           }
           if (soundStart == null) {
+            console.log('  Blank sound branch: soundStart is null, looking for candidate from inserted log');
             const candidate = typeof newLogData.soundFile === 'string'
               ? parseInt(newLogData.soundFile, 10)
               : parseInt(String(takeData.soundFile ?? ''), 10);
             if (!Number.isNaN(candidate)) {
               soundStart = candidate;
+              console.log('  Blank sound branch: found candidate from inserted log =', candidate);
+            } else {
+              console.log('  Blank sound branch: no valid candidate found', {
+                newLogDataSoundFile: newLogData.soundFile,
+                takeDataSoundFile: takeData.soundFile
+              });
             }
           }
+          
+          console.log('🔍 DEBUG [handleSaveWithDuplicateHandling] Sound file calculation (target has blank sound):', {
+            soundStart,
+            isDisabled: disabledFields.has('soundFile'),
+            willCallUpdateFileNumbers: soundStart != null && !disabledFields.has('soundFile')
+          });
+          
           if (soundStart != null) {
-            const soundDelta = (() => {
-              const r = rangeData['soundFile'];
-              if (showRangeMode['soundFile'] && r?.from && r?.to) {
-                const a = parseInt(r.from, 10) || 0;
-                const b = parseInt(r.to, 10) || 0;
-                return Math.abs(b - a) + 1;
-              }
-              return 1;
-            })();
+            // Use centralized delta calculator instead of inline calculation
+            const soundDeltaInput = {
+              takeData,
+              showRangeMode,
+              rangeData
+            };
+            const soundDelta = calculateSoundDeltaForShifting(soundDeltaInput);
+            
+            console.log('🔍 DEBUG [handleSaveWithDuplicateHandling] Sound delta calculation:', {
+              soundDelta,
+              rangeData: rangeData['soundFile'],
+              showRangeMode: showRangeMode['soundFile'],
+              takeDataSoundFile: takeData.soundFile
+            });
+            
             if (!disabledFields.has('soundFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'soundFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart; updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta); }
+              const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+              const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : soundStart;
+              console.log('✅ [handleSaveWithDuplicateHandling] Calling updateFileNumbers for soundFile (target has blank sound):', {
+                projectId: logSheet.projectId,
+                fieldId: 'soundFile',
+                start,
+                delta: soundDelta,
+                calculatedFrom: targetRange ? 'targetRange.to + 1' : 'soundStart',
+                targetRange: targetRange ? { from: targetRange.from, to: targetRange.to } : null
+              });
+              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
+            } else {
+              console.log('❌ [handleSaveWithDuplicateHandling] NOT calling updateFileNumbers for soundFile (disabled)');
             }
+          } else {
+            console.log('❌ [handleSaveWithDuplicateHandling] NOT calling updateFileNumbers for soundFile: soundStart is null');
           }
         }
         if (camCount === 1) {
@@ -2304,19 +2389,13 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) camStart = n;
           }
           {
-            const camDelta = (() => {
-              const r = rangeData['cameraFile'];
-              if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-                const a = parseInt(r.from, 10) || 0;
-                const b = parseInt(r.to, 10) || 0;
-                return Math.abs(b - a) + 1;
-              }
-              // If input camera field is blank, don't shift camera files
-              if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
-                return 0;
-              }
-              return 1;
-            })();
+            // Use centralized delta calculator instead of inline calculation
+            const cameraDeltaInput = {
+              takeData,
+              showRangeMode,
+              rangeData
+            };
+            const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
               { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta); }
               
@@ -2385,19 +2464,13 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) camStart = n;
               }
               {
-                const camDelta = (() => {
-                  const r = rangeData[fieldId];
-                  if (showRangeMode[fieldId] && r?.from && r?.to) {
-                    const a = parseInt(r.from, 10) || 0;
-                    const b = parseInt(r.to, 10) || 0;
-                    return Math.abs(b - a) + 1;
-                  }
-                  // If input camera field is blank, don't shift camera files
-                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-                    return 0;
-                  }
-                  return 1;
-                })();
+                // Use centralized delta calculator instead of inline calculation
+                const cameraDeltaInput = {
+                  takeData,
+                  showRangeMode,
+                  rangeData
+                };
+                const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
                   { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
@@ -2424,6 +2497,13 @@ This would break the logging logic and create inconsistencies in the file number
                     const targetSingleStr = existingEntry.data?.[fieldId] as string | undefined;
                     if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
                       const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                      // Use centralized delta calculator for the range calculation
+                      const cameraDeltaInput = {
+                        takeData,
+                        showRangeMode,
+                        rangeData
+                      };
+                      const calculatedDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                       if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
                         const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
                         const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
@@ -2659,19 +2739,13 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) camStart = n;
           }
           {
-            const camDelta = (() => {
-              const r = rangeData['cameraFile'];
-              if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-                const a = parseInt(r.from, 10) || 0;
-                const b = parseInt(r.to, 10) || 0;
-                return Math.abs(b - a) + 1;
-              }
-              // If input camera field is blank, don't shift camera files
-              if (!takeData.cameraFile || !takeData.cameraFile.trim()) {
-                return 0;
-              }
-              return 1;
-            })();
+            // Use centralized delta calculator instead of inline calculation
+            const cameraDeltaInput = {
+              takeData,
+              showRangeMode,
+              rangeData
+            };
+            const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
               { 
                 const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
@@ -2756,19 +2830,13 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) camStart = n;
               }
               {
-                const camDelta = (() => {
-                  const r = rangeData[fieldId];
-                  if (showRangeMode[fieldId] && r?.from && r?.to) {
-                    const a = parseInt(r.from, 10) || 0;
-                    const b = parseInt(r.to, 10) || 0;
-                    return Math.abs(b - a) + 1;
-                  }
-                  // If input camera field is blank, don't shift camera files
-                  if (!takeData[fieldId] || !takeData[fieldId].trim()) {
-                    return 0;
-                  }
-                  return 1;
-                })();
+                // Use centralized delta calculator instead of inline calculation
+                const cameraDeltaInput = {
+                  takeData,
+                  showRangeMode,
+                  rangeData
+                };
+                const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
                   { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
@@ -3057,29 +3125,24 @@ This would break the logging logic and create inconsistencies in the file number
       if (!Number.isNaN(n)) soundStart = n;
     }
 
-    // Calculate sound file delta and new ranges for existingEntry FIRST
-    const soundDelta = (() => {
-      // For range mode, check rangeData
-      const r = rangeData['soundFile'];
-      if (showRangeMode['soundFile'] && r?.from && r?.to) {
-        const a = parseInt(r.from, 10) || 0;
-        const b = parseInt(r.to, 10) || 0;
-        return Math.abs(b - a) + 1;
-      }
-      
-      // For single mode, check takeData
-      if (!takeData.soundFile?.trim()) return 0;
-      return 1;
-    })();
+    // Use centralized delta calculator instead of inline calculation
+    const soundDeltaInput = {
+      takeData,
+      showRangeMode,
+      rangeData
+    };
+    const soundDelta = calculateSoundDeltaForShifting(soundDeltaInput);
 
     let newSoundToNum = 0;
     const rSound = getRangeFromData(existingEntry.data, 'soundFile');
     if (rSound) {
       const exTo = parseInt(rSound.to, 10) || 0;
-      const r = rangeData['soundFile'];
-      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
-        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
-        : 1;
+      // Use centralized delta calculator instead of inline calculation
+      const delta = calculateSoundDeltaForShifting({
+        takeData,
+        showRangeMode,
+        rangeData
+      });
       if (!disabledFields.has('soundFile')) {
         const bounds = getInsertedBounds('soundFile');
         const insertedUpper = bounds?.max ?? (parseInt(rSound.from, 10) || 0);
@@ -3095,10 +3158,12 @@ This would break the logging logic and create inconsistencies in the file number
         hasUpdates = true;
       }
     } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0 && !disabledFields.has('soundFile')) {
-      const r = rangeData['soundFile'];
-      const delta = (showRangeMode['soundFile'] && r?.from && r?.to)
-        ? (Math.abs((parseInt(r.to, 10) || 0) - (parseInt(r.from, 10) || 0)) + 1)
-        : 1;
+      // Use centralized delta calculator instead of inline calculation
+      const delta = calculateSoundDeltaForShifting({
+        takeData,
+        showRangeMode,
+        rangeData
+      });
       const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
       const newVal = String(exNum + delta).padStart(4, '0');
       newSoundToNum = exNum + delta;
@@ -3115,23 +3180,15 @@ This would break the logging logic and create inconsistencies in the file number
         const n = parseInt(existingEntry.data.cameraFile, 10);
         if (!Number.isNaN(n)) camStart = n;
       }
-      // Calculate camera file delta and new ranges for existingEntry FIRST
-      const camDelta = (() => {
-        // Check if camera field is actually disabled
-        if (disabledFields.has('cameraFile')) return 0;
-        
-        // For range mode, check rangeData
-        const r = rangeData['cameraFile'];
-        if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
-        }
-        
-        // For single mode, check takeData
-        if (!takeData.cameraFile?.trim()) return 0;
-        return 1;
-      })();
+      // Use centralized delta calculator instead of inline calculation
+      const cameraDeltaInput = {
+        takeData,
+        showRangeMode,
+        rangeData
+      };
+      const camDelta = disabledFields.has('cameraFile') 
+        ? 0 
+        : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       let newCamToNum = 0;
       const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -3207,23 +3264,15 @@ This would break the logging logic and create inconsistencies in the file number
             const n = parseInt(val, 10);
             if (!Number.isNaN(n)) camStart = n;
           }
-          // Calculate camera file delta and new ranges for existingEntry FIRST
-          const camDelta = (() => {
-            // Check if camera field is actually disabled
-            if (disabledFields.has(fieldId)) return 0;
-            
-            // For range mode, check rangeData
-            const r = rangeData[fieldId];
-            if (showRangeMode[fieldId] && r?.from && r?.to) {
-              const a = parseInt(r.from, 10) || 0;
-              const b = parseInt(r.to, 10) || 0;
-              return Math.abs(b - a) + 1;
-            }
-            
-            // For single mode, check takeData
-            if (!takeData[fieldId]?.trim()) return 0;
-            return 1;
-          })();
+          // Use centralized delta calculator instead of inline calculation
+          const cameraDeltaInput = {
+            takeData,
+            showRangeMode,
+            rangeData
+          };
+          const camDelta = disabledFields.has(fieldId)
+            ? 0
+            : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
 
           let newCamToNum = 0;
           const targetRange = getRangeFromData(existingEntry.data, fieldId);
@@ -3416,23 +3465,15 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     if (camCount === 1) {
-      // Recalculate camDelta from edited values
-      const camDelta = (() => {
-        // Check if camera field is actually disabled
-        if (disabledFields.has('cameraFile')) return 0;
-        
-        // For range mode, check rangeData
-        const r = rangeData['cameraFile'];
-        if (showRangeMode['cameraFile'] && r?.from && r?.to) {
-          const a = parseInt(r.from, 10) || 0;
-          const b = parseInt(r.to, 10) || 0;
-          return Math.abs(b - a) + 1;
-        }
-        
-        // For single mode, check takeData
-        if (!takeData.cameraFile?.trim()) return 0;
-        return 1;
-      })();
+      // Use centralized delta calculator instead of inline calculation
+      const cameraDeltaInput = {
+        takeData,
+        showRangeMode,
+        rangeData
+      };
+      const camDelta = disabledFields.has('cameraFile')
+        ? 0
+        : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && camDelta > 0) {
         const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
@@ -3451,17 +3492,15 @@ This would break the logging logic and create inconsistencies in the file number
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-          const camDelta = (() => {
-            if (disabledFields.has(fieldId)) return 0;
-            const r = rangeData[fieldId];
-            if (showRangeMode[fieldId] && r?.from && r?.to) {
-              const a = parseInt(r.from, 10) || 0;
-              const b = parseInt(r.to, 10) || 0;
-              return Math.abs(b - a) + 1;
-            }
-            if (!takeData[fieldId]?.trim()) return 0;
-            return 1;
-          })();
+          // Use centralized delta calculator instead of inline calculation
+          const cameraDeltaInput = {
+            takeData,
+            showRangeMode,
+            rangeData
+          };
+          const camDelta = disabledFields.has(fieldId)
+            ? 0
+            : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
           if (!disabledFields.has(fieldId) && camDelta > 0) {
             const targetRange = getRangeFromData(existingEntry.data, fieldId);
