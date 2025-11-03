@@ -867,14 +867,17 @@ export const useProjectStore = create<ProjectState>()(
             if (!insertedLog) {
               if (fieldId === 'soundFile') {
                 tempSound = fromNumber;
+                console.log(`[INIT] SOUND TEMP INITIALIZATION - Inserted log not found, seeding tempSound from fromNumber=${fromNumber}`);
                 logger.logDebug(`Inserted log not found; seeding tempSound directly from fromNumber=${fromNumber}`);
               } else if (fieldId.startsWith('cameraFile')) {
                 // For camera fields, when inserted log not found, initialize ALL camera tempCamera values from fromNumber
                 // This ensures that when processing cameraFile2, tempCamera[1], tempCamera[2], etc. are all initialized
                 const project = activeState.projects.find(p => p.id === projectId);
                 const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+                console.log(`[INIT] CAMERA TEMP INITIALIZATION - Inserted log not found, seeding tempCamera[1..${cameraConfiguration}] from fromNumber=${fromNumber}`);
                 for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
                   tempCamera[camNum] = fromNumber;
+                  console.log(`[INIT] tempCamera[${camNum}] = ${fromNumber} (from fromNumber fallback)`);
                   logger.logDebug(`Inserted log not found; seeding tempCamera[${camNum}] directly from fromNumber=${fromNumber}`);
                 }
               }
@@ -894,13 +897,16 @@ export const useProjectStore = create<ProjectState>()(
               if (insertedFieldVal && insertedFieldVal.value !== null) {
                 if (fieldId === 'soundFile') {
                   tempSound = insertedFieldVal.upper;
+                  console.log(`[INIT] SOUND TEMP INITIALIZATION - Found inserted log (Take ${insertedTakeNum}, ID: ${insertedLog.id}), tempSound = ${tempSound} (from inserted log soundFile value: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
                   logger.logDebug(`Initialized tempSound from inserted log (Take ${insertedTakeNum}, file number ${insertedFieldVal.lower}/${insertedFieldVal.upper}): ${tempSound}`);
                 } else if (fieldId.startsWith('cameraFile')) {
                   const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
                   tempCamera[cameraNum] = insertedFieldVal.upper;
+                  console.log(`[INIT] tempCamera[${cameraNum}] = ${tempCamera[cameraNum]} (from inserted log Take ${insertedTakeNum}, field ${fieldId}, value: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
                   logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log (Take ${insertedTakeNum}, file number ${insertedFieldVal.lower}/${insertedFieldVal.upper}): ${tempCamera[cameraNum]}`);
                 }
               } else {
+                console.log(`[INIT] WARNING - Inserted log (Take ${insertedTakeNum}, ID: ${insertedLog.id}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
                 logger.logWarning(`Inserted log (Take ${insertedTakeNum}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
               }
               
@@ -912,16 +918,19 @@ export const useProjectStore = create<ProjectState>()(
               if (fieldId.startsWith('cameraFile')) {
                 // Initialize tempCamera for ALL cameras in the project (based on cameraConfiguration)
                 // Always initialize from the inserted log to ensure correct base values
+                console.log(`[INIT] CAMERA TEMP INITIALIZATION - Found inserted log (Take ${insertedTakeNum}, ID: ${insertedLog.id}), initializing tempCamera for all ${cameraConfiguration} cameras from inserted log values`);
                 for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
                   const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
                   // Get the current state of this camera field from the inserted log
                   const camFieldVal = getFieldValue(insertedData, camFieldId);
                   if (camFieldVal && camFieldVal.value !== null) {
                     tempCamera[camNum] = camFieldVal.upper;
+                    console.log(`[INIT] tempCamera[${camNum}] = ${tempCamera[camNum]} (from inserted log Take ${insertedTakeNum}, field ${camFieldId}, value: ${camFieldVal.lower}/${camFieldVal.upper})`);
                     logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log (Take ${insertedTakeNum}, field ${camFieldId}, file number ${camFieldVal.lower}/${camFieldVal.upper}): ${tempCamera[camNum]}`);
                   } else {
                     // Camera field is blank in inserted log - this shouldn't happen for a valid inserted log,
                     // but if it does, we'll leave tempCamera[camNum] as null/undefined
+                    console.log(`[INIT] WARNING: tempCamera[${camNum}] NOT initialized - inserted log (Take ${insertedTakeNum}) has blank ${camFieldId}`);
                     logger.logWarning(`Inserted log (Take ${insertedTakeNum}) has blank ${camFieldId} - tempCamera[${camNum}] not initialized`);
                   }
                 }
@@ -1121,6 +1130,12 @@ export const useProjectStore = create<ProjectState>()(
                       soundNewUpper = soundNewLower; // Single value: upper equals lower
                     }
                     
+                    const soundCalcFormula = currentFieldVal.isRange
+                      ? `Range: newLower = tempSound(${soundShiftBase}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`
+                      : `Single value: newLower = tempSound(${soundShiftBase}) + delta(${soundDeltaForShift}) = ${soundNewLower}, newUpper = ${soundNewLower} (single value)`;
+                    
+                    console.log(`[CALC] SOUND FILE - Take ${takeNum} (ID: ${logSheet.id}): tempSound=${tempSound ?? 'null'}, shiftBase=${soundShiftBase}, delta=${soundDeltaForShift}, currentLower=${currentFieldVal.lower}, currentUpper=${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${soundCalcFormula}", result: ${soundNewLower}/${soundNewUpper}`);
+                    
                     logger.logCalculation(
                       'Sound File Shift Calculation',
                       `Calculate new sound file bounds for take ${takeNum}`,
@@ -1132,9 +1147,7 @@ export const useProjectStore = create<ProjectState>()(
                         currentUpper: currentFieldVal.upper,
                         isRange: currentFieldVal.isRange
                       },
-                      currentFieldVal.isRange
-                        ? `Range: newLower = tempSound(${soundShiftBase}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`
-                        : `Single value: newLower = tempSound(${soundShiftBase}) + delta(${soundDeltaForShift}) = ${soundNewLower}, newUpper = ${soundNewLower} (single value)`,
+                      soundCalcFormula,
                       { newLower: soundNewLower, newUpper: soundNewUpper }
                     );
                     
@@ -1165,6 +1178,7 @@ export const useProjectStore = create<ProjectState>()(
                     // So tempSound should be set to soundNewLower, not soundNewUpper (which would be soundNewLower + 1)
                     const finalUpperForTempSound = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
                     tempSound = finalUpperForTempSound;
+                    console.log(`[UPDATE] tempSound: ${previousTempSound ?? 'null'} -> ${tempSound} (after processing Take ${takeNum}, sound changed from ${currentFieldVal.lower}/${currentFieldVal.upper} to ${soundNewLower}/${soundNewUpper}, finalUpper=${finalUpperForTempSound})`);
                     logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing take ${takeNum} (sound: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${soundNewLower}/${soundNewUpper})`);
                     logger.logDebug(`tempSound is now ${tempSound} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed
@@ -1189,6 +1203,12 @@ export const useProjectStore = create<ProjectState>()(
                       newLower = tempCamera[cameraNum]! + 1;
                       newUpper = newLower + delta;
                       
+                      const cameraCalcFormula = currentFieldVal.isRange
+                        ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
+                        : `Single value: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} (single value)`;
+                      
+                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=${tempCamera[cameraNum]}, delta=${delta}, currentLower=${currentFieldVal.lower}, currentUpper=${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${cameraCalcFormula}", result: ${newLower}/${newUpper}`);
+                      
                       logger.logCalculation(
                         'Camera File Sequential Shift',
                         `Using tempCamera[${cameraNum}] for sequential shifting (take ${takeNum})`,
@@ -1207,6 +1227,7 @@ export const useProjectStore = create<ProjectState>()(
                       // tempCamera not available - this shouldn't happen for sequential shifting
                       // But fallback to shiftBase if needed
                       logger.logWarning(`tempCamera[${cameraNum}] not available for take ${takeNum} - using shiftBase as fallback`);
+                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=null/undefined, using shiftBase=${shiftBase}, delta=${delta}, formula="newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}", result: ${newLower}/${newUpper}`);
                       // newLower and newUpper are already calculated from shiftBase above
                     }
                     
@@ -1232,6 +1253,7 @@ export const useProjectStore = create<ProjectState>()(
                     // So tempCamera should be set to newLower, not newUpper (which would be newLower + 1)
                     const finalUpperForTemp = currentFieldVal.isRange ? newUpper : newLower;
                     tempCamera[cameraNum] = finalUpperForTemp;
+                    console.log(`[UPDATE] tempCamera[${cameraNum}]: ${previousTempCamera ?? 'null'} -> ${tempCamera[cameraNum]} (after processing Take ${takeNum}, camera changed from ${currentFieldVal.lower}/${currentFieldVal.upper} to ${newLower}/${newUpper}, finalUpper=${finalUpperForTemp})`);
                     logger.logDebug(`Updated tempCamera[${cameraNum}] from ${previousTempCamera} to ${tempCamera[cameraNum]} after processing take ${takeNum} (camera: ${currentFieldVal.lower}/${currentFieldVal.upper} -> ${newLower}/${newUpper})`);
                     logger.logDebug(`tempCamera[${cameraNum}] is now ${tempCamera[cameraNum]} - next take will use this value + 1 for its lower bound`);
                     // Only mark as updated if data actually changed
@@ -1405,6 +1427,9 @@ export const useProjectStore = create<ProjectState>()(
               const effData = (updatedSheetsMap.get(projectOrdered[insertedIndex].s.id)?.data) || projectOrdered[insertedIndex].s.data || {};
               const val = getFieldValue(effData, 'soundFile');
               if (val && val.value !== null) tempSoundGlobal = val.upper;
+              console.log(`[GLOBAL INIT] SOUND TEMP - Found inserted log at index ${insertedIndex}, tempSoundGlobal = ${tempSoundGlobal} (from inserted log soundFile value: ${val?.lower}/${val?.upper})`);
+            } else {
+              console.log(`[GLOBAL INIT] SOUND TEMP - Inserted log not found, tempSoundGlobal = ${tempSoundGlobal} (from fromNumber)`);
             }
 
             // Walk forward from inserted index and sequentially update ALL entries
@@ -1426,6 +1451,8 @@ export const useProjectStore = create<ProjectState>()(
               if (!currentFieldVal || currentFieldVal.value === null) {
                 // Blank sound (e.g., Waste): do not modify, tempSound remains unchanged (delta = 0)
                 // This ensures subsequent entries can still increment correctly
+                const takeNum = parseInt((effData as any)?.takeNumber || '0', 10) || 0;
+                console.log(`[GLOBAL CALC] SOUND FILE - Log ${s.id} (Take ${takeNum}): BLANK sound, tempSoundGlobal remains ${tempSoundGlobal} (delta = 0)`);
                 logger.logDebug(`Global sound shift: Log ${s.id} has blank sound - tempSoundGlobal remains ${tempSoundGlobal}`);
                 continue;
               }
@@ -1438,6 +1465,7 @@ export const useProjectStore = create<ProjectState>()(
               const base = tempSoundGlobal;
               let soundNewLower: number;
               let soundNewUpper: number;
+              const takeNum = parseInt((effData as any)?.takeNumber || '0', 10) || 0;
               if (currentFieldVal.isRange) {
                 soundNewLower = base + 1;
                 soundNewUpper = soundNewLower + delta;
@@ -1445,6 +1473,12 @@ export const useProjectStore = create<ProjectState>()(
                 soundNewLower = base + delta; // delta=1 for single
                 soundNewUpper = soundNewLower;
               }
+              
+              const globalSoundCalcFormula = currentFieldVal.isRange
+                ? `Range: newLower = tempSoundGlobal(${base}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
+                : `Single value: newLower = tempSoundGlobal(${base}) + delta(${delta}) = ${soundNewLower}, newUpper = ${soundNewLower} (single value)`;
+              
+              console.log(`[GLOBAL CALC] SOUND FILE - Log ${s.id} (Take ${takeNum}): tempSoundGlobal=${base}, delta=${delta}, currentLower=${currentFieldVal.lower}, currentUpper=${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${globalSoundCalcFormula}", result: ${soundNewLower}/${soundNewUpper}`);
 
               const newData: Record<string, any> = { ...effData };
               if (currentFieldVal.isRange) {
@@ -1472,7 +1506,9 @@ export const useProjectStore = create<ProjectState>()(
               logger.logSave('updateFileNumbers', s.id, newData, effData);
               updatedSheetsMap.set(s.id, { ...s, data: newData, updatedAt: new Date().toISOString() });
               // Update tempSoundGlobal with the new upper bound for subsequent calculations
+              const previousTempSoundGlobal = tempSoundGlobal;
               tempSoundGlobal = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+              console.log(`[GLOBAL UPDATE] tempSoundGlobal: ${previousTempSoundGlobal} -> ${tempSoundGlobal} (after processing Log ${s.id}, Take ${takeNum}, sound changed from ${currentFieldVal.lower}/${currentFieldVal.upper} to ${soundNewLower}/${soundNewUpper})`);
               logger.logDebug(`Updated tempSoundGlobal to ${tempSoundGlobal} after processing log ${s.id}`);
             }
           }
