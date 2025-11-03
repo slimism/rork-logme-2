@@ -2307,7 +2307,6 @@ This would break the logging logic and create inconsistencies in the file number
               existingEntryUpdates.soundFile = newVal;
               hasUpdates = true;
             }
-          }
         } else {
           console.log('✅ [handleSaveWithDuplicateHandling] Target has BLANK sound file - entering blank sound branch');
           // Target duplicate has blank sound: still shift subsequent sound files.
