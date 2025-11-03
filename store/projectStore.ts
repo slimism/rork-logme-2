@@ -509,7 +509,14 @@ export const useProjectStore = create<ProjectState>()(
                 logger.logDebug(`Found inserted log via fallback search (fromNumber - 1): Take ${insertedLog.data?.takeNumber}`);
               }
             }
-            
+
+            // If we still did not find an inserted log (common when inserting-before before saving the new log),
+            // seed sound temp value directly from fromNumber so sequential shifting can proceed.
+            if (!insertedLog && fieldId === 'soundFile') {
+              tempSound = fromNumber;
+              logger.logDebug(`Inserted log not found; seeding tempSound directly from fromNumber=${fromNumber}`);
+            }
+
             if (insertedLog) {
               const insertedData = insertedLog.data || {};
               const insertedTakeNum = parseInt(insertedData.takeNumber as string || '0', 10);
@@ -558,7 +565,8 @@ export const useProjectStore = create<ProjectState>()(
                   }
                 }
               }
-            } else {
+            } else if (fieldId !== 'soundFile') {
+              // For camera fields, keep existing warning behavior
               logger.logWarning(`Inserted log with file number ${fromNumber} for field ${fieldId} not found - temp variables not initialized. This may cause incorrect shifting calculations.`);
             }
             
