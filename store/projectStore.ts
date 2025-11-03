@@ -310,13 +310,27 @@ export const useProjectStore = create<ProjectState>()(
           nextLogId: state.nextLogId + 1,
           projectLocalCounters: { ...state.projectLocalCounters, [projectId]: nextLocal + 1 },
         }));
-        // ACTION: log inserted (initial creation)
+        // ACTION: log inserted (initial creation) and ORDER AFTER snapshot
         try {
           const d: any = newLogSheet.data || {};
           const camera = d.cameraFile || (d.camera1_from ? `${d.camera1_from}-${d.camera1_to}` : '');
           const sound = d.soundFile || (d.sound_from ? `${d.sound_from}-${d.sound_to}` : '');
           const classification = d.classification || '';
           console.log(`[ACTION] Log Inserted -> projectId=${projectId} projectLocalId=${newLogSheet.projectLocalId} scene=${d.sceneNumber || ''} shot=${d.shotNumber || ''} take=${d.takeNumber || ''} camera="${camera}" sound="${sound}" classification=${classification}`);
+          const stateAfter = get();
+          const orderAfter = stateAfter.logSheets
+            .filter(s => s.projectId === projectId)
+            .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
+            .map(s => ({
+              id: s.projectLocalId || s.id,
+              scene: (s.data as any)?.sceneNumber,
+              shot: (s.data as any)?.shotNumber,
+              take: (s.data as any)?.takeNumber,
+              camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+              sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+              classification: (s.data as any)?.classification || undefined,
+            }));
+          console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
         } catch {}
         
         return newLogSheet;
@@ -350,11 +364,11 @@ export const useProjectStore = create<ProjectState>()(
         const updated = get().logSheets.find(sheet => sheet.id === id);
         logger.logSave('updateLogSheet', id, updated?.data || {}, previousData);
         logger.logFunctionExit(updated);
-        // ACTION LOG: If this appears to be first population (previous had no take), log summary
+        // ACTION LOG: Always log finalized snapshot after updates
         try {
           const before: any = previousData || {};
           const after: any = updated?.data || {};
-          if (updated && (!before?.takeNumber && !!after?.takeNumber)) {
+          if (updated) {
             const camera = after.cameraFile || (after.camera1_from ? `${after.camera1_from}-${after.camera1_to}` : '');
             const sound = after.soundFile || (after.sound_from ? `${after.sound_from}-${after.sound_to}` : '');
             const classification = after.classification || '';
