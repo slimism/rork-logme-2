@@ -731,9 +731,22 @@ export const useProjectStore = create<ProjectState>()(
                       { selectedBase: soundShiftBase }
                     );
                     
-                    // Calculate new bounds: newLower = tempSound + 1, newUpper = newLower + delta
-                    const soundNewLower = soundShiftBase + 1;
-                    const soundNewUpper = soundNewLower + soundDeltaForShift;
+                    // Calculate new bounds based on whether it's a range or single value
+                    // For single values: newLower = tempSound + delta (direct increment)
+                    // For ranges: newLower = tempSound + 1, newUpper = newLower + delta
+                    let soundNewLower: number;
+                    let soundNewUpper: number;
+                    
+                    if (currentFieldVal.isRange) {
+                      // Range: newLower = tempSound + 1, newUpper = newLower + delta
+                      soundNewLower = soundShiftBase + 1;
+                      soundNewUpper = soundNewLower + soundDeltaForShift;
+                    } else {
+                      // Single value: newLower = tempSound + delta (single file number)
+                      // For single values, delta represents the span (1 file), so we add it directly
+                      soundNewLower = soundShiftBase + soundDeltaForShift;
+                      soundNewUpper = soundNewLower; // Single value: upper equals lower
+                    }
                     
                     logger.logCalculation(
                       'Sound File Shift Calculation',
@@ -743,9 +756,12 @@ export const useProjectStore = create<ProjectState>()(
                         shiftBase: soundShiftBase,
                         delta: soundDeltaForShift,
                         currentLower: currentFieldVal.lower,
-                        currentUpper: currentFieldVal.upper
+                        currentUpper: currentFieldVal.upper,
+                        isRange: currentFieldVal.isRange
                       },
-                      `newLower = tempSound(${tempSound !== null ? tempSound : shiftBase}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`,
+                      currentFieldVal.isRange
+                        ? `Range: newLower = tempSound(${soundShiftBase}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${soundDeltaForShift} = ${soundNewUpper}`
+                        : `Single value: newLower = tempSound(${soundShiftBase}) + delta(${soundDeltaForShift}) = ${soundNewLower}, newUpper = ${soundNewLower} (single value)`,
                       { newLower: soundNewLower, newUpper: soundNewUpper }
                     );
                     
