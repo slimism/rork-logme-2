@@ -588,6 +588,27 @@ export const useProjectStore = create<ProjectState>()(
             return logSheet;
           });
 
+          // Emit ORDER AFTER snapshot for this project to ensure latest entry appears populated
+          try {
+            const orderAfterFiles = updatedSimple
+              .filter(s => s.projectId === projectId)
+              .sort((a, b) => (parseInt((a as any).projectLocalId as string, 10) || 0) - (parseInt((b as any).projectLocalId as string, 10) || 0))
+              .map(s => ({
+                id: (s as any).projectLocalId || s.id,
+                scene: (s.data as any)?.sceneNumber,
+                shot: (s.data as any)?.shotNumber,
+                take: (s.data as any)?.takeNumber,
+                camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
+                  ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
+                  : ((s.data as any)?.cameraFile || undefined),
+                sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
+                  ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
+                  : ((s.data as any)?.soundFile || undefined),
+                classification: (s.data as any)?.classification || undefined,
+              }));
+            console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
+          } catch {}
+
           logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
           return { logSheets: updatedSimple };
           
