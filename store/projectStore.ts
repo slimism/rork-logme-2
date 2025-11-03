@@ -1166,20 +1166,24 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData['sound_from'];
                       delete newData['sound_to'];
                     }
-                    // ALWAYS update tempSound with the correct upper bound
-                    // For single values: soundNewUpper should equal soundNewLower (single file number)
-                    // For ranges: soundNewUpper = soundNewLower + delta (range of file numbers)
-                    // This ensures subsequent takes use the correct base value
-                    // If the value is already correct (target duplicate already shifted), soundNewUpper will match currentUpper
-                    // but we still update tempSound to maintain consistency
+                    // CRITICAL: ALWAYS update tempSound with the calculated soundNewUpper/soundNewLower values
+                    // This ensures tempSound always reflects the most recent log's position, and subsequent logs
+                    // will ALWAYS use tempSound (from the previous log) + 1 for their calculation
+                    // 
+                    // Flow: tempSound initialized from inserted log → used for Take 4 → updated to Take 4's upper bound
+                    //       → used for Take 5 → updated to Take 5's upper bound → used for Take 6 → etc.
+                    // 
+                    // IMPORTANT: We use the CALCULATED soundNewUpper/soundNewLower (based on tempSound), NOT the current log's values
+                    // This ensures consistency - tempSound is always updated from the calculated position, not the stored position
                     const previousTempSound = tempSound;
                     // For single values, we only compare soundNewLower with currentLower (single values have no range)
                     // For ranges, we compare both lower and upper bounds
                     const soundIsAlreadyCorrectlyShifted = currentFieldVal.isRange
                       ? (soundNewLower === currentFieldVal.lower && soundNewUpper === currentFieldVal.upper)
                       : (soundNewLower === currentFieldVal.lower);  // Single value: only compare lower bound
-                    // For single values, the upper bound is the same as the lower bound (it's a single file, not a range)
-                    // So tempSound should be set to soundNewLower, not soundNewUpper (which would be soundNewLower + 1)
+                    // For single values: tempSound = soundNewLower (single file number, no range)
+                    // For ranges: tempSound = soundNewUpper (the upper bound of the range)
+                    // soundNewLower and soundNewUpper are calculated from tempSound, so we're updating tempSound from the calculated values
                     const finalUpperForTempSound = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
                     tempSound = finalUpperForTempSound;
                     console.log(`[UPDATE] tempSound: ${previousTempSound ?? 'null'} -> ${tempSound} (after processing Take ${takeNum}, sound changed from ${currentFieldVal.lower}/${currentFieldVal.upper} to ${soundNewLower}/${soundNewUpper}, finalUpper=${finalUpperForTempSound})`);
@@ -1246,15 +1250,19 @@ export const useProjectStore = create<ProjectState>()(
                       delete newData[`camera${cameraNum}_from`];
                       delete newData[`camera${cameraNum}_to`];
                     }
-                    // ALWAYS update tempCamera with the correct upper bound
-                    // For single values: newUpper should equal newLower (single file number)
-                    // For ranges: newUpper = newLower + delta (range of file numbers)
-                    // This ensures subsequent takes use the correct base value
-                    // If the value is already correct (target duplicate already shifted), newUpper will match currentUpper
-                    // but we still update tempCamera to maintain consistency
+                    // CRITICAL: ALWAYS update tempCamera with the calculated newUpper/newLower values
+                    // This ensures tempCamera always reflects the most recent log's position, and subsequent logs
+                    // will ALWAYS use tempCamera (from the previous log) + 1 for their calculation
+                    // 
+                    // Flow: tempCamera initialized from inserted log → used for Take 4 → updated to Take 4's upper bound
+                    //       → used for Take 5 → updated to Take 5's upper bound → used for Take 6 → etc.
+                    // 
+                    // IMPORTANT: We use the CALCULATED newUpper/newLower (based on tempCamera), NOT the current log's values
+                    // This ensures consistency - tempCamera is always updated from the calculated position, not the stored position
                     const previousTempCamera = tempCamera[cameraNum];
-                    // For single values, the upper bound is the same as the lower bound (it's a single file, not a range)
-                    // So tempCamera should be set to newLower, not newUpper (which would be newLower + 1)
+                    // For single values: tempCamera = newLower (single file number, no range)
+                    // For ranges: tempCamera = newUpper (the upper bound of the range)
+                    // newLower and newUpper are calculated from tempCamera, so we're updating tempCamera from the calculated values
                     const finalUpperForTemp = currentFieldVal.isRange ? newUpper : newLower;
                     tempCamera[cameraNum] = finalUpperForTemp;
                     console.log(`[UPDATE] tempCamera[${cameraNum}]: ${previousTempCamera ?? 'null'} -> ${tempCamera[cameraNum]} (after processing Take ${takeNum}, camera changed from ${currentFieldVal.lower}/${currentFieldVal.upper} to ${newLower}/${newUpper}, finalUpper=${finalUpperForTemp})`);
