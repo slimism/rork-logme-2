@@ -1759,28 +1759,48 @@ This would break the logging logic and create inconsistencies in the file number
 
                 // Also shift sound if applicable (new entry provides sound)
                 try {
-                  const newEntryHasSound = !!(takeData.soundFile?.trim()) || !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
-                  if (newEntryHasSound) {
-                    // Seed from the inserted entry's sound value (lower bound if range; single value otherwise)
-                    let soundStartLocal = 0;
-                    if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
-                      const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
-                      const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
-                      soundStartLocal = Math.min(newFromS, newToS);
-                    } else if (takeData.soundFile) {
-                      const n = parseInt(String(takeData.soundFile), 10) || 0;
-                      soundStartLocal = n;
+                  // Always shift sound to advance tempSound for subsequent logs.
+                  // If inserted entry provides sound, base on inserted value; otherwise base on previous valid sound upper and increment 0.
+                  let soundStartLocal = 0;
+                  let soundIncrementLocal = 0;
+                  const hasInsertedSoundRange = !!(showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to);
+                  const hasInsertedSoundSingle = !!(takeData.soundFile?.trim());
+                  if (hasInsertedSoundRange) {
+                    const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
+                    const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
+                    soundStartLocal = Math.min(newFromS, newToS);
+                    soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
+                  } else if (hasInsertedSoundSingle) {
+                    const n = parseInt(String(takeData.soundFile), 10) || 0;
+                    soundStartLocal = n;
+                    soundIncrementLocal = 1;
+                  } else {
+                    // Inserted sound is blank: use previous valid sound upper as base, increment 0
+                    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+                    const sameShotTakes = projectLogSheets
+                      .filter(sheet => sheet.data?.sceneNumber === tScene && sheet.data?.shotNumber === tShot)
+                      .map(sheet => ({ sheet, take: parseInt(sheet.data?.takeNumber || '0', 10) }))
+                      .filter(x => !isNaN(x.take) && x.take < tTake)
+                      .sort((a, b) => b.take - a.take);
+                    for (const entry of sameShotTakes) {
+                      const d = entry.sheet.data || {} as any;
+                      if (typeof d.sound_from === 'string' && typeof d.sound_to === 'string') {
+                        const fromN = parseInt(d.sound_from, 10) || 0;
+                        const toN = parseInt(d.sound_to, 10) || 0;
+                        soundStartLocal = Math.max(fromN, toN);
+                        break;
+                      } else if (typeof d.soundFile === 'string' && d.soundFile.trim().length > 0) {
+                        if (d.soundFile.includes('-')) {
+                          const [s, e] = d.soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                          soundStartLocal = Math.max(s, e);
+                        } else {
+                          soundStartLocal = parseInt(d.soundFile, 10) || 0;
+                        }
+                        break;
+                      }
                     }
-
-                    let soundIncrementLocal = 1;
-                    const newSoundRange = rangeData['soundFile'];
-                    if (showRangeMode['soundFile'] && newSoundRange?.from && newSoundRange?.to) {
-                      const newFromS = parseInt(newSoundRange.from, 10) || 0;
-                      const newToS = parseInt(newSoundRange.to, 10) || 0;
-                      soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
-                    }
-                    updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal);
                   }
+                  updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal);
                 } catch {}
 
               const targetRangeCam = getRangeFromData(existingEntry.data, 'cameraFile');
