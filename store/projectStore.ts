@@ -429,7 +429,6 @@ export const useProjectStore = create<ProjectState>()(
                                  (maxTakeNumber === undefined || currentTakeNum <= maxTakeNumber);
               
               if (shouldShift) {
-                console.log(`  -> Shifting take ${currentTakeNum} to ${currentTakeNum + increment} (log ${logSheet.id})`);
                 return {
                   ...logSheet,
                   data: {
@@ -439,7 +438,7 @@ export const useProjectStore = create<ProjectState>()(
                   updatedAt: new Date().toISOString(),
                 };
               } else if (!Number.isNaN(currentTakeNum) && currentTakeNum > fromTakeNumber && maxTakeNumber !== undefined) {
-                console.log(`  -> Skipping take ${currentTakeNum} (beyond maxTakeNumber ${maxTakeNumber})`);
+                // Skipping beyond maxTakeNumber - no logging per minimal policy
               }
               return logSheet;
             } catch (e) {
