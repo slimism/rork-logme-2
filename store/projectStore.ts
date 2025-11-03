@@ -533,6 +533,51 @@ export const useProjectStore = create<ProjectState>()(
           // SIMPLE SHIFTING: remove anchoring logic. Shift any values >= fromNumber by `increment`.
           const pad4 = (n: number) => String(n).padStart(4, '0');
 
+          // Helper to get field value and determine if blank
+          const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
+            if (fId === 'soundFile') {
+              const soundFrom = sheetData['sound_from'];
+              const soundTo = sheetData['sound_to'];
+              if (soundFrom && soundTo) {
+                const from = parseInt(soundFrom, 10) || 0;
+                const to = parseInt(soundTo, 10) || 0;
+                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
+              }
+              const soundFile = sheetData['soundFile'];
+              if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+                if (soundFile.includes('-')) {
+                  const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
+                }
+                const num = parseInt(soundFile, 10);
+                if (!Number.isNaN(num)) {
+                  return { value: num, isRange: false, upper: num, lower: num };
+                }
+              }
+            } else if (fId.startsWith('cameraFile')) {
+              const cameraNum = fId === 'cameraFile' ? 1 : (parseInt(fId.replace('cameraFile', ''), 10) || 1);
+              const cameraFrom = sheetData[`camera${cameraNum}_from`];
+              const cameraTo = sheetData[`camera${cameraNum}_to`];
+              if (cameraFrom && cameraTo) {
+                const from = parseInt(cameraFrom, 10) || 0;
+                const to = parseInt(cameraTo, 10) || 0;
+                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
+              }
+              const cameraFile = sheetData[fId];
+              if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+                if (cameraFile.includes('-')) {
+                  const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
+                }
+                const num = parseInt(cameraFile, 10);
+                if (!Number.isNaN(num)) {
+                  return { value: num, isRange: false, upper: num, lower: num };
+                }
+              }
+            }
+            return null; // Blank/waste field
+          };
+
           const updatedSimple = activeState.logSheets.map((logSheet) => {
             if (logSheet.projectId !== projectId) return logSheet;
             if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
@@ -611,51 +656,6 @@ export const useProjectStore = create<ProjectState>()(
 
           logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
           return { logSheets: updatedSimple };
-          
-          // Helper to get field value and determine if blank
-          const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
-            if (fId === 'soundFile') {
-              const soundFrom = sheetData['sound_from'];
-              const soundTo = sheetData['sound_to'];
-              if (soundFrom && soundTo) {
-                const from = parseInt(soundFrom, 10) || 0;
-                const to = parseInt(soundTo, 10) || 0;
-                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
-              }
-              const soundFile = sheetData['soundFile'];
-              if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
-                if (soundFile.includes('-')) {
-                  const [s, e] = soundFile.split('-').map(x => parseInt(x.trim(), 10) || 0);
-                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
-                }
-                const num = parseInt(soundFile, 10);
-                if (!Number.isNaN(num)) {
-                  return { value: num, isRange: false, upper: num, lower: num };
-                }
-              }
-            } else if (fId.startsWith('cameraFile')) {
-              const cameraNum = fId === 'cameraFile' ? 1 : (parseInt(fId.replace('cameraFile', ''), 10) || 1);
-              const cameraFrom = sheetData[`camera${cameraNum}_from`];
-              const cameraTo = sheetData[`camera${cameraNum}_to`];
-              if (cameraFrom && cameraTo) {
-                const from = parseInt(cameraFrom, 10) || 0;
-                const to = parseInt(cameraTo, 10) || 0;
-                return { value: Math.max(from, to), isRange: true, upper: Math.max(from, to), lower: Math.min(from, to) };
-              }
-              const cameraFile = sheetData[fId];
-              if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
-                if (cameraFile.includes('-')) {
-                  const [s, e] = cameraFile.split('-').map(x => parseInt(x.trim(), 10) || 0);
-                  return { value: Math.max(s, e), isRange: true, upper: Math.max(s, e), lower: Math.min(s, e) };
-                }
-                const num = parseInt(cameraFile, 10);
-                if (!Number.isNaN(num)) {
-                  return { value: num, isRange: false, upper: num, lower: num };
-                }
-              }
-            }
-            return null; // Blank/waste field
-          };
 
           // Helper to find last valid field value before a given take
           const getPreviousValidValue = (logSheets: LogSheet[], currentTakeNum: number, sceneNum: string, shotNum: string, fId: string, excludeIds: Set<string>): number | null => {
