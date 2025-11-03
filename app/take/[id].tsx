@@ -1746,10 +1746,9 @@ This would break the logging logic and create inconsistencies in the file number
           start: soundFileResult.soundStart, 
           delta: soundFileResult.soundDelta,
           projectId: logSheet.projectId,
-          fieldId: 'soundFile',
-          excludeLogId: logSheet.id
+          fieldId: 'soundFile'
         });
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta, logSheet.id);
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta);
       } else {
         console.log('❌ [handleSaveWithSelectiveDuplicateHandling] NOT calling updateFileNumbers for soundFile:', {
           reason: !soundFileResult.shouldCallUpdateFileNumbers ? 'shouldCallUpdateFileNumbers=false' : 'soundFile is disabled',
@@ -2279,11 +2278,10 @@ This would break the logging logic and create inconsistencies in the file number
               projectId: logSheet.projectId,
               fieldId: 'soundFile',
               start: soundStart,
-              delta: soundDelta,
-              excludeLogId: logSheet.id
+              delta: soundDelta
             });
             // Always use soundStart (the beginning of the duplicate), not the end of the range
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
           } else {
             console.log('❌ [handleSaveWithDuplicateHandling] NOT calling updateFileNumbers for soundFile (disabled)');
           }
@@ -2370,10 +2368,9 @@ This would break the logging logic and create inconsistencies in the file number
                 start,
                 delta: soundDelta,
                 calculatedFrom: targetRange ? 'targetRange.to + 1' : 'soundStart',
-                targetRange: targetRange ? { from: targetRange.from, to: targetRange.to } : null,
-                excludeLogId: logSheet.id
+                targetRange: targetRange ? { from: targetRange.from, to: targetRange.to } : null
               });
-              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta, logSheet.id);
+              updateFileNumbers(logSheet.projectId, 'soundFile', start, soundDelta);
             } else {
               console.log('❌ [handleSaveWithDuplicateHandling] NOT calling updateFileNumbers for soundFile (disabled)');
             }
@@ -2692,15 +2689,13 @@ This would break the logging logic and create inconsistencies in the file number
         if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
           console.log('  SoundHandler: Calling updateFileNumbers for soundFile:', { 
             start: soundFileResult.soundStart, 
-            delta: soundFileResult.soundDelta,
-            excludeLogId: logSheet.id
+            delta: soundFileResult.soundDelta 
           });
           updateFileNumbers(
             logSheet.projectId, 
             'soundFile', 
             soundFileResult.soundStart!, 
-            soundFileResult.soundDelta,
-            logSheet.id
+            soundFileResult.soundDelta
           );
           
           // If target has a range, adjust lower to end after inserted and extend upper by delta
@@ -3465,7 +3460,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers to shift subsequent entries if needed
     if (!disabledFields.has('soundFile') && soundDelta > 0) {
       // Always use soundStart (the beginning of the duplicate), not the end of the range
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta, logSheet.id);
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundDelta);
     }
     
     if (camCount === 1) {
