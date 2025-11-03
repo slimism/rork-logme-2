@@ -3621,38 +3621,36 @@ This would break the logging logic and create inconsistencies in the file number
     // Save the current logSheet with edited values
     await updateLogSheet(logSheet.id, updatedData);
 
-    // CRITICAL: Update target entry FIRST, then call updateFileNumbers
-    // This ensures that updateFileNumbers uses Take 4's NEW position (upper bounds) to shift Take 5, Take 6, etc.
-    // Sequence: 1) Save inserted log, 2) Update Take 4 (target), 3) Shift Take 5+ based on Take 4's new position
+    // CRITICAL: Use the same shifting technique as "insert new log"
+    // 1. Call updateFileNumbers FIRST to shift ALL subsequent logs (including target and Take 5, Take 6, etc.)
+    // 2. Then manually update ONLY the target entry to position it correctly after the inserted log
+    // This ensures sequential shifting is handled correctly by updateFileNumbers
     
-    // First, manually update the target entry (Take 4) to position it correctly after the inserted log
-    if (hasUpdates) {
-      await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    // Calculate deltas for the inserted log (for updateFileNumbers)
+    const insertedSoundDelta = calculateSoundDeltaForShifting({
+      takeData,
+      showRangeMode,
+      rangeData
+    });
+    
+    // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
+    // The excludeLogId ensures the inserted log is not shifted
+    // This uses sequential shifting logic that handles all subsequent logs automatically
+    if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
     }
     
-    // Use Promise to ensure Zustand state has propagated after Take 4 update
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
-    // Now call updateFileNumbers starting from Take 4's NEW upper bounds
-    // This will shift Take 5, Take 6, etc. based on Take 4's corrected position
-    // For sequential shifting, we need to pass Take 4's new upper bound as the starting point
-    // The excludeLogId ensures the inserted log (Take 3) is not shifted
-    
     if (camCount === 1) {
-      if (!disabledFields.has('cameraFile') && newCamToNum > 0) {
-        // Use Take 4's new upper bound (newCamToNum) as the starting point for subsequent shifts
-        // updateFileNumbers will find the inserted log (Take 3) and use its upper bound (15) to initialize tempCamera
-        // Then it will process Take 4 (which is already at 0016-0020), update tempCamera to 20
-        // Then it will process Take 5, shifting it to start at tempCamera (20) + 1 = 21
-        // Then it will process Take 6, shifting it to start at Take 5's upper bound + 1
-        const cameraDeltaInput = {
-          takeData,
-          showRangeMode,
-          rangeData
-        };
-        const insertedCamDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
-        // Pass cameraFromNumber (target's original start) so updateFileNumbers can find logs to shift
-        // The sequential logic will use tempCamera initialized from inserted log, then update it from each processed log
+      const cameraDeltaInput = {
+        takeData,
+        showRangeMode,
+        rangeData
+      };
+      const insertedCamDelta = disabledFields.has('cameraFile')
+        ? 0
+        : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
+
+      if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
         updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id);
       }
     } else {
@@ -3686,16 +3684,19 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
     
-    if (!disabledFields.has('soundFile') && newSoundToNum > 0) {
-      // Use Take 4's new upper bound (newSoundToNum) - similar logic to camera
-      const insertedSoundDelta = calculateSoundDeltaForShifting({
-        takeData,
-        showRangeMode,
-        rangeData
-      });
-      if (insertedSoundDelta > 0) {
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
-      }
+    // Use Promise to ensure Zustand state has propagated after updateFileNumbers
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // Now manually update ONLY the target entry to position it correctly after the inserted log
+    // Read current state after updateFileNumbers may have updated it
+    const currentState = useProjectStore.getState();
+    const currentTargetLogSheet = currentState.logSheets.find(sheet => sheet.id === existingEntry.id);
+    const currentTargetData = currentTargetLogSheet?.data || existingEntry.data;
+    
+    if (hasUpdates) {
+      // Merge with updates calculated earlier (these position the target after the inserted log)
+      const finalTargetUpdates = { ...currentTargetData, ...existingEntryUpdates };
+      await updateLogSheet(existingEntry.id, finalTargetUpdates);
     }
 
     router.back();
