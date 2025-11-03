@@ -843,12 +843,41 @@ export const useProjectStore = create<ProjectState>()(
                 logger.logDebug(`Found inserted log via fallback search (fromNumber - 1): Take ${insertedLog.data?.takeNumber}`);
               }
             }
+            
+            // Strategy 4: If still not found, look for the most recently created log in this scene/shot
+            // This handles cases where the inserted log was created but doesn't have file numbers set yet
+            if (!insertedLog) {
+              const recentLogs = sheets
+                .sort((a, b) => {
+                  // Sort by creation time (most recent first)
+                  const aTime = new Date(a.createdAt).getTime();
+                  const bTime = new Date(b.createdAt).getTime();
+                  return bTime - aTime;
+                });
+              
+              // Take the most recently created log as a potential inserted log
+              if (recentLogs.length > 0) {
+                insertedLog = recentLogs[0];
+                logger.logDebug(`Found potential inserted log via recent creation time: Take ${insertedLog.data?.takeNumber}, ID ${insertedLog.id}`);
+              }
+            }
 
             // If we still did not find an inserted log (common when inserting-before before saving the new log),
-            // seed sound temp value directly from fromNumber so sequential shifting can proceed.
-            if (!insertedLog && fieldId === 'soundFile') {
-              tempSound = fromNumber;
-              logger.logDebug(`Inserted log not found; seeding tempSound directly from fromNumber=${fromNumber}`);
+            // seed temp values directly from fromNumber so sequential shifting can proceed.
+            if (!insertedLog) {
+              if (fieldId === 'soundFile') {
+                tempSound = fromNumber;
+                logger.logDebug(`Inserted log not found; seeding tempSound directly from fromNumber=${fromNumber}`);
+              } else if (fieldId.startsWith('cameraFile')) {
+                // For camera fields, when inserted log not found, initialize ALL camera tempCamera values from fromNumber
+                // This ensures that when processing cameraFile2, tempCamera[1], tempCamera[2], etc. are all initialized
+                const project = activeState.projects.find(p => p.id === projectId);
+                const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+                for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
+                  tempCamera[camNum] = fromNumber;
+                  logger.logDebug(`Inserted log not found; seeding tempCamera[${camNum}] directly from fromNumber=${fromNumber}`);
+                }
+              }
             }
 
             if (insertedLog) {
