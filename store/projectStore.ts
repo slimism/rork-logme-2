@@ -321,6 +321,67 @@ export const useProjectStore = create<ProjectState>()(
           // This ensures we see the latest updates when processing multiple camera fields
           const activeState = currentState;
           
+          // SIMPLE SHIFTING: remove anchoring logic. Shift any values >= fromNumber by `increment`.
+          const pad4 = (n: number) => String(n).padStart(4, '0');
+
+          const updatedSimple = activeState.logSheets.map((logSheet) => {
+            if (logSheet.projectId !== projectId) return logSheet;
+            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
+
+            const data = logSheet.data || {} as any;
+            const fieldVal = getFieldValue(data, fieldId);
+            if (!fieldVal || fieldVal.value === null) return logSheet;
+
+            // Only shift entries at or after fromNumber
+            if (fieldVal.upper < fromNumber) return logSheet;
+
+            const newData: Record<string, any> = { ...data };
+
+            if (fieldId === 'soundFile') {
+              if (fieldVal.isRange) {
+                const newLower = fieldVal.lower + increment;
+                const newUpper = fieldVal.upper + increment;
+                newData['sound_from'] = pad4(newLower);
+                newData['sound_to'] = pad4(newUpper);
+                if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
+                  newData.soundFile = `${pad4(newLower)}-${pad4(newUpper)}`;
+                }
+              } else {
+                const newSingle = fieldVal.value! + increment;
+                newData['soundFile'] = pad4(newSingle);
+                delete newData['sound_from'];
+                delete newData['sound_to'];
+              }
+            } else if (fieldId.startsWith('cameraFile')) {
+              const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+              const fromKey = `camera${cameraNum}_from` as const;
+              const toKey = `camera${cameraNum}_to` as const;
+              if (fieldVal.isRange) {
+                const newLower = fieldVal.lower + increment;
+                const newUpper = fieldVal.upper + increment;
+                newData[fromKey] = pad4(newLower);
+                newData[toKey] = pad4(newUpper);
+                if (typeof data[fieldId] === 'string' && (data[fieldId] as string).includes('-')) {
+                  newData[fieldId] = `${pad4(newLower)}-${pad4(newUpper)}`;
+                }
+              } else {
+                const newSingle = fieldVal.value! + increment;
+                newData[fieldId] = pad4(newSingle);
+                delete newData[fromKey];
+                delete newData[toKey];
+              }
+            }
+
+            if (JSON.stringify(newData) !== JSON.stringify(data)) {
+              logger.logSave('updateFileNumbers', logSheet.id, newData, data);
+              return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
+            }
+            return logSheet;
+          });
+
+          logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
+          return { logSheets: updatedSimple };
+          
           // Helper to get field value and determine if blank
           const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
             if (fId === 'soundFile') {
