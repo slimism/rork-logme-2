@@ -12,6 +12,7 @@ interface ProjectState {
   projects: Project[];
   folders: Folder[];
   logSheets: LogSheet[];
+  nextLogId: number;
   addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => Project;
   updateProject: (id: string, name: string) => void;
   updateProjectLogo: (id: string, logoUri: string) => void;
@@ -33,6 +34,7 @@ export const useProjectStore = create<ProjectState>()(
       projects: [],
       folders: [],
       logSheets: [],
+      nextLogId: 1,
       
       addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => {
         // Validate and normalize camera configuration
@@ -137,8 +139,9 @@ export const useProjectStore = create<ProjectState>()(
       },
       
       addLogSheet: (name: string, type: string, folderId: string, projectId: string) => {
+        const currentId = get().nextLogId;
         const newLogSheet: LogSheet = {
-          id: Date.now().toString(),
+          id: currentId.toString(),
           name,
           type: type as any,
           folderId,
@@ -150,6 +153,7 @@ export const useProjectStore = create<ProjectState>()(
         
         set((state) => ({
           logSheets: [...state.logSheets, newLogSheet],
+          nextLogId: state.nextLogId + 1,
         }));
         
         return newLogSheet;
