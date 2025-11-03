@@ -872,13 +872,19 @@ export const useProjectStore = create<ProjectState>()(
               } else if (fieldId.startsWith('cameraFile')) {
                 // For camera fields, when inserted log not found, initialize ALL camera tempCamera values from fromNumber
                 // This ensures that when processing cameraFile2, tempCamera[1], tempCamera[2], etc. are all initialized
+                // Only initialize if not already set (preserve from previous camera processing)
                 const project = activeState.projects.find(p => p.id === projectId);
                 const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-                console.log(`[INIT] CAMERA TEMP INITIALIZATION - Inserted log not found, seeding tempCamera[1..${cameraConfiguration}] from fromNumber=${fromNumber}`);
+                console.log(`[INIT] CAMERA TEMP INITIALIZATION - Inserted log not found, seeding tempCamera[1..${cameraConfiguration}] from fromNumber=${fromNumber} (only if not already set)`);
                 for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
-                  tempCamera[camNum] = fromNumber;
-                  console.log(`[INIT] tempCamera[${camNum}] = ${fromNumber} (from fromNumber fallback)`);
-                  logger.logDebug(`Inserted log not found; seeding tempCamera[${camNum}] directly from fromNumber=${fromNumber}`);
+                  if (tempCamera[camNum] === null || tempCamera[camNum] === undefined) {
+                    tempCamera[camNum] = fromNumber;
+                    console.log(`[INIT] tempCamera[${camNum}] = ${fromNumber} (from fromNumber fallback)`);
+                    logger.logDebug(`Inserted log not found; seeding tempCamera[${camNum}] directly from fromNumber=${fromNumber}`);
+                  } else {
+                    console.log(`[INIT] tempCamera[${camNum}] already set to ${tempCamera[camNum]} (preserving from previous camera processing)`);
+                    logger.logDebug(`tempCamera[${camNum}] already initialized to ${tempCamera[camNum]} - preserving from previous camera field processing`);
+                  }
                 }
               }
             }
@@ -910,14 +916,12 @@ export const useProjectStore = create<ProjectState>()(
                 logger.logWarning(`Inserted log (Take ${insertedTakeNum}) found but field ${fieldId} is blank/null - temp variables not initialized for this field`);
               }
               
-              // For multi-camera: Initialize tempCamera for ALL cameras in the project settings
-              // This ensures tempCamera[1], tempCamera[2], tempCamera[3], etc. are all initialized correctly
-              // based on the project's camera configuration, not just what's found in the inserted log
-              // IMPORTANT: ALWAYS initialize ALL cameras from the inserted log when processing ANY camera field
-              // This ensures each camera has its own tempCamera value correctly set for sequential shifting
+              // For multi-camera: Initialize tempCamera for ALL cameras in the project settings from the inserted log
+              // This matches the single-camera behavior where we initialize from the inserted log
+              // Each camera field processing call will initialize ALL cameras, ensuring consistent starting values
               if (fieldId.startsWith('cameraFile')) {
                 // Initialize tempCamera for ALL cameras in the project (based on cameraConfiguration)
-                // Always initialize from the inserted log to ensure correct base values
+                // This matches single-camera behavior: we always initialize from the inserted log
                 console.log(`[INIT] CAMERA TEMP INITIALIZATION - Found inserted log (Take ${insertedTakeNum}, ID: ${insertedLog.id}), initializing tempCamera for all ${cameraConfiguration} cameras from inserted log values`);
                 for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
                   const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
