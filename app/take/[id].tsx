@@ -2295,22 +2295,42 @@ This would break the logging logic and create inconsistencies in the file number
           }
             
             // If target has a range, adjust lower to end after inserted and extend upper by delta
-            const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
+            // Read current state after updateFileNumbers may have updated it
+            const currentSoundLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+            const currentSoundData = currentSoundLogSheet?.data || existingEntry.data;
+            
+            // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
+            const targetRange = getRangeFromData(currentSoundData, 'soundFile');
             if (targetRange) {
-              const bounds = getInsertedBounds('soundFile');
-              const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+              // Target has a range - update it regardless of whether new entry is range or single
+              let insertedMax: number;
+              let deltaLocal: number;
+              
+              if (showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
+                // New entry has range
+                const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
+                const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+                insertedMax = Math.max(insertedFrom, insertedTo);
+                deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+              } else {
+                // New entry has single value
+                insertedMax = parseInt(String(takeData.soundFile), 10) || 0;
+                deltaLocal = 1;
+              }
+
               const oldToNum = parseInt(targetRange.to, 10) || 0;
-              const newFrom = String(insertedUpper + 1).padStart(4, '0');
-              const newTo = String(oldToNum + soundDelta).padStart(4, '0');
-              existingEntryUpdates.sound_from = newFrom;
-              existingEntryUpdates.sound_to = newTo;
-              const hadInline = typeof existingEntry.data?.soundFile === 'string' && isRangeString(existingEntry.data.soundFile);
+              const newFromNum = insertedMax + 1;
+              const newToNum = oldToNum + deltaLocal;
+
+              existingEntryUpdates.sound_from = String(newFromNum).padStart(4, '0');
+              existingEntryUpdates.sound_to = String(newToNum).padStart(4, '0');
+              const hadInline = typeof currentSoundData?.soundFile === 'string' && isRangeString(currentSoundData.soundFile);
               if (hadInline) {
-                existingEntryUpdates.soundFile = `${newFrom}-${newTo}`;
+                existingEntryUpdates.soundFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
               }
               hasUpdates = true;
-            } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
-              const exNum = parseInt(existingEntry.data.soundFile, 10) || 0;
+            } else if (typeof currentSoundData?.soundFile === 'string' && currentSoundData.soundFile.trim().length > 0) {
+              const exNum = parseInt(currentSoundData.soundFile, 10) || 0;
               const newVal = String(exNum + soundDelta).padStart(4, '0');
               existingEntryUpdates.soundFile = newVal;
               hasUpdates = true;
@@ -2411,21 +2431,37 @@ This would break the logging logic and create inconsistencies in the file number
               const currentData = currentLogSheet?.data || existingEntry.data;
               
               // If target has a range, adjust lower to end after inserted and extend upper by delta
+              // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
               const targetRange = getRangeFromData(currentData, 'cameraFile');
               if (targetRange) {
-                const bounds = getInsertedBounds('cameraFile');
-                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                // Target has a range - update it regardless of whether new entry is range or single
+                let insertedMax: number;
+                let deltaLocal: number;
+                
+                if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+                  // New entry has range
+                  const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+                  const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+                  insertedMax = Math.max(insertedFrom, insertedTo);
+                  deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+                } else {
+                  // New entry has single value
+                  insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
+                  deltaLocal = 1;
+                }
+
                 const oldToNum = parseInt(targetRange.to, 10) || 0;
-                const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                const newFromNum = insertedMax + 1;
+                const newToNum = oldToNum + deltaLocal;
+
                 const updated: Record<string, any> = {
                   ...currentData,
-                  camera1_from: newFrom,
-                  camera1_to: newTo
+                  camera1_from: String(newFromNum).padStart(4, '0'),
+                  camera1_to: String(newToNum).padStart(4, '0')
                 };
                 const hadInline = typeof currentData?.cameraFile === 'string' && isRangeString(currentData.cameraFile);
                 if (hadInline) {
-                  updated.cameraFile = `${newFrom}-${newTo}`;
+                  updated.cameraFile = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
                 }
                 updated.takeNumber = String(targetTakeNumber + 1);
                 updateLogSheet(existingEntry.id, updated);
@@ -2493,21 +2529,37 @@ This would break the logging logic and create inconsistencies in the file number
                   const currentData = currentLogSheet?.data || existingEntry.data;
                   
                   // If target has a range, adjust lower to end after inserted and extend upper by delta
+                  // Match insert flow: calculate insertedMax and deltaLocal from rangeData/showRangeMode
                   const targetRange = getRangeFromData(currentData, fieldId);
                   if (targetRange) {
-                    const bounds = getInsertedBounds(fieldId);
-                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                    // Target has a range - update it regardless of whether new entry is range or single
+                    let insertedMax: number;
+                    let deltaLocal: number;
+                    
+                    if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                      // New entry has range
+                      const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                      const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                      insertedMax = Math.max(insertedFrom, insertedTo);
+                      deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
+                    } else {
+                      // New entry has single value
+                      insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
+                      deltaLocal = 1;
+                    }
+
                     const oldToNum = parseInt(targetRange.to, 10) || 0;
-                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                    const newFromNum = insertedMax + 1;
+                    const newToNum = oldToNum + deltaLocal;
+
                     const updated: Record<string, any> = {
                       ...currentData,
-                      [`camera${i}_from`]: newFrom,
-                      [`camera${i}_to`]: newTo
+                      [`camera${i}_from`]: String(newFromNum).padStart(4, '0'),
+                      [`camera${i}_to`]: String(newToNum).padStart(4, '0')
                     };
                     const hadInline = typeof currentData?.[fieldId] === 'string' && isRangeString(currentData[fieldId]);
                     if (hadInline) {
-                      updated[fieldId] = `${newFrom}-${newTo}`;
+                      updated[fieldId] = `${String(newFromNum).padStart(4, '0')}-${String(newToNum).padStart(4, '0')}`;
                     }
                     updated.takeNumber = String(targetTakeNumber + 1);
                     updateLogSheet(existingEntry.id, updated);
