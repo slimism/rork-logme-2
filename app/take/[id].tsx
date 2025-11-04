@@ -3723,9 +3723,7 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
     // The excludeLogIds ensures the inserted log is not shifted
     // This uses sequential shifting logic that handles all subsequent logs automatically
-    const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
-    const targetShotNumber = existingEntry.data?.shotNumber as string | undefined;
-    
+    // Note: targetSceneNumber and targetShotNumber are already declared earlier in this function
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
       updateFileNumbers(
         logSheet.projectId, 
