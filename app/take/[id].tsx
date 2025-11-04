@@ -1819,26 +1819,18 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       // Calculate existingEntry updates
+      // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
+      // the shifting correctly. The existing entry's range should be shifted (not expanded),
+      // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
+      // We only need to update the take number here.
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
-        // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
         if (targetRange) {
-          const bounds = getInsertedBounds(targetFieldId);
-          const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-          const oldToNum = parseInt(targetRange.to, 10) || 0;
-          const newFrom = String(insertedUpper + 1).padStart(4, '0');
-          const newTo = String(oldToNum + camDelta).padStart(4, '0');
-          const cameraNum = targetFieldId === 'cameraFile' ? 1 : (parseInt(targetFieldId.replace('cameraFile', '')) || 1);
+          // For ranges, updateFileNumbers will handle the shifting - just update take number
           existingEntryUpdates = {
             ...existingEntry.data,
-            [`camera${cameraNum}_from`]: newFrom,
-            [`camera${cameraNum}_to`]: newTo,
             takeNumber: String(targetTakeNumber + 1)
           };
-          const hadInline = typeof existingEntry.data?.[targetFieldId] === 'string' && isRangeString(existingEntry.data[targetFieldId]);
-          if (hadInline) {
-            existingEntryUpdates[targetFieldId] = `${newFrom}-${newTo}`;
-          }
         } else {
           // Handle single camera value (not range) - target has single value
           const targetHasSingleCamera = typeof existingEntry.data?.[targetFieldId] === 'string' && !isRangeString(existingEntry.data[targetFieldId]);
@@ -2874,29 +2866,16 @@ This would break the logging logic and create inconsistencies in the file number
                 ); 
               }
               
-              // Read current state of the log from store (after updateFileNumbers may have updated it)
+              // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
+              // the shifting correctly. The existing entry's range should be shifted (not expanded),
+              // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
+              // Any additional modification here would incorrectly expand the range.
+              
+              // Handle single camera value (not range) if needed
               const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
               const currentData = currentLogSheet?.data || existingEntry.data;
-              
-              // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(currentData, 'cameraFile');
-              if (targetRange) {
-                const bounds = getInsertedBounds('cameraFile');
-                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-                const oldToNum = parseInt(targetRange.to, 10) || 0;
-                const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                const newTo = String(oldToNum + camDelta).padStart(4, '0');
-                const updated: Record<string, any> = {
-                  ...currentData,
-                  camera1_from: newFrom,
-                  camera1_to: newTo
-                };
-                const hadInline = typeof currentData?.cameraFile === 'string' && isRangeString(currentData.cameraFile);
-                if (hadInline) {
-                  updated.cameraFile = `${newFrom}-${newTo}`;
-                }
-                updateLogSheet(existingEntry.id, updated);
-                  } else if (!targetRange) {
+              if (!targetRange) {
                     // Handle single camera value (not range)
                     const targetSingleStr = currentData?.cameraFile as string | undefined;
                 if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
@@ -2978,30 +2957,16 @@ This would break the logging logic and create inconsistencies in the file number
                     ); 
                   }
                   
-                  // Read current state of the log from store (after updateFileNumbers may have updated it)
+                  // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
+                  // the shifting correctly. The existing entry's range should be shifted (not expanded),
+                  // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
+                  // Any additional modification here would incorrectly expand the range.
+                  
+                  // Handle single camera value (not range) if needed
                   const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
                   const currentData = currentLogSheet?.data || existingEntry.data;
-                  
-                  // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(currentData, fieldId);
-                  if (targetRange) {
-                    const bounds = getInsertedBounds(fieldId);
-                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
-                    const oldToNum = parseInt(targetRange.to, 10) || 0;
-                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
-                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
-                    const updated: Record<string, any> = {
-                      ...currentData,
-                      [`camera${i}_from`]: newFrom,
-                      [`camera${i}_to`]: newTo
-                    };
-                    const hadInline = typeof currentData?.[fieldId] === 'string' && isRangeString(currentData[fieldId]);
-                    if (hadInline) {
-                      updated[fieldId] = `${newFrom}-${newTo}`;
-                    }
-                    updated.takeNumber = String(targetTakeNumber + 1);
-                    updateLogSheet(existingEntry.id, updated);
-                  } else if (!targetRange) {
+                  if (!targetRange) {
                     // Handle single camera value (not range)
                     const targetSingleStr = currentData?.[fieldId] as string | undefined;
                     if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
