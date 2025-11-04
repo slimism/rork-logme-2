@@ -598,6 +598,7 @@ export const useProjectStore = create<ProjectState>()(
             classification?: string;
           };
           toNumber?: number; // Maximum file number to shift (inclusive). If undefined, shifts all files >= fromNumber
+          maxTakeNumber?: number; // Maximum take number to shift (inclusive). If provided, only shifts entries with takeNumber <= maxTakeNumber
         }
       ) => {
         // Support both old excludeLogId and new excludeLogIds array
@@ -706,6 +707,13 @@ export const useProjectStore = create<ProjectState>()(
             // If toNumber is undefined, shift all entries >= fromNumber (backward compatibility)
             if (fieldVal.upper < fromNumber) return logSheet;
             if (options?.toNumber !== undefined && fieldVal.upper > options.toNumber) return logSheet;
+            
+            // If maxTakeNumber is provided, only shift entries with takeNumber <= maxTakeNumber
+            // This prevents shifting entries beyond the insertion zone (e.g., Take 6 when maxTakeNumber is 4)
+            if (options?.maxTakeNumber !== undefined) {
+              const takeNum = parseInt(data.takeNumber as string || '0', 10);
+              if (Number.isNaN(takeNum) || takeNum > options.maxTakeNumber) return logSheet;
+            }
 
             const newData: Record<string, any> = { ...data };
 

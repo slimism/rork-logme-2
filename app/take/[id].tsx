@@ -3830,10 +3830,16 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
     
+    // Calculate maxTake for file shifting (same logic as for take number shifting)
+    const maxTakeForFiles = !Number.isNaN(targetTake) 
+      ? (parseInt(logSheet.data?.takeNumber || '0', 10) > targetTake ? parseInt(logSheet.data?.takeNumber || '0', 10) - 1 : undefined)
+      : undefined;
+    
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
       // Sound files use a global numbering sequence - shift sound files in range [soundStart, soundToNumber]
       // If soundToNumber is undefined, shift all files >= soundStart (backward compatibility)
       // This prevents shifting files beyond the insertion zone
+      // Also respect maxTakeNumber to prevent shifting entries beyond the insertion zone (e.g., Take 6 when maxTake is 4)
       updateFileNumbers(
         logSheet.projectId, 
         'soundFile', 
@@ -3842,7 +3848,8 @@ This would break the logging logic and create inconsistencies in the file number
         logSheet.id,
         {
           excludeLogIds: [logSheet.id],
-          toNumber: soundToNumber
+          toNumber: soundToNumber,
+          maxTakeNumber: maxTakeForFiles
           // No filter for sound files - they shift globally regardless of scene/shot/classification
         }
       );
@@ -3935,6 +3942,7 @@ This would break the logging logic and create inconsistencies in the file number
           {
             excludeLogIds: [logSheet.id],
             toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
+            maxTakeNumber: maxTakeForFiles, // Respect maxTakeNumber to prevent shifting entries beyond insertion zone
             filter: finalClassification ? {
               sceneNumber: targetSceneNumber,
               shotNumber: targetShotNumber,
@@ -4036,6 +4044,7 @@ This would break the logging logic and create inconsistencies in the file number
               {
                 excludeLogIds: [logSheet.id],
                 toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
+                maxTakeNumber: maxTakeForFiles, // Respect maxTakeNumber to prevent shifting entries beyond insertion zone
                 filter: finalClassification ? {
                   sceneNumber: targetSceneNumber,
                   shotNumber: targetShotNumber,
