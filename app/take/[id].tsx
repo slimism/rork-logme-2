@@ -3946,6 +3946,72 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
         );
+        
+        // After shifting conflicting files, shift files beyond the inserted range by 1
+        // to maintain sequential numbering. Files beyond insertedRangeEnd need to shift
+        // to continue sequentially after the shifted zone.
+        if (insertedRangeEnd !== undefined && maxTakeForFiles !== undefined) {
+          // Find the highest file number after shifting (from the entry at maxTakeNumber)
+          const entryAtMaxTake = projectLogSheets.find(sheet => {
+            if (sheet.id === logSheet.id) return false;
+            const data = sheet.data || {};
+            if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+            const takeNum = parseInt(data.takeNumber || '0', 10);
+            return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
+          });
+          
+          if (entryAtMaxTake) {
+            // Get the current state after the first shift
+            const currentState = useProjectStore.getState();
+            const currentEntryAtMaxTake = currentState.logSheets.find(sheet => sheet.id === entryAtMaxTake.id);
+            const currentData = currentEntryAtMaxTake?.data || entryAtMaxTake.data;
+            
+            const range = getRangeFromData(currentData, 'cameraFile');
+            let shiftedMaxFileNumber: number | undefined = undefined;
+            if (range) {
+              const from = parseInt(range.from, 10) || 0;
+              const to = parseInt(range.to, 10) || 0;
+              shiftedMaxFileNumber = Math.max(from, to);
+            } else if (typeof currentData?.cameraFile === 'string' && currentData.cameraFile.trim().length > 0) {
+              const single = parseInt(currentData.cameraFile, 10);
+              if (!Number.isNaN(single)) {
+                shiftedMaxFileNumber = single;
+              }
+            }
+            
+            // If the shifted max file number is beyond the inserted range end,
+            // shift files beyond insertedRangeEnd to continue sequentially
+            if (shiftedMaxFileNumber !== undefined && shiftedMaxFileNumber > insertedRangeEnd) {
+              // Calculate the shift amount needed to close the gap and continue sequentially
+              // After the first shift, the last shifted file is at shiftedMaxFileNumber
+              // Files beyond insertedRangeEnd should start at (shiftedMaxFileNumber + 1)
+              // So the shift amount is: (shiftedMaxFileNumber + 1) - (insertedRangeEnd + 1)
+              // = shiftedMaxFileNumber - insertedRangeEnd
+              const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
+              
+              // Shift files beyond insertedRangeEnd to continue sequentially
+              // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
+              updateFileNumbers(
+                logSheet.projectId,
+                'cameraFile',
+                insertedRangeEnd + 1, // Start from the file after the inserted range
+                sequentialShiftAmount, // Shift by the gap amount to continue sequentially
+                logSheet.id,
+                {
+                  excludeLogIds: [logSheet.id],
+                  filter: finalClassification ? {
+                    sceneNumber: targetSceneNumber,
+                    shotNumber: targetShotNumber,
+                    classification: finalClassification
+                  } : {
+                    sceneNumber: targetSceneNumber,
+                    shotNumber: targetShotNumber
+                  }
+                }
+              );
+            }
+          }
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -4055,6 +4121,72 @@ This would break the logging logic and create inconsistencies in the file number
                 }
               }
             );
+            
+            // After shifting conflicting files, shift files beyond the inserted range
+            // to maintain sequential numbering. Files beyond insertedRangeEnd need to shift
+            // to continue sequentially after the shifted zone.
+            if (insertedRangeEnd !== undefined && maxTakeForFiles !== undefined) {
+              // Find the highest file number after shifting (from the entry at maxTakeNumber)
+              const entryAtMaxTake = projectLogSheets.find(sheet => {
+                if (sheet.id === logSheet.id) return false;
+                const data = sheet.data || {};
+                if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+                const takeNum = parseInt(data.takeNumber || '0', 10);
+                return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
+              });
+              
+              if (entryAtMaxTake) {
+                // Get the current state after the first shift
+                const currentState = useProjectStore.getState();
+                const currentEntryAtMaxTake = currentState.logSheets.find(sheet => sheet.id === entryAtMaxTake.id);
+                const currentData = currentEntryAtMaxTake?.data || entryAtMaxTake.data;
+                
+                const range = getRangeFromData(currentData, fieldId);
+                let shiftedMaxFileNumber: number | undefined = undefined;
+                if (range) {
+                  const from = parseInt(range.from, 10) || 0;
+                  const to = parseInt(range.to, 10) || 0;
+                  shiftedMaxFileNumber = Math.max(from, to);
+                } else if (typeof currentData?.[fieldId] === 'string' && currentData[fieldId].trim().length > 0) {
+                  const single = parseInt(currentData[fieldId], 10);
+                  if (!Number.isNaN(single)) {
+                    shiftedMaxFileNumber = single;
+                  }
+                }
+                
+                // If the shifted max file number is beyond the inserted range end,
+                // shift files beyond insertedRangeEnd to continue sequentially
+                if (shiftedMaxFileNumber !== undefined && shiftedMaxFileNumber > insertedRangeEnd) {
+                  // Calculate the shift amount needed to close the gap and continue sequentially
+                  // After the first shift, the last shifted file is at shiftedMaxFileNumber
+                  // Files beyond insertedRangeEnd should start at (shiftedMaxFileNumber + 1)
+                  // So the shift amount is: (shiftedMaxFileNumber + 1) - (insertedRangeEnd + 1)
+                  // = shiftedMaxFileNumber - insertedRangeEnd
+                  const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
+                  
+                  // Shift files beyond insertedRangeEnd to continue sequentially
+                  // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
+                  updateFileNumbers(
+                    logSheet.projectId,
+                    fieldId,
+                    insertedRangeEnd + 1, // Start from the file after the inserted range
+                    sequentialShiftAmount, // Shift by the gap amount to continue sequentially
+                    logSheet.id,
+                    {
+                      excludeLogIds: [logSheet.id],
+                      filter: finalClassification ? {
+                        sceneNumber: targetSceneNumber,
+                        shotNumber: targetShotNumber,
+                        classification: finalClassification
+                      } : {
+                        sceneNumber: targetSceneNumber,
+                        shotNumber: targetShotNumber
+                      }
+                    }
+                  );
+                }
+              }
+            }
           }
         }
       }
