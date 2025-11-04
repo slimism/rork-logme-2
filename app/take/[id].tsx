@@ -3856,19 +3856,24 @@ This would break the logging logic and create inconsistencies in the file number
         // This ensures waste takes and other entries with ranges that start before the existing entry
         // are also shifted correctly.
         let start = cameraFromNumber;
+        let insertedRangeEnd: number | undefined = undefined;
         if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
           // Inserted log has a range - use its start (lower bound)
           const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
           const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
           start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+          insertedRangeEnd = Math.max(insertedFrom, insertedTo); // Track the end of inserted range
         } else if (takeData.cameraFile) {
           // Inserted log has a single value
           const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
           start = insertedSingle;
+          insertedRangeEnd = insertedSingle; // Single value, so end = start
         }
         
         // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
         // This limits shifting to only the entries that are in the insertion zone
+        // CRITICAL: For ranges, we need to limit shifting to only files that conflict with the inserted range
+        // Files beyond the inserted range should NOT be shifted by the range size
         let cameraToNumber: number | undefined = undefined;
         if (maxTakeForFiles !== undefined) {
           // Find the entry with takeNumber === maxTakeForFiles (before insertion)
@@ -3895,16 +3900,30 @@ This would break the logging logic and create inconsistencies in the file number
               }
             }
             
-            // toNumber should be the file number AFTER shifting, so add the increment
-            // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
-            if (maxFileNumber !== undefined && insertedCamDelta > 0) {
-              cameraToNumber = maxFileNumber + insertedCamDelta;
-            } else if (maxFileNumber !== undefined) {
-              cameraToNumber = maxFileNumber;
+            // For ranges, toNumber should be the end of the inserted range OR the maxFileNumber + increment, whichever is smaller
+            // This ensures files beyond the inserted range are not shifted by the range size
+            if (maxFileNumber !== undefined) {
+              if (insertedRangeEnd !== undefined) {
+                // Use the smaller of: (maxFileNumber + increment) OR (insertedRangeEnd)
+                // This prevents shifting files beyond the inserted range
+                const maxShifted = maxFileNumber + insertedCamDelta;
+                cameraToNumber = Math.min(maxShifted, insertedRangeEnd);
+              } else if (insertedCamDelta > 0) {
+                cameraToNumber = maxFileNumber + insertedCamDelta;
+              } else {
+                cameraToNumber = maxFileNumber;
+              }
             }
           }
+        } else if (insertedRangeEnd !== undefined) {
+          // If no maxTakeForFiles, limit toNumber to the end of the inserted range
+          // This prevents shifting files beyond the inserted range
+          cameraToNumber = insertedRangeEnd;
         }
         
+        // For ranges: Shift files that conflict with the inserted range by the range size
+        // Files beyond the inserted range should NOT be shifted (they're already past it)
+        // The toNumber limit ensures only files within the insertion zone are shifted
         updateFileNumbers(
           logSheet.projectId, 
           'cameraFile', 
@@ -3914,6 +3933,7 @@ This would break the logging logic and create inconsistencies in the file number
           {
             excludeLogIds: [logSheet.id],
             toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
+            // This prevents shifting files beyond the inserted range
             // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
             // maxTakeNumber is only used for take number shifting, not file number shifting
             filter: finalClassification ? {
@@ -3945,19 +3965,24 @@ This would break the logging logic and create inconsistencies in the file number
             // This ensures waste takes and other entries with ranges that start before the existing entry
             // are also shifted correctly.
             let start = cameraFromNumber;
+            let insertedRangeEnd: number | undefined = undefined;
             if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
               // Inserted log has a range - use its start (lower bound)
               const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
               const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
               start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+              insertedRangeEnd = Math.max(insertedFrom, insertedTo); // Track the end of inserted range
             } else if (takeData[fieldId]) {
               // Inserted log has a single value
               const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
               start = insertedSingle;
+              insertedRangeEnd = insertedSingle; // Single value, so end = start
             }
             
             // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
             // This limits shifting to only the entries that are in the insertion zone
+            // CRITICAL: For ranges, we need to limit shifting to only files that conflict with the inserted range
+            // Files beyond the inserted range should NOT be shifted by the range size
             let cameraToNumber: number | undefined = undefined;
             if (maxTakeForFiles !== undefined) {
               // Find the entry with takeNumber === maxTakeForFiles (before insertion)
@@ -3984,16 +4009,30 @@ This would break the logging logic and create inconsistencies in the file number
                   }
                 }
                 
-                // toNumber should be the file number AFTER shifting, so add the increment
-                // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
-                if (maxFileNumber !== undefined && insertedCamDelta > 0) {
-                  cameraToNumber = maxFileNumber + insertedCamDelta;
-                } else if (maxFileNumber !== undefined) {
-                  cameraToNumber = maxFileNumber;
+                // For ranges, toNumber should be the end of the inserted range OR the maxFileNumber + increment, whichever is smaller
+                // This ensures files beyond the inserted range are not shifted by the range size
+                if (maxFileNumber !== undefined) {
+                  if (insertedRangeEnd !== undefined) {
+                    // Use the smaller of: (maxFileNumber + increment) OR (insertedRangeEnd)
+                    // This prevents shifting files beyond the inserted range
+                    const maxShifted = maxFileNumber + insertedCamDelta;
+                    cameraToNumber = Math.min(maxShifted, insertedRangeEnd);
+                  } else if (insertedCamDelta > 0) {
+                    cameraToNumber = maxFileNumber + insertedCamDelta;
+                  } else {
+                    cameraToNumber = maxFileNumber;
+                  }
                 }
               }
+            } else if (insertedRangeEnd !== undefined) {
+              // If no maxTakeForFiles, limit toNumber to the end of the inserted range
+              // This prevents shifting files beyond the inserted range
+              cameraToNumber = insertedRangeEnd;
             }
             
+            // For ranges: Shift files that conflict with the inserted range by the range size
+            // Files beyond the inserted range should NOT be shifted (they're already past it)
+            // The toNumber limit ensures only files within the insertion zone are shifted
             updateFileNumbers(
               logSheet.projectId, 
               fieldId, 
@@ -4003,6 +4042,7 @@ This would break the logging logic and create inconsistencies in the file number
               {
                 excludeLogIds: [logSheet.id],
                 toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
+                // This prevents shifting files beyond the inserted range
                 // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
                 // maxTakeNumber is only used for take number shifting, not file number shifting
                 filter: finalClassification ? {
