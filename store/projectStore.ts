@@ -295,12 +295,14 @@ export const useProjectStore = create<ProjectState>()(
         });
 
         // Find all logs with projectLocalId > targetLocalId and sort by projectLocalId
+        // This includes the target duplicate (which now has projectLocalId = targetLocalId + 1 after the move)
+        // and all subsequent logs
         const subsequentLogs = state.logSheets
           .filter(s => {
             if (s.projectId !== projectId) return false;
             if (s.id === movedLog.id) return false; // Exclude the moved log itself
             const localId = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
-            return localId > targetLocalIdNum;
+            return localId > targetLocalIdNum; // Includes target duplicate (targetLocalId + 1) and all subsequent logs
           })
           .sort((a, b) => {
             const aLocal = parseInt((a as any).projectLocalId as string || '0', 10) || 0;
@@ -320,7 +322,10 @@ export const useProjectStore = create<ProjectState>()(
             if (logSheet.id === movedLog.id) return logSheet; // Don't modify the moved log
 
             const localId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
-            if (localId <= targetLocalIdNum) return logSheet; // Only process subsequent logs
+            // Process all logs with projectLocalId > targetLocalId
+            // This includes the target duplicate (which has projectLocalId = targetLocalId + 1 after the move)
+            // and all subsequent logs
+            if (localId <= targetLocalIdNum) return logSheet; // Skip moved log (targetLocalId) and earlier logs
 
             const data = logSheet.data || {};
             const newData: Record<string, any> = { ...data };
