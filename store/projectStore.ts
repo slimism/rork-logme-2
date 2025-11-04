@@ -187,10 +187,8 @@ export const useProjectStore = create<ProjectState>()(
             
             const nLocal = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
             
-            // Increment all logs with projectLocalId >= target (after the inserted log, including the target duplicate)
-            // AND projectLocalId < tempProjectLocalId (less than the original moving log's ID)
-            // This includes the target duplicate and all logs in the range [target, tempProjectLocalId)
-            // The moving log itself is already skipped above, so we don't need to check for it here
+            // Increment all logs with projectLocalId >= target and < tempProjectLocalId (including the target duplicate)
+            // This shifts all logs in the range [target, tempProjectLocalId) to make room for the moved log
             if (nLocal >= target && nLocal < tempProjectLocalId) {
               return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
             }
@@ -297,14 +295,12 @@ export const useProjectStore = create<ProjectState>()(
         });
 
         // Find all logs with projectLocalId > targetLocalId and sort by projectLocalId
-        // This includes the target duplicate (which now has projectLocalId = targetLocalId + 1 after the move)
-        // and all subsequent logs
         const subsequentLogs = state.logSheets
           .filter(s => {
             if (s.projectId !== projectId) return false;
             if (s.id === movedLog.id) return false; // Exclude the moved log itself
             const localId = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
-            return localId > targetLocalIdNum; // Includes target duplicate (targetLocalId + 1) and all subsequent logs
+            return localId > targetLocalIdNum;
           })
           .sort((a, b) => {
             const aLocal = parseInt((a as any).projectLocalId as string || '0', 10) || 0;
@@ -313,8 +309,6 @@ export const useProjectStore = create<ProjectState>()(
           });
 
         console.log(`[recalculateFileNumbersAfterMove] Found ${subsequentLogs.length} subsequent logs to recalculate`);
-        console.log(`[recalculateFileNumbersAfterMove] Moved log (${movedLog.id}) will be excluded from recalculation - it keeps its original ranges`);
-        console.log(`[recalculateFileNumbersAfterMove] Target duplicate and all subsequent logs will be recalculated using moved log's upper bounds as starting temp variables`);
 
         // Process each subsequent log sequentially
         let currentTempSound = tempSound;
@@ -323,31 +317,21 @@ export const useProjectStore = create<ProjectState>()(
         set((prevState) => {
           const updatedLogs = prevState.logSheets.map(logSheet => {
             if (logSheet.projectId !== projectId) return logSheet;
-            if (logSheet.id === movedLog.id) {
-              // Moved log keeps its camera and sound ranges unchanged - skip recalculation
-              return logSheet;
-            }
+            if (logSheet.id === movedLog.id) return logSheet; // Don't modify the moved log
 
             const localId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
-            // Process all logs with projectLocalId > targetLocalId
-            // This includes the target duplicate (which has projectLocalId = targetLocalId + 1 after the move)
-            // and all subsequent logs
-            if (localId <= targetLocalIdNum) return logSheet; // Skip moved log (targetLocalId) and earlier logs
+            if (localId <= targetLocalIdNum) return logSheet; // Only process subsequent logs
 
             const data = logSheet.data || {};
             const newData: Record<string, any> = { ...data };
             let updated = false;
-            
-            console.log(`[recalculateFileNumbersAfterMove] Processing log ${logSheet.id} (projectLocalId=${localId}) - using tempSound=${currentTempSound}, tempCamera=${JSON.stringify(currentTempCamera)}`);
 
             // Process sound file
-            // Check if sound field is blank/waste (delta = 0)
-            const soundFrom = data['sound_from'];
-            const soundTo = data['sound_to'];
-            const soundFile = data['soundFile'];
-            const isSoundBlank = !soundFrom && !soundTo && (!soundFile || typeof soundFile !== 'string' || !soundFile.trim());
-            
-            if (currentTempSound !== null && !isSoundBlank) {
+            if (currentTempSound !== null) {
+              const soundFrom = data['sound_from'];
+              const soundTo = data['sound_to'];
+              const soundFile = data['soundFile'];
+              
               if (soundFrom && soundTo) {
                 // Range: calculate new lower and upper
                 const oldLower = parseInt(soundFrom, 10) || 0;
@@ -389,7 +373,6 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
             }
-            // If sound is blank/waste, delta = 0, so we don't update the field and tempSound stays the same
 
             // Process camera files
             for (let i = 1; i <= camCount; i++) {
@@ -404,52 +387,46 @@ export const useProjectStore = create<ProjectState>()(
                 const cameraTo = data[toKey];
                 const cameraFile = data[fieldId];
                 
-                // Check if camera field is blank/waste (delta = 0)
-                const isCameraBlank = !cameraFrom && !cameraTo && (!cameraFile || typeof cameraFile !== 'string' || !cameraFile.trim());
-                
-                if (!isCameraBlank) {
-                  if (cameraFrom && cameraTo) {
-                    // Range: calculate new lower and upper
-                    const oldLower = parseInt(cameraFrom, 10) || 0;
-                    const oldUpper = parseInt(cameraTo, 10) || 0;
-                    const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
+                if (cameraFrom && cameraTo) {
+                  // Range: calculate new lower and upper
+                  const oldLower = parseInt(cameraFrom, 10) || 0;
+                  const oldUpper = parseInt(cameraTo, 10) || 0;
+                  const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
+                  const newLower = currentTempCamera[i]! + 1;
+                  const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
+                  
+                  newData[fromKey] = String(newLower).padStart(4, '0');
+                  newData[toKey] = String(newUpper).padStart(4, '0');
+                  if (typeof cameraFile === 'string' && cameraFile.includes('-')) {
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
+                  currentTempCamera[i] = newUpper; // Update temp variable to upper bound
+                  updated = true;
+                } else if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+                  if (cameraFile.includes('-')) {
+                    // Range in inline format
+                    const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                    const oldLower = Math.min(s, e);
+                    const oldUpper = Math.max(s, e);
+                    const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
                     const newLower = currentTempCamera[i]! + 1;
                     const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
                     
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
                     newData[fromKey] = String(newLower).padStart(4, '0');
                     newData[toKey] = String(newUpper).padStart(4, '0');
-                    if (typeof cameraFile === 'string' && cameraFile.includes('-')) {
-                      newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                    }
-                    currentTempCamera[i] = newUpper; // Update temp variable to upper bound
+                    currentTempCamera[i] = newUpper;
                     updated = true;
-                  } else if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
-                    if (cameraFile.includes('-')) {
-                      // Range in inline format
-                      const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
-                      const oldLower = Math.min(s, e);
-                      const oldUpper = Math.max(s, e);
-                      const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
-                      const newLower = currentTempCamera[i]! + 1;
-                      const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
-                      
-                      newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                      newData[fromKey] = String(newLower).padStart(4, '0');
-                      newData[toKey] = String(newUpper).padStart(4, '0');
-                      currentTempCamera[i] = newUpper;
-                      updated = true;
-                    } else {
-                      // Single value
-                      const newValue = currentTempCamera[i]! + 1;
-                      newData[fieldId] = String(newValue).padStart(4, '0');
-                      delete newData[fromKey];
-                      delete newData[toKey];
-                      currentTempCamera[i] = newValue; // For single values, upper = value itself
-                      updated = true;
-                    }
+                  } else {
+                    // Single value
+                    const newValue = currentTempCamera[i]! + 1;
+                    newData[fieldId] = String(newValue).padStart(4, '0');
+                    delete newData[fromKey];
+                    delete newData[toKey];
+                    currentTempCamera[i] = newValue; // For single values, upper = value itself
+                    updated = true;
                   }
                 }
-                // If camera field is blank/waste, delta = 0, so we don't update the field and tempCamera[i] stays the same
               }
             }
 
