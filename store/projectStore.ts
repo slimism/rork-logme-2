@@ -1011,16 +1011,16 @@ export const useProjectStore = create<ProjectState>()(
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
-                  // Calculate new bounds: newLower = shiftBase + 1, newUpper = newLower + delta
-                  // Delta calculation rules:
-                  // - For ranges: delta = upper - lower (difference between bounds)
-                  // - For single values: delta = 1 (the field represents 1 file number, so span is 1)
+                  // Calculate new bounds: newLower = shiftBase + 1, newUpper = shiftBase + delta
+                  // Delta calculation rules (for camera, delta is now inclusive count):
+                  // - For ranges: delta = (upper - lower) + 1 (inclusive count)
+                  // - For single values: delta = 1 (the field represents 1 file number)
                   // - For blank/waste: delta = 0 (field stays blank, temp variable unchanged)
-                  // Formula: newLower = tempValue + 1, newUpper = newLower + delta
-                  // For single values: newLower = tempValue + 1, newUpper = newLower + 1
-                  //   (e.g., tempCamera = 4: newLower = 5, newUpper = 6, but we store 5 as single value, tempCamera = 5)
-                  // For ranges: newLower = tempValue + 1, newUpper = newLower + (upper - lower)
-                  //   (e.g., tempCamera = 4, range 001-003 (delta=2): newLower = 5, newUpper = 7)
+                  // Formula: newLower = shiftBase + 1, newUpper = shiftBase + delta
+                  // For single values: newLower = shiftBase + 1, newUpper = newLower (single value)
+                  //   (e.g., shiftBase = 15: newLower = 16, newUpper = 16, tempCamera = 16)
+                  // For ranges: newLower = shiftBase + 1, newUpper = shiftBase + delta
+                  //   (e.g., shiftBase = 15, range 0003-0007 (delta=5): newLower = 16, newUpper = 20)
                   let newLower = shiftBase + 1;
                   
                   // Use centralized delta calculator for consistency
@@ -1032,7 +1032,7 @@ export const useProjectStore = create<ProjectState>()(
                     };
                     delta = calculateSoundDeltaForShifting(soundDeltaInput);
                   } else if (fieldId.startsWith('cameraFile')) {
-                    // Use camera delta calculator
+                    // Use camera delta calculator (returns inclusive count)
                     const cameraDeltaInput: DeltaCalculationInput = {
                       logSheetData: data
                     };
@@ -1040,11 +1040,13 @@ export const useProjectStore = create<ProjectState>()(
                   } else {
                     // Fallback to manual calculation
                     delta = currentFieldVal.isRange 
-                      ? (currentFieldVal.upper - currentFieldVal.lower)  // Range: difference between upper and lower
+                      ? (currentFieldVal.upper - currentFieldVal.lower) + 1  // Range: inclusive count
                       : 1;  // Single value: delta is 1 (one file number has span of 1)
                   }
                   
-                  let newUpper = newLower + delta;
+                  // For ranges: newUpper = shiftBase + delta (inclusive count)
+                  // For single values: newUpper = newLower (single value)
+                  let newUpper = currentFieldVal.isRange ? (shiftBase + delta) : newLower;
                   
                   // Check if value is already correctly shifted (target duplicate case)
                   // This happens when the target duplicate was already shifted by duplicate insertion logic
@@ -1204,11 +1206,15 @@ export const useProjectStore = create<ProjectState>()(
                     if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
                       // ALWAYS use tempCamera when available - this includes target duplicate
                       // Calculate what it should be based on tempCamera
+                      // For ranges: newLower = tempCamera + 1, newUpper = tempCamera + delta (inclusive count)
+                      // For single values: newLower = tempCamera + 1, newUpper = newLower
                       newLower = tempCamera[cameraNum]! + 1;
-                      newUpper = newLower + delta;
+                      newUpper = currentFieldVal.isRange 
+                        ? (tempCamera[cameraNum]! + delta)  // Range: use inclusive delta
+                        : newLower;  // Single value: upper equals lower
                       
                       const cameraCalcFormula = currentFieldVal.isRange
-                        ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
+                        ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + delta(${delta}) = ${newUpper}`
                         : `Single value: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} (single value)`;
                       
                       console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=${tempCamera[cameraNum]}, delta=${delta}, currentLower=${currentFieldVal.lower}, currentUpper=${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${cameraCalcFormula}", result: ${newLower}/${newUpper}`);
@@ -1224,14 +1230,18 @@ export const useProjectStore = create<ProjectState>()(
                           fromNumber,
                           takeNum
                         },
-                        `Sequential shift: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
+                        currentFieldVal.isRange
+                          ? `Sequential shift (range): newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + delta(${delta}) = ${newUpper}`
+                          : `Sequential shift (single): newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower}`,
                         { newLower, newUpper }
                       );
                     } else {
                       // tempCamera not available - this shouldn't happen for sequential shifting
                       // But fallback to shiftBase if needed
                       logger.logWarning(`tempCamera[${cameraNum}] not available for take ${takeNum} - using shiftBase as fallback`);
-                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=null/undefined, using shiftBase=${shiftBase}, delta=${delta}, formula="newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}", result: ${newLower}/${newUpper}`);
+                      const fallbackNewUpper = currentFieldVal.isRange ? (shiftBase + delta) : newLower;
+                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=null/undefined, using shiftBase=${shiftBase}, delta=${delta}, formula="${currentFieldVal.isRange ? `newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = shiftBase(${shiftBase}) + delta(${delta}) = ${fallbackNewUpper}` : `newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower}`}", result: ${newLower}/${fallbackNewUpper}`);
+                      newUpper = fallbackNewUpper;
                       // newLower and newUpper are already calculated from shiftBase above
                     }
                     
@@ -1248,7 +1258,7 @@ export const useProjectStore = create<ProjectState>()(
                     }
                     // ALWAYS update tempCamera with the correct upper bound
                     // For single values: newUpper should equal newLower (single file number)
-                    // For ranges: newUpper = newLower + delta (range of file numbers)
+                    // For ranges: newUpper = tempCamera + delta (inclusive count)
                     // This ensures subsequent takes use the correct base value
                     // If the value is already correct (target duplicate already shifted), newUpper will match currentUpper
                     // but we still update tempCamera to maintain consistency

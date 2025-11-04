@@ -309,16 +309,17 @@ export const calculateSoundDelta = (input: DeltaCalculationInput): number => {
  * Calculates delta for camera file (for shifting operations)
  * 
  * Delta Calculation Rules for Camera:
- * - Range: delta = upper - lower (just the difference, not inclusive count)
+ * - Range: delta = (upper - lower) + 1 (inclusive count)
  * - Single value: delta = 1
  * - Blank/waste: delta = 0
  * 
- * This is different from calculateFieldDelta which adds +1 for ranges.
- * Camera delta for shifting uses just the difference to maintain range size.
+ * For shifting operations, we need the inclusive count to properly calculate
+ * how many file numbers a range occupies. For example, range 0003-0015
+ * occupies 13 positions (3, 4, 5, ..., 15), so delta = (15 - 3) + 1 = 13.
  * 
  * @param input - Input data
  * @param fieldId - Camera field identifier (e.g., 'cameraFile', 'cameraFile1', 'cameraFile2')
- * @returns Delta value for camera file (upper - lower for ranges, 1 for single, 0 for blank)
+ * @returns Delta value for camera file ((upper - lower) + 1 for ranges, 1 for single, 0 for blank)
  */
 export const calculateCameraDeltaForShifting = (
   input: DeltaCalculationInput,
@@ -344,8 +345,9 @@ export const calculateCameraDeltaForShifting = (
       const toNum = parseInt(range.to, 10) || 0;
       const upper = Math.max(fromNum, toNum);
       const lower = Math.min(fromNum, toNum);
-      // Delta = upper - lower (not +1, just the difference)
-      delta = Math.abs(upper - lower);
+      // Delta = (upper - lower) + 1 (inclusive count)
+      // Example: range 0003-0015 = (15 - 3) + 1 = 13 positions
+      delta = Math.abs(upper - lower) + 1;
       calculationMethod = 'rangeMode';
       calculationDetails = { from: range.from, to: range.to, upper, lower };
       
@@ -353,7 +355,7 @@ export const calculateCameraDeltaForShifting = (
         'Camera Delta from Range Mode',
         `Calculate camera delta from rangeMode (for shifting)`,
         calculationDetails,
-        `Math.abs(${upper} - ${lower}) = ${delta}`,
+        `Math.abs(${upper} - ${lower}) + 1 = ${delta}`,
         delta
       );
     }
@@ -367,8 +369,9 @@ export const calculateCameraDeltaForShifting = (
       const toNum = parseInt(rangeFromData.to, 10) || 0;
       const upper = Math.max(fromNum, toNum);
       const lower = Math.min(fromNum, toNum);
-      // Delta = upper - lower (not +1, just the difference)
-      delta = Math.abs(upper - lower);
+      // Delta = (upper - lower) + 1 (inclusive count)
+      // Example: range 0003-0015 = (15 - 3) + 1 = 13 positions
+      delta = Math.abs(upper - lower) + 1;
       calculationMethod = 'rangeFromData';
       calculationDetails = { from: rangeFromData.from, to: rangeFromData.to, upper, lower };
       
@@ -376,7 +379,7 @@ export const calculateCameraDeltaForShifting = (
         'Camera Delta from Range Data',
         `Calculate camera delta from getRangeFromData (for shifting)`,
         calculationDetails,
-        `Math.abs(${upper} - ${lower}) = ${delta}`,
+        `Math.abs(${upper} - ${lower}) + 1 = ${delta}`,
         delta
       );
     }
@@ -390,8 +393,9 @@ export const calculateCameraDeltaForShifting = (
       if (parts.length === 2) {
         const upper = Math.max(parts[0], parts[1]);
         const lower = Math.min(parts[0], parts[1]);
-        // Delta = upper - lower (not +1, just the difference)
-        delta = Math.abs(upper - lower);
+        // Delta = (upper - lower) + 1 (inclusive count)
+        // Example: range 0003-0015 = (15 - 3) + 1 = 13 positions
+        delta = Math.abs(upper - lower) + 1;
         calculationMethod = 'inlineRange';
         calculationDetails = { fieldValue, upper, lower };
         
@@ -399,7 +403,7 @@ export const calculateCameraDeltaForShifting = (
           'Camera Delta from Inline Range',
           `Calculate camera delta from inline range string (for shifting)`,
           calculationDetails,
-          `Math.abs(${upper} - ${lower}) = ${delta}`,
+          `Math.abs(${upper} - ${lower}) + 1 = ${delta}`,
           delta
         );
       }
