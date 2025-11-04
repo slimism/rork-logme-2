@@ -2448,7 +2448,27 @@ This would break the logging logic and create inconsistencies in the file number
             };
             const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
-              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
+              { 
+                // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
+                // This ensures waste takes and other entries with ranges that start before the existing entry
+                // are also shifted correctly.
+                let start = camStart;
+                if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
+                  // Inserted log has a range - use its start (lower bound)
+                  const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+                  const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                } else if (takeData.cameraFile) {
+                  // Inserted log has a single value
+                  const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+                  start = insertedSingle;
+                } else {
+                  // Fallback to existing entry's start
+                  const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+                  start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
+                }
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
+              }
               
               // Read current state of the log from store (after updateFileNumbers may have updated it)
               const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
@@ -2565,7 +2585,27 @@ This would break the logging logic and create inconsistencies in the file number
                 };
                 const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); }
+                  { 
+                    // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
+                    // This ensures waste takes and other entries with ranges that start before the existing entry
+                    // are also shifted correctly.
+                    let start = camStart;
+                    if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
+                      // Inserted log has a range - use its start (lower bound)
+                      const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                      const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                    } else if (takeData[fieldId]) {
+                      // Inserted log has a single value
+                      const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                      start = insertedSingle;
+                    } else {
+                      // Fallback to existing entry's start
+                      const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                      start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
+                    }
+                    updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); 
+                  }
                   
                   // Read current state of the log from store (after updateFileNumbers may have updated it)
                   const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
@@ -2834,13 +2874,30 @@ This would break the logging logic and create inconsistencies in the file number
             const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
               { 
-                const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
-                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
+                // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
+                // This ensures waste takes and other entries with ranges that start before the existing entry
+                // are also shifted correctly.
+                let start = camStart;
+                if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
+                  // Inserted log has a range - use its start (lower bound)
+                  const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+                  const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                } else if (takeData.cameraFile) {
+                  // Inserted log has a single value
+                  const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+                  start = insertedSingle;
+                } else {
+                  // Fallback to existing entry's start
+                  const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
+                  start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
+                }
+                
                 console.log('====> Calling updateFileNumbers for cameraFile:', {
                   start,
                   camDelta,
                   camStart,
-                  targetRange,
+                  'insertedRange': showRangeMode['cameraFile'] ? { from: rangeData['cameraFile']?.from, to: rangeData['cameraFile']?.to } : null,
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
                   'editedLogId_ToExclude': logSheet.id,
                   'existingEntry.classification': existingEntry.data?.classification,
@@ -3711,10 +3768,25 @@ This would break the logging logic and create inconsistencies in the file number
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
+        // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range
+        // This ensures waste takes and other entries with ranges that start before the existing entry
+        // are also shifted correctly.
+        let start = cameraFromNumber;
+        if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
+          // Inserted log has a range - use its start (lower bound)
+          const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+          const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+          start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+        } else if (takeData.cameraFile) {
+          // Inserted log has a single value
+          const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+          start = insertedSingle;
+        }
+        
         updateFileNumbers(
           logSheet.projectId, 
           'cameraFile', 
-          cameraFromNumber, 
+          start, 
           insertedCamDelta, 
           logSheet.id,
           {
@@ -3744,21 +3816,25 @@ This would break the logging logic and create inconsistencies in the file number
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
           if (!disabledFields.has(fieldId) && insertedCamDelta > 0) {
-            let camStart = cameraFromNumber;
-            const fromKey = `camera${i}_from` as const;
-            const fromVal = existingEntry.data?.[fromKey];
-            const val = existingEntry.data?.[fieldId];
-            if (typeof fromVal === 'string') {
-              const n = parseInt(fromVal, 10);
-              if (!Number.isNaN(n)) camStart = n;
-            } else if (typeof val === 'string') {
-              const n = parseInt(val, 10);
-              if (!Number.isNaN(n)) camStart = n;
+            // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range
+            // This ensures waste takes and other entries with ranges that start before the existing entry
+            // are also shifted correctly.
+            let start = cameraFromNumber;
+            if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
+              // Inserted log has a range - use its start (lower bound)
+              const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+              const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+              start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+            } else if (takeData[fieldId]) {
+              // Inserted log has a single value
+              const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+              start = insertedSingle;
             }
+            
             updateFileNumbers(
               logSheet.projectId, 
               fieldId, 
-              camStart, 
+              start, 
               insertedCamDelta, 
               logSheet.id,
               {
