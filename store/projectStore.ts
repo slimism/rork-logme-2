@@ -175,6 +175,9 @@ export const useProjectStore = create<ProjectState>()(
           
           if (!movingLog) return { logSheets: prev.logSheets };
           
+          // Save the moving log's current projectLocalId in a temp variable
+          const tempProjectLocalId = moving;
+          
           const updated = prev.logSheets.map(s => {
             if (s.projectId !== projectId) return s;
             
@@ -183,9 +186,9 @@ export const useProjectStore = create<ProjectState>()(
             
             const nLocal = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
             
-            // Increment all logs with projectLocalId > target (to make room for the inserted log)
-            // This ensures sequential projectLocalId values after insertion
-            if (nLocal > target) {
+            // Increment all logs with projectLocalId >= target and < tempProjectLocalId (including the target duplicate)
+            // This shifts all logs in the range [target, tempProjectLocalId) to make room for the moved log
+            if (nLocal >= target && nLocal < tempProjectLocalId) {
               return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
             }
             
@@ -209,7 +212,7 @@ export const useProjectStore = create<ProjectState>()(
               camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
               sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
             }));
-          console.log(`[ACTION] Move Existing Before -> projectId=${projectId} movingLocalId=${moving} targetLocalId=${target}`);
+          console.log(`[ACTION] Move Existing Before -> projectId=${projectId} movingLocalId=${moving} targetLocalId=${target} tempProjectLocalId=${tempProjectLocalId}`);
           console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
           console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
           return { logSheets: updated };
