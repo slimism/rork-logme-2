@@ -628,7 +628,7 @@ export const useProjectStore = create<ProjectState>()(
           // This ensures we see the latest updates when processing multiple camera fields
           const activeState = currentState;
           
-          // SIMPLE SHIFTING: remove anchoring logic. Shift any values >= fromNumber by `increment`.
+          // SIMPLE SHIFTING: Collect all rows with numeric value >= fromNumber, sort DESC, shift, then check uniqueness.
           const pad4 = (n: number) => String(n).padStart(4, '0');
 
           // Helper to get field value and determine if blank
@@ -676,34 +676,105 @@ export const useProjectStore = create<ProjectState>()(
             return null; // Blank/waste field
           };
 
-          const updatedSimple = activeState.logSheets.map((logSheet) => {
-            if (logSheet.projectId !== projectId) return logSheet;
-            // Skip any logs matching excludeLogIds
-            if (excludeLogIds.has(logSheet.id)) return logSheet;
+          // Helper to assert uniqueness of field values within the filtered scope
+          const assertUnique = (fieldId: string, logSheets: LogSheet[], excludeIds: Set<string>, filter?: { sceneNumber?: string; shotNumber?: string; classification?: string }): void => {
+            const valueMap = new Map<string, string[]>(); // value -> array of log IDs
+            logSheets.forEach(logSheet => {
+              if (excludeIds.has(logSheet.id)) return;
+              
+              // Apply same filters as shifting logic
+              if (filter?.classification !== undefined) {
+                const logClassification = logSheet.data?.classification;
+                if (logClassification !== filter.classification) return;
+              }
+              if (filter?.sceneNumber !== undefined) {
+                const logScene = logSheet.data?.sceneNumber;
+                if (logScene !== filter.sceneNumber) return;
+              }
+              if (filter?.shotNumber !== undefined) {
+                const logShot = logSheet.data?.shotNumber;
+                if (logShot !== filter.shotNumber) return;
+              }
+              
+              const fieldVal = getFieldValue(logSheet.data || {}, fieldId);
+              if (!fieldVal || fieldVal.value === null) return;
+              
+              // For single values, check the single value
+              // For ranges, check all values in the range
+              if (fieldVal.isRange) {
+                for (let v = fieldVal.lower; v <= fieldVal.upper; v++) {
+                  const valStr = pad4(v);
+                  if (!valueMap.has(valStr)) {
+                    valueMap.set(valStr, []);
+                  }
+                  valueMap.get(valStr)!.push(logSheet.id);
+                }
+              } else {
+                const valStr = pad4(fieldVal.value);
+                if (!valueMap.has(valStr)) {
+                  valueMap.set(valStr, []);
+                }
+                valueMap.get(valStr)!.push(logSheet.id);
+              }
+            });
             
-            // Apply classification filter if provided
+            // Check for duplicates
+            const duplicates: string[] = [];
+            valueMap.forEach((logIds, value) => {
+              if (logIds.length > 1) {
+                duplicates.push(`Value ${value} appears in logs: ${logIds.join(', ')}`);
+              }
+            });
+            
+            if (duplicates.length > 0) {
+              throw new Error(`Duplicate ${fieldId} values found after shifting: ${duplicates.join('; ')}`);
+            }
+          };
+
+          // Step 1: Collect all rows that need shifting (numeric value >= fromNumber, respecting filters)
+          const rowsToShift: Array<{ logSheet: LogSheet; fieldVal: { value: number; isRange: boolean; upper: number; lower: number } }> = [];
+          
+          activeState.logSheets.forEach((logSheet) => {
+            if (logSheet.projectId !== projectId) return;
+            // Skip any logs matching excludeLogIds
+            if (excludeLogIds.has(logSheet.id)) return;
+            
+            // Apply classification filter if provided (SFX/Ambience are included unless explicitly excluded)
             if (filter?.classification !== undefined) {
               const logClassification = logSheet.data?.classification;
-              if (logClassification !== filter.classification) return logSheet;
+              if (logClassification !== filter.classification) return;
             }
             
             // Apply scene/shot filter if provided
             if (filter?.sceneNumber !== undefined) {
               const logScene = logSheet.data?.sceneNumber;
-              if (logScene !== filter.sceneNumber) return logSheet;
+              if (logScene !== filter.sceneNumber) return;
             }
             if (filter?.shotNumber !== undefined) {
               const logShot = logSheet.data?.shotNumber;
-              if (logShot !== filter.shotNumber) return logSheet;
+              if (logShot !== filter.shotNumber) return;
             }
 
             const data = logSheet.data || {} as any;
             const fieldVal = getFieldValue(data, fieldId);
-            if (!fieldVal || fieldVal.value === null) return logSheet;
+            if (!fieldVal || fieldVal.value === null) return;
 
-            // Only shift entries at or after fromNumber
-            if (fieldVal.upper < fromNumber) return logSheet;
+            // Only shift entries at or after fromNumber (>= fromNumber)
+            if (fieldVal.upper >= fromNumber) {
+              rowsToShift.push({ logSheet, fieldVal });
+            }
+          });
 
+          // Step 2: Sort by current numeric value DESC (to avoid cascading conflicts)
+          rowsToShift.sort((a, b) => b.fieldVal.upper - a.fieldVal.upper);
+
+          // Step 3: Apply increment in descending order
+          const updatedSimple = activeState.logSheets.map((logSheet) => {
+            const rowToShift = rowsToShift.find(r => r.logSheet.id === logSheet.id);
+            if (!rowToShift) return logSheet;
+
+            const { fieldVal } = rowToShift;
+            const data = logSheet.data || {} as any;
             const newData: Record<string, any> = { ...data };
 
             if (fieldId === 'soundFile') {
@@ -748,6 +819,11 @@ export const useProjectStore = create<ProjectState>()(
             return logSheet;
           });
 
+          // Step 4: Assert uniqueness after shifting (same filter scope, including edited log)
+          // Note: We exclude edited log from shifting, but include it in uniqueness check
+          // to ensure no duplicates exist after the shift
+          assertUnique(fieldId, updatedSimple, new Set<string>(), filter);
+
           // Emit ORDER AFTER snapshot for this project to ensure latest entry appears populated
           try {
             const orderAfterFiles = updatedSimple
@@ -770,7 +846,8 @@ export const useProjectStore = create<ProjectState>()(
             console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
           } catch {}
 
-          logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
+          const shiftedCount = rowsToShift.length;
+          logger.logFunctionExit({ shiftedCount });
           return { logSheets: updatedSimple };
 
           // Helper to find last valid field value before a given take
