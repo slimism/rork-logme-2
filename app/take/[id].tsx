@@ -1670,6 +1670,18 @@ This would break the logging logic and create inconsistencies in the file number
     const existingEntry = duplicateInfo.existingEntry;
     const targetFieldId = duplicateInfo.fieldId;
     const isCurrentAmbienceOrSFX = classification === 'Ambience' || classification === 'SFX';
+    
+    // Check if this is a move operation (existing log being moved)
+    // This determines whether we use updateFileNumbers (for new inserts) or recalculateFileNumbersAfterMove (for moves)
+    const isMoveOperation = (() => {
+      const movingLocalId = parseInt(String((logSheet as any)?.projectLocalId || ''), 10);
+      const targetLocalIdNum = parseInt(String((existingEntry as any)?.projectLocalId || ''), 10);
+      return !Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalIdNum) && movingLocalId !== targetLocalIdNum;
+    })();
+    
+    if (isMoveOperation) {
+      console.log('🔍 [handleSaveWithSelectiveDuplicateHandling] Detected move operation - will use recalculateFileNumbersAfterMove instead of updateFileNumbers');
+    }
 
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
 
@@ -1768,7 +1780,7 @@ This would break the logging logic and create inconsistencies in the file number
         insertedSoundFile: takeData.soundFile
       });
       
-      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
+      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile') && !isMoveOperation) {
         const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
         console.log('✅ [handleSaveWithSelectiveDuplicateHandling] Calling updateFileNumbers for soundFile:', { 
           start: soundFileResult.soundStart, 
@@ -1780,14 +1792,16 @@ This would break the logging logic and create inconsistencies in the file number
         updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta, undefined, targetLocalId);
       } else {
         console.log('❌ [handleSaveWithSelectiveDuplicateHandling] NOT calling updateFileNumbers for soundFile:', {
-          reason: !soundFileResult.shouldCallUpdateFileNumbers ? 'shouldCallUpdateFileNumbers=false' : 'soundFile is disabled',
+          reason: isMoveOperation ? 'move operation - using recalculateFileNumbersAfterMove instead' : (!soundFileResult.shouldCallUpdateFileNumbers ? 'shouldCallUpdateFileNumbers=false' : 'soundFile is disabled'),
           shouldCallUpdateFileNumbers: soundFileResult.shouldCallUpdateFileNumbers,
-          isDisabled: disabledFields.has('soundFile')
+          isDisabled: disabledFields.has('soundFile'),
+          isMoveOperation
         });
       }
       
       // If target has a range, adjust lower to end after inserted and extend upper by delta
-      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
+      // Skip for move operations - recalculateFileNumbersAfterMove handles this
+      if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile') && !isMoveOperation) {
         const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
         if (targetRange) {
           const bounds = getInsertedBounds('soundFile');
@@ -2059,20 +2073,36 @@ This would break the logging logic and create inconsistencies in the file number
     // Use Promise to ensure Zustand state has propagated before calling updateFileNumbers
     await new Promise(resolve => setTimeout(resolve, 0));
     
+    // For moving an existing log, we don't use updateFileNumbers
+    // Instead, we use moveExistingLogBefore and recalculateFileNumbersAfterMove
     // Call updateFileNumbers to shift subsequent entries AFTER saving current logSheet
     // This ensures the current logSheet (with edited values) gets skipped
     if (targetFieldId.startsWith('cameraFile')) {
-      if (!disabledFields.has(targetFieldId) && camDelta > 0) {
+      if (!disabledFields.has(targetFieldId) && camDelta > 0 && !isMoveOperation) {
         // Always use camStart (the beginning of the duplicate), not the end of the range
         // updateFileNumbers will skip the first occurrence and shift everything else
         // Pass targetLocalId to ensure subsequent takes (with projectLocalId > target duplicate's projectLocalId) are shifted
         const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
+        console.log('✅ [handleSaveWithSelectiveDuplicateHandling] Calling updateFileNumbers for camera:', {
+          fieldId: targetFieldId,
+          start: camStart,
+          delta: camDelta,
+          targetLocalId
+        });
         updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta, undefined, targetLocalId);
+      } else if (isMoveOperation) {
+        console.log('❌ [handleSaveWithSelectiveDuplicateHandling] NOT calling updateFileNumbers for camera:', {
+          reason: 'move operation - using recalculateFileNumbersAfterMove instead',
+          fieldId: targetFieldId,
+          isDisabled: disabledFields.has(targetFieldId),
+          camDelta
+        });
       }
     }
     
-    // Update existingEntry after shifting
-    if (existingEntryUpdates) {
+    // Update existingEntry after shifting (only for non-move operations)
+    // For move operations, recalculateFileNumbersAfterMove handles all subsequent logs including the target duplicate
+    if (existingEntryUpdates && !isMoveOperation) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
     
@@ -2086,7 +2116,8 @@ This would break the logging logic and create inconsistencies in the file number
         moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalIdNum));
         console.log(`✅ [handleSaveWithSelectiveDuplicateHandling] Updated projectLocalId values: inserted log (${logSheet.id}) moved from ${movingLocalId} to ${targetLocalIdNum}`);
         
-        // After moving, recalculate file numbers for subsequent logs using moved log's upper bounds
+        // After moving, recalculate file numbers for ALL subsequent logs (including target duplicate) 
+        // using moved log's upper bounds as starting temp variables
         recalculateFileNumbersAfterMove(logSheet.projectId, logSheet.id, String(targetLocalIdNum));
         console.log(`✅ [handleSaveWithSelectiveDuplicateHandling] Recalculated file numbers for subsequent logs after move`);
       }
