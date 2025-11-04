@@ -3093,6 +3093,8 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) soundStartForShift = n;
               }
             }
+            // Sound files use a global numbering sequence - shift ALL sound files >= soundStartForShift
+            // regardless of scene/shot numbers (this includes SFX/Ambience logs)
             updateFileNumbers(
               logSheet.projectId, 
               'soundFile', 
@@ -3100,15 +3102,8 @@ This would break the logging logic and create inconsistencies in the file number
               soundIncrementLocal, 
               logSheet.id,
               {
-                excludeLogIds: [logSheet.id],
-                filter: classification ? {
-                  sceneNumber: targetSceneNumber,
-                  shotNumber: targetShotNumber,
-                  classification
-                } : {
-                  sceneNumber: targetSceneNumber,
-                  shotNumber: targetShotNumber
-                }
+                excludeLogIds: [logSheet.id]
+                // No filter for sound files - they shift globally regardless of scene/shot/classification
               }
             );
           }
@@ -3725,6 +3720,8 @@ This would break the logging logic and create inconsistencies in the file number
     // This uses sequential shifting logic that handles all subsequent logs automatically
     // Note: targetSceneNumber and targetShotNumber are already declared earlier in this function
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
+      // Sound files use a global numbering sequence - shift ALL sound files >= soundStart
+      // regardless of scene/shot numbers (this includes SFX/Ambience logs)
       updateFileNumbers(
         logSheet.projectId, 
         'soundFile', 
@@ -3732,15 +3729,8 @@ This would break the logging logic and create inconsistencies in the file number
         insertedSoundDelta, 
         logSheet.id,
         {
-          excludeLogIds: [logSheet.id],
-          filter: finalClassification ? {
-            sceneNumber: targetSceneNumber,
-            shotNumber: targetShotNumber,
-            classification: finalClassification
-          } : {
-            sceneNumber: targetSceneNumber,
-            shotNumber: targetShotNumber
-          }
+          excludeLogIds: [logSheet.id]
+          // No filter for sound files - they shift globally regardless of scene/shot/classification
         }
       );
     }
