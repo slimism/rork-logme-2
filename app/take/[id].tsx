@@ -3705,8 +3705,9 @@ This would break the logging logic and create inconsistencies in the file number
     // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
     // The excludeLogId ensures the inserted log is not shifted
     // This uses sequential shifting logic that handles all subsequent logs automatically
+    const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id, targetLocalId);
     }
     
     if (camCount === 1) {
@@ -3720,7 +3721,7 @@ This would break the logging logic and create inconsistencies in the file number
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
-        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id);
+        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id, targetLocalId);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3747,10 +3748,24 @@ This would break the logging logic and create inconsistencies in the file number
               const n = parseInt(val, 10);
               if (!Number.isNaN(n)) camStart = n;
             }
-            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id);
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id, targetLocalId);
           }
         }
       }
+    }
+    
+    // Update projectLocalId values to ensure sequential ordering
+    // The inserted log should take the target duplicate's projectLocalId
+    // All logs with projectLocalId >= target duplicate's projectLocalId should be incremented by 1
+    try {
+      const movingLocalId = parseInt(String((logSheet as any)?.projectLocalId || ''), 10);
+      const targetLocalIdNum = parseInt(String((existingEntry as any)?.projectLocalId || ''), 10);
+      if (!Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalIdNum) && movingLocalId !== targetLocalIdNum) {
+        moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalIdNum));
+        console.log(`✅ [handleSaveWithDuplicatePair] Updated projectLocalId values: inserted log (${logSheet.id}) moved from ${movingLocalId} to ${targetLocalIdNum}`);
+      }
+    } catch (error) {
+      console.error('❌ [handleSaveWithDuplicatePair] Error updating projectLocalId values:', error);
     }
     
     // Use Promise to ensure Zustand state has propagated after updateFileNumbers
