@@ -493,30 +493,7 @@ export const useProjectStore = create<ProjectState>()(
         }
       },
       
-      updateTakeNumbers: (
-        projectId: string, 
-        sceneNumber: string, 
-        shotNumber: string, 
-        fromTakeNumber: number, 
-        increment: number, 
-        excludeLogId?: string,
-        maxTakeNumber?: number,
-        options?: {
-          excludeLogIds?: string[];
-          filter?: {
-            classification?: string;
-          };
-        }
-      ) => {
-        // Support both old excludeLogId and new excludeLogIds array
-        const excludeLogIds = new Set<string>();
-        if (excludeLogId) excludeLogIds.add(excludeLogId);
-        if (options?.excludeLogIds) {
-          options.excludeLogIds.forEach(id => excludeLogIds.add(id));
-        }
-        
-        const filter = options?.filter;
-        
+      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => {
         logger.logFunctionEntry({
           functionName: 'updateTakeNumbers',
           projectId,
@@ -525,9 +502,7 @@ export const useProjectStore = create<ProjectState>()(
           fromTakeNumber,
           increment,
           excludeLogId,
-          excludeLogIds: Array.from(excludeLogIds),
-          maxTakeNumber,
-          filter
+          maxTakeNumber
         });
         
         set((state) => ({
@@ -535,16 +510,10 @@ export const useProjectStore = create<ProjectState>()(
             try {
               if (logSheet.projectId !== projectId) return logSheet;
               
-              // Skip any logs matching excludeLogIds
-              if (excludeLogIds.has(logSheet.id)) {
+              // Skip the excluded log (the edited log being moved)
+              if (excludeLogId && logSheet.id === excludeLogId) {
                 logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id, takeNumber: logSheet.data?.takeNumber });
                 return logSheet;
-              }
-              
-              // Apply classification filter if provided
-              if (filter?.classification !== undefined) {
-                const logClassification = logSheet.data?.classification;
-                if (logClassification !== filter.classification) return logSheet;
               }
 
               const data = logSheet.data ?? {} as Record<string, unknown>;
@@ -584,41 +553,14 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (
-        projectId: string, 
-        fieldId: string, 
-        fromNumber: number, 
-        increment: number, 
-        excludeLogId?: string,
-        options?: {
-          excludeLogIds?: string[];
-          filter?: {
-            sceneNumber?: string;
-            shotNumber?: string;
-            classification?: string;
-          };
-          toNumber?: number; // Maximum file number to shift (inclusive). If undefined, shifts all files >= fromNumber
-          maxTakeNumber?: number; // Maximum take number to shift (inclusive). If provided, only shifts entries with takeNumber <= maxTakeNumber
-        }
-      ) => {
-        // Support both old excludeLogId and new excludeLogIds array
-        const excludeLogIds = new Set<string>();
-        if (excludeLogId) excludeLogIds.add(excludeLogId);
-        if (options?.excludeLogIds) {
-          options.excludeLogIds.forEach(id => excludeLogIds.add(id));
-        }
-        
-        const filter = options?.filter;
-        
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
           fieldId,
           fromNumber,
           increment,
-          excludeLogId,
-          excludeLogIds: Array.from(excludeLogIds),
-          filter
+          excludeLogId
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -680,40 +622,14 @@ export const useProjectStore = create<ProjectState>()(
 
           const updatedSimple = activeState.logSheets.map((logSheet) => {
             if (logSheet.projectId !== projectId) return logSheet;
-            // Skip any logs matching excludeLogIds
-            if (excludeLogIds.has(logSheet.id)) return logSheet;
-            
-            // Apply classification filter if provided
-            if (filter?.classification !== undefined) {
-              const logClassification = logSheet.data?.classification;
-              if (logClassification !== filter.classification) return logSheet;
-            }
-            
-            // Apply scene/shot filter if provided
-            if (filter?.sceneNumber !== undefined) {
-              const logScene = logSheet.data?.sceneNumber;
-              if (logScene !== filter.sceneNumber) return logSheet;
-            }
-            if (filter?.shotNumber !== undefined) {
-              const logShot = logSheet.data?.shotNumber;
-              if (logShot !== filter.shotNumber) return logSheet;
-            }
+            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
 
             const data = logSheet.data || {} as any;
             const fieldVal = getFieldValue(data, fieldId);
             if (!fieldVal || fieldVal.value === null) return logSheet;
 
-            // Only shift entries within the range [fromNumber, toNumber] (inclusive)
-            // If toNumber is undefined, shift all entries >= fromNumber (backward compatibility)
+            // Only shift entries at or after fromNumber
             if (fieldVal.upper < fromNumber) return logSheet;
-            if (options?.toNumber !== undefined && fieldVal.upper > options.toNumber) return logSheet;
-            
-            // If maxTakeNumber is provided, only shift entries with takeNumber <= maxTakeNumber
-            // This prevents shifting entries beyond the insertion zone (e.g., Take 6 when maxTakeNumber is 4)
-            if (options?.maxTakeNumber !== undefined) {
-              const takeNum = parseInt(data.takeNumber as string || '0', 10);
-              if (Number.isNaN(takeNum) || takeNum > options.maxTakeNumber) return logSheet;
-            }
 
             const newData: Record<string, any> = { ...data };
 
@@ -864,18 +780,13 @@ export const useProjectStore = create<ProjectState>()(
             // This is more reliable than searching by file number, which can match multiple logs
             let insertedLog: LogSheet | null = null;
             
-            // Strategy 1: If excludeLogIds are provided, use them directly (most reliable)
-            // The excludeLogIds contain the newly inserted log(s) that we just saved
-            if (excludeLogIds.size > 0) {
-              // Try to find the inserted log from any of the excludeLogIds
-              for (const id of excludeLogIds) {
-                insertedLog = sheets.find(sheet => sheet.id === id) || null;
-                if (insertedLog) {
-                  logger.logDebug(`Found inserted log via excludeLogIds: Take ${insertedLog.data?.takeNumber}, ID: ${id}`);
-                  break;
-                }
-              }
-              if (!insertedLog && excludeLogId) {
+            // Strategy 1: If excludeLogId is provided, use it directly (most reliable)
+            // The excludeLogId is the newly inserted log that we just saved
+            if (excludeLogId) {
+              insertedLog = sheets.find(sheet => sheet.id === excludeLogId) || null;
+              if (insertedLog) {
+                logger.logDebug(`Found inserted log via excludeLogId: Take ${insertedLog.data?.takeNumber}, ID: ${excludeLogId}`);
+              } else {
                 logger.logWarning(`excludeLogId ${excludeLogId} provided but log not found in sheets - will fall back to search by file number`);
               }
             }
@@ -1034,36 +945,10 @@ export const useProjectStore = create<ProjectState>()(
             }
             
             sheets.forEach((logSheet, index) => {
-              // Skip any logs matching excludeLogIds
-              if (excludeLogIds.has(logSheet.id)) {
+              if (excludeLogId && logSheet.id === excludeLogId) {
                 logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id });
                 updatedSheetsMap.set(logSheet.id, logSheet);
                 return;
-              }
-              
-              // Apply classification filter if provided
-              if (filter?.classification !== undefined) {
-                const logClassification = logSheet.data?.classification;
-                if (logClassification !== filter.classification) {
-                  updatedSheetsMap.set(logSheet.id, logSheet);
-                  return;
-                }
-              }
-              
-              // Apply scene/shot filter if provided
-              if (filter?.sceneNumber !== undefined) {
-                const logScene = logSheet.data?.sceneNumber;
-                if (logScene !== filter.sceneNumber) {
-                  updatedSheetsMap.set(logSheet.id, logSheet);
-                  return;
-                }
-              }
-              if (filter?.shotNumber !== undefined) {
-                const logShot = logSheet.data?.shotNumber;
-                if (logShot !== filter.shotNumber) {
-                  updatedSheetsMap.set(logSheet.id, logSheet);
-                  return;
-                }
               }
               
               const data = logSheet.data || {};
@@ -1126,16 +1011,16 @@ export const useProjectStore = create<ProjectState>()(
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
-                  // Calculate new bounds: newLower = shiftBase + 1, newUpper = shiftBase + delta
-                  // Delta calculation rules (for camera, delta is now inclusive count):
-                  // - For ranges: delta = (upper - lower) + 1 (inclusive count)
-                  // - For single values: delta = 1 (the field represents 1 file number)
+                  // Calculate new bounds: newLower = shiftBase + 1, newUpper = newLower + delta
+                  // Delta calculation rules:
+                  // - For ranges: delta = upper - lower (difference between bounds)
+                  // - For single values: delta = 1 (the field represents 1 file number, so span is 1)
                   // - For blank/waste: delta = 0 (field stays blank, temp variable unchanged)
-                  // Formula: newLower = shiftBase + 1, newUpper = shiftBase + delta
-                  // For single values: newLower = shiftBase + 1, newUpper = newLower (single value)
-                  //   (e.g., shiftBase = 15: newLower = 16, newUpper = 16, tempCamera = 16)
-                  // For ranges: newLower = shiftBase + 1, newUpper = shiftBase + delta
-                  //   (e.g., shiftBase = 15, range 0003-0007 (delta=5): newLower = 16, newUpper = 20)
+                  // Formula: newLower = tempValue + 1, newUpper = newLower + delta
+                  // For single values: newLower = tempValue + 1, newUpper = newLower + 1
+                  //   (e.g., tempCamera = 4: newLower = 5, newUpper = 6, but we store 5 as single value, tempCamera = 5)
+                  // For ranges: newLower = tempValue + 1, newUpper = newLower + (upper - lower)
+                  //   (e.g., tempCamera = 4, range 001-003 (delta=2): newLower = 5, newUpper = 7)
                   let newLower = shiftBase + 1;
                   
                   // Use centralized delta calculator for consistency
@@ -1147,7 +1032,7 @@ export const useProjectStore = create<ProjectState>()(
                     };
                     delta = calculateSoundDeltaForShifting(soundDeltaInput);
                   } else if (fieldId.startsWith('cameraFile')) {
-                    // Use camera delta calculator (returns inclusive count)
+                    // Use camera delta calculator
                     const cameraDeltaInput: DeltaCalculationInput = {
                       logSheetData: data
                     };
@@ -1155,13 +1040,11 @@ export const useProjectStore = create<ProjectState>()(
                   } else {
                     // Fallback to manual calculation
                     delta = currentFieldVal.isRange 
-                      ? (currentFieldVal.upper - currentFieldVal.lower) + 1  // Range: inclusive count
+                      ? (currentFieldVal.upper - currentFieldVal.lower)  // Range: difference between upper and lower
                       : 1;  // Single value: delta is 1 (one file number has span of 1)
                   }
                   
-                  // For ranges: newUpper = shiftBase + delta (inclusive count)
-                  // For single values: newUpper = newLower (single value)
-                  let newUpper = currentFieldVal.isRange ? (shiftBase + delta) : newLower;
+                  let newUpper = newLower + delta;
                   
                   // Check if value is already correctly shifted (target duplicate case)
                   // This happens when the target duplicate was already shifted by duplicate insertion logic
@@ -1321,15 +1204,11 @@ export const useProjectStore = create<ProjectState>()(
                     if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
                       // ALWAYS use tempCamera when available - this includes target duplicate
                       // Calculate what it should be based on tempCamera
-                      // For ranges: newLower = tempCamera + 1, newUpper = tempCamera + delta (inclusive count)
-                      // For single values: newLower = tempCamera + 1, newUpper = newLower
                       newLower = tempCamera[cameraNum]! + 1;
-                      newUpper = currentFieldVal.isRange 
-                        ? (tempCamera[cameraNum]! + delta)  // Range: use inclusive delta
-                        : newLower;  // Single value: upper equals lower
+                      newUpper = newLower + delta;
                       
                       const cameraCalcFormula = currentFieldVal.isRange
-                        ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + delta(${delta}) = ${newUpper}`
+                        ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
                         : `Single value: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} (single value)`;
                       
                       console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=${tempCamera[cameraNum]}, delta=${delta}, currentLower=${currentFieldVal.lower}, currentUpper=${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${cameraCalcFormula}", result: ${newLower}/${newUpper}`);
@@ -1345,18 +1224,14 @@ export const useProjectStore = create<ProjectState>()(
                           fromNumber,
                           takeNum
                         },
-                        currentFieldVal.isRange
-                          ? `Sequential shift (range): newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + delta(${delta}) = ${newUpper}`
-                          : `Sequential shift (single): newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower}`,
+                        `Sequential shift: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`,
                         { newLower, newUpper }
                       );
                     } else {
                       // tempCamera not available - this shouldn't happen for sequential shifting
                       // But fallback to shiftBase if needed
                       logger.logWarning(`tempCamera[${cameraNum}] not available for take ${takeNum} - using shiftBase as fallback`);
-                      const fallbackNewUpper = currentFieldVal.isRange ? (shiftBase + delta) : newLower;
-                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=null/undefined, using shiftBase=${shiftBase}, delta=${delta}, formula="${currentFieldVal.isRange ? `newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = shiftBase(${shiftBase}) + delta(${delta}) = ${fallbackNewUpper}` : `newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower}`}", result: ${newLower}/${fallbackNewUpper}`);
-                      newUpper = fallbackNewUpper;
+                      console.log(`[CALC] CAMERA FILE ${cameraNum} - Take ${takeNum} (ID: ${logSheet.id}): tempCamera[${cameraNum}]=null/undefined, using shiftBase=${shiftBase}, delta=${delta}, formula="newLower = shiftBase(${shiftBase}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}", result: ${newLower}/${newUpper}`);
                       // newLower and newUpper are already calculated from shiftBase above
                     }
                     
@@ -1373,7 +1248,7 @@ export const useProjectStore = create<ProjectState>()(
                     }
                     // ALWAYS update tempCamera with the correct upper bound
                     // For single values: newUpper should equal newLower (single file number)
-                    // For ranges: newUpper = tempCamera + delta (inclusive count)
+                    // For ranges: newUpper = newLower + delta (range of file numbers)
                     // This ensures subsequent takes use the correct base value
                     // If the value is already correct (target duplicate already shifted), newUpper will match currentUpper
                     // but we still update tempCamera to maintain consistency

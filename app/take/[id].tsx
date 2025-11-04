@@ -1819,18 +1819,26 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       // Calculate existingEntry updates
-      // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
-      // the shifting correctly. The existing entry's range should be shifted (not expanded),
-      // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
-      // We only need to update the take number here.
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
+        // If target has a range, adjust lower to end after inserted and extend upper by delta
         const targetRange = getRangeFromData(existingEntry.data, targetFieldId);
         if (targetRange) {
-          // For ranges, updateFileNumbers will handle the shifting - just update take number
+          const bounds = getInsertedBounds(targetFieldId);
+          const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+          const oldToNum = parseInt(targetRange.to, 10) || 0;
+          const newFrom = String(insertedUpper + 1).padStart(4, '0');
+          const newTo = String(oldToNum + camDelta).padStart(4, '0');
+          const cameraNum = targetFieldId === 'cameraFile' ? 1 : (parseInt(targetFieldId.replace('cameraFile', '')) || 1);
           existingEntryUpdates = {
             ...existingEntry.data,
+            [`camera${cameraNum}_from`]: newFrom,
+            [`camera${cameraNum}_to`]: newTo,
             takeNumber: String(targetTakeNumber + 1)
           };
+          const hadInline = typeof existingEntry.data?.[targetFieldId] === 'string' && isRangeString(existingEntry.data[targetFieldId]);
+          if (hadInline) {
+            existingEntryUpdates[targetFieldId] = `${newFrom}-${newTo}`;
+          }
         } else {
           // Handle single camera value (not range) - target has single value
           const targetHasSingleCamera = typeof existingEntry.data?.[targetFieldId] === 'string' && !isRangeString(existingEntry.data[targetFieldId]);
@@ -2214,27 +2222,14 @@ This would break the logging logic and create inconsistencies in the file number
           newLogData.takeNumber = existingEntry.data?.takeNumber;
           const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
           const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
-          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogIds and maxTake:', {
+          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogId and maxTake:', {
             fromTakeNumber: targetTakeNumber,
             increment: 1,
-            excludeLogIds: [logSheet.id],
+            excludeLogId: logSheet.id,
             originalTakeNumber,
-            maxTakeNumber: maxTake,
-            classification: classification || undefined
+            maxTakeNumber: maxTake
           });
-          updateTakeNumbers(
-            logSheet.projectId, 
-            targetSceneNumber, 
-            targetShotNumber, 
-            targetTakeNumber, 
-            1, 
-            logSheet.id, 
-            maxTake,
-            {
-              excludeLogIds: [logSheet.id],
-              filter: classification ? { classification } : undefined
-            }
-          );
+          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
         }
 
         // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -2448,27 +2443,7 @@ This would break the logging logic and create inconsistencies in the file number
             };
             const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
-              { 
-                // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
-                // This ensures waste takes and other entries with ranges that start before the existing entry
-                // are also shifted correctly.
-                let start = camStart;
-                if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
-                  // Inserted log has a range - use its start (lower bound)
-                  const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-                  const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                } else if (takeData.cameraFile) {
-                  // Inserted log has a single value
-                  const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
-                  start = insertedSingle;
-                } else {
-                  // Fallback to existing entry's start
-                  const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
-                  start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
-                }
-                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
-              }
+              { const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); }
               
               // Read current state of the log from store (after updateFileNumbers may have updated it)
               const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
@@ -2585,27 +2560,7 @@ This would break the logging logic and create inconsistencies in the file number
                 };
                 const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
-                  { 
-                    // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
-                    // This ensures waste takes and other entries with ranges that start before the existing entry
-                    // are also shifted correctly.
-                    let start = camStart;
-                    if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
-                      // Inserted log has a range - use its start (lower bound)
-                      const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-                      const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
-                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                    } else if (takeData[fieldId]) {
-                      // Inserted log has a single value
-                      const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-                      start = insertedSingle;
-                    } else {
-                      // Fallback to existing entry's start
-                      const targetRange = getRangeFromData(existingEntry.data, fieldId);
-                      start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
-                    }
-                    updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); 
-                  }
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta, logSheet.id); }
                   
                   // Read current state of the log from store (after updateFileNumbers may have updated it)
                   const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
@@ -2827,15 +2782,13 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
           const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
-          // Preserve existing classification if state variable is null (don't clear it)
-          const finalClassification = classification !== null ? classification : (logSheet.data?.classification || null);
           const updatedData = {
             ...finalData,
-            classification: finalClassification,
+            classification,
             shotDetails: filteredShotDetails,
             isGoodTake,
-            wasteOptions: finalClassification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-            insertSoundSpeed: finalClassification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+            wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+            insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
             cameraRecState: camCount > 1 ? cameraRecState : undefined
           };
           
@@ -2853,10 +2806,6 @@ This would break the logging logic and create inconsistencies in the file number
         console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
         console.log('  Edited log ID:', logSheet.id);
         console.log('  Existing entry ID:', existingEntry.id);
-
-        // Read the inserted log's range from the store after saving (rangeData might not be available)
-        const insertedLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === logSheet.id);
-        const insertedLogData = insertedLogSheet?.data || {};
 
         console.log('DEBUG - Processing camera shifts for camCount=1');
         if (camCount === 1) {
@@ -2878,72 +2827,42 @@ This would break the logging logic and create inconsistencies in the file number
             const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
             if (!disabledFields.has('cameraFile')) {
               { 
-                // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
-                // This ensures waste takes and other entries with ranges that start before the existing entry
-                // are also shifted correctly. For range-to-range duplicates, we need to shift the existing entry itself.
-                let start = camStart;
-                // First, try to get range from saved inserted log (most reliable after save)
-                const insertedRange = getRangeFromData(insertedLogData, 'cameraFile');
-                if (insertedRange) {
-                  // Inserted log has a range - use its start (lower bound)
-                  const insertedFrom = parseInt(insertedRange.from, 10) || 0;
-                  const insertedTo = parseInt(insertedRange.to, 10) || 0;
-                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                } else if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
-                  // Fallback: use rangeData if available (before save)
-                  const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-                  const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                } else if (takeData.cameraFile) {
-                  // Inserted log has a single value
-                  const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
-                  start = insertedSingle;
-                } else {
-                  // Fallback to existing entry's start
-                  const targetRange = getRangeFromData(existingEntry.data, 'cameraFile');
-                  start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
-                }
-                
+                const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
+                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
                 console.log('====> Calling updateFileNumbers for cameraFile:', {
                   start,
                   camDelta,
                   camStart,
-                  'insertedRange': showRangeMode['cameraFile'] ? { from: rangeData['cameraFile']?.from, to: rangeData['cameraFile']?.to } : null,
+                  targetRange,
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
-                  'editedLogId_ToExclude': logSheet.id,
-                  'existingEntry.classification': existingEntry.data?.classification,
-                  'editedLog.classification': classification
+                  'editedLogId_ToExclude': logSheet.id
                 });
-                updateFileNumbers(
-                  logSheet.projectId, 
-                  'cameraFile', 
-                  start, 
-                  camDelta, 
-                  logSheet.id,
-                  {
-                    excludeLogIds: [logSheet.id],
-                    filter: classification ? {
-                      sceneNumber: targetSceneNumber,
-                      shotNumber: targetShotNumber,
-                      classification
-                    } : {
-                      sceneNumber: targetSceneNumber,
-                      shotNumber: targetShotNumber
-                    }
-                  }
-                ); 
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
               }
               
-              // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
-              // the shifting correctly. The existing entry's range should be shifted (not expanded),
-              // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
-              // Any additional modification here would incorrectly expand the range.
-              
-              // Handle single camera value (not range) if needed
+              // Read current state of the log from store (after updateFileNumbers may have updated it)
               const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
               const currentData = currentLogSheet?.data || existingEntry.data;
+              
+              // If target has a range, adjust lower to end after inserted and extend upper by delta
               const targetRange = getRangeFromData(currentData, 'cameraFile');
-              if (!targetRange) {
+              if (targetRange) {
+                const bounds = getInsertedBounds('cameraFile');
+                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                const oldToNum = parseInt(targetRange.to, 10) || 0;
+                const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                const updated: Record<string, any> = {
+                  ...currentData,
+                  camera1_from: newFrom,
+                  camera1_to: newTo
+                };
+                const hadInline = typeof currentData?.cameraFile === 'string' && isRangeString(currentData.cameraFile);
+                if (hadInline) {
+                  updated.cameraFile = `${newFrom}-${newTo}`;
+                }
+                updateLogSheet(existingEntry.id, updated);
+                  } else if (!targetRange) {
                     // Handle single camera value (not range)
                     const targetSingleStr = currentData?.cameraFile as string | undefined;
                 if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
@@ -3002,62 +2921,32 @@ This would break the logging logic and create inconsistencies in the file number
                 };
                 const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
-                  { 
-                    // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
-                    // This ensures waste takes and other entries with ranges that start before the existing entry
-                    // are also shifted correctly. For range-to-range duplicates, we need to shift the existing entry itself.
-                    let start = camStart;
-                    // First, try to get range from saved inserted log (most reliable after save)
-                    const insertedRange = getRangeFromData(insertedLogData, fieldId);
-                    if (insertedRange) {
-                      // Inserted log has a range - use its start (lower bound)
-                      const insertedFrom = parseInt(insertedRange.from, 10) || 0;
-                      const insertedTo = parseInt(insertedRange.to, 10) || 0;
-                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                    } else if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
-                      // Fallback: use rangeData if available (before save)
-                      const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-                      const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
-                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-                    } else if (takeData[fieldId]) {
-                      // Inserted log has a single value
-                      const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-                      start = insertedSingle;
-                    } else {
-                      // Fallback to existing entry's start
-                      const targetRange = getRangeFromData(existingEntry.data, fieldId);
-                      start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
-                    }
-                    updateFileNumbers(
-                      logSheet.projectId, 
-                      fieldId, 
-                      start, 
-                      camDelta, 
-                      logSheet.id, 
-                      {
-                        excludeLogIds: [logSheet.id],
-                        filter: classification ? {
-                          sceneNumber: targetSceneNumber,
-                          shotNumber: targetShotNumber,
-                          classification
-                        } : {
-                          sceneNumber: targetSceneNumber,
-                          shotNumber: targetShotNumber
-                        }
-                      }
-                    ); 
-                  }
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
-                  // NOTE: Do NOT modify the existing entry's range here - updateFileNumbers already handles
-                  // the shifting correctly. The existing entry's range should be shifted (not expanded),
-                  // which updateFileNumbers does by shifting both lower and upper bounds by the increment.
-                  // Any additional modification here would incorrectly expand the range.
-                  
-                  // Handle single camera value (not range) if needed
+                  // Read current state of the log from store (after updateFileNumbers may have updated it)
                   const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
                   const currentData = currentLogSheet?.data || existingEntry.data;
+                  
+                  // If target has a range, adjust lower to end after inserted and extend upper by delta
                   const targetRange = getRangeFromData(currentData, fieldId);
-                  if (!targetRange) {
+                  if (targetRange) {
+                    const bounds = getInsertedBounds(fieldId);
+                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                    const updated: Record<string, any> = {
+                      ...currentData,
+                      [`camera${i}_from`]: newFrom,
+                      [`camera${i}_to`]: newTo
+                    };
+                    const hadInline = typeof currentData?.[fieldId] === 'string' && isRangeString(currentData[fieldId]);
+                    if (hadInline) {
+                      updated[fieldId] = `${newFrom}-${newTo}`;
+                    }
+                    updated.takeNumber = String(targetTakeNumber + 1);
+                    updateLogSheet(existingEntry.id, updated);
+                  } else if (!targetRange) {
                     // Handle single camera value (not range)
                     const targetSingleStr = currentData?.[fieldId] as string | undefined;
                     if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
@@ -3149,19 +3038,7 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) soundStartForShift = n;
               }
             }
-            // Sound files use a global numbering sequence - shift ALL sound files >= soundStartForShift
-            // regardless of scene/shot numbers (this includes SFX/Ambience logs)
-            updateFileNumbers(
-              logSheet.projectId, 
-              'soundFile', 
-              soundStartForShift, 
-              soundIncrementLocal, 
-              logSheet.id,
-              {
-                excludeLogIds: [logSheet.id]
-                // No filter for sound files - they shift globally regardless of scene/shot/classification
-              }
-            );
+            updateFileNumbers(logSheet.projectId, 'soundFile', soundStartForShift, soundIncrementLocal, logSheet.id);
           }
         } catch {}
       }
@@ -3364,27 +3241,14 @@ This would break the logging logic and create inconsistencies in the file number
       newLogData.takeNumber = existingEntry.data?.takeNumber;
       const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
       const maxTake = originalTakeNumber > targetTake ? originalTakeNumber - 1 : undefined;
-      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogIds and maxTake:', {
+      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogId and maxTake:', {
         fromTakeNumber: targetTake,
         increment: 1,
-        excludeLogIds: [logSheet.id],
+        excludeLogId: logSheet.id,
         originalTakeNumber,
-        maxTakeNumber: maxTake,
-        classification: finalClassification || undefined
+        maxTakeNumber: maxTake
       });
-      updateTakeNumbers(
-        logSheet.projectId, 
-        targetSceneNumber || '', 
-        targetShotNumber || '', 
-        targetTake, 
-        1, 
-        logSheet.id, 
-        maxTake,
-        {
-          excludeLogIds: [logSheet.id],
-          filter: finalClassification ? { classification: finalClassification } : undefined
-        }
-      );
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id, maxTake);
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -3738,15 +3602,13 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
-    // Preserve existing classification if state variable is null (don't clear it)
-    const finalClassification = classification !== null ? classification : (logSheet.data?.classification || null);
     const updatedData = {
       ...finalData,
-      classification: finalClassification,
+      classification,
       shotDetails: filteredShotDetails,
       isGoodTake,
-      wasteOptions: finalClassification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-      insertSoundSpeed: finalClassification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
@@ -3772,73 +3634,10 @@ This would break the logging logic and create inconsistencies in the file number
     });
     
     // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
-    // The excludeLogIds ensures the inserted log is not shifted
+    // The excludeLogId ensures the inserted log is not shifted
     // This uses sequential shifting logic that handles all subsequent logs automatically
-    // Note: targetSceneNumber and targetShotNumber are already declared earlier in this function
-    
-    // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
-    // This limits shifting to only the entries that are in the insertion zone
-    // For example, if maxTakeNumber is 4, we only shift entries up to the file number of Take 4
-    const projectLogSheets = useProjectStore.getState().logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
-    
-    // Calculate maxTakeForFiles (same logic as for take number shifting)
-    const maxTakeForFiles = !Number.isNaN(targetTake) 
-      ? (parseInt(logSheet.data?.takeNumber || '0', 10) > targetTake ? parseInt(logSheet.data?.takeNumber || '0', 10) - 1 : undefined)
-      : undefined;
-    
-    let soundToNumber: number | undefined = undefined;
-    if (maxTakeForFiles !== undefined) {
-      // Find the entry with takeNumber === maxTakeForFiles (before insertion)
-      // This is the highest take number that should be shifted
-      const entryAtMaxTake = projectLogSheets.find(sheet => {
-        if (sheet.id === logSheet.id) return false; // Exclude inserted log
-        const data = sheet.data || {};
-        if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-        const takeNum = parseInt(data.takeNumber || '0', 10);
-        return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
-      });
-      
-      if (entryAtMaxTake) {
-        const range = getRangeFromData(entryAtMaxTake.data, 'soundFile');
-        let maxFileNumber: number | undefined = undefined;
-        if (range) {
-          const from = parseInt(range.from, 10) || 0;
-          const to = parseInt(range.to, 10) || 0;
-          maxFileNumber = Math.max(from, to);
-        } else if (typeof entryAtMaxTake.data?.soundFile === 'string' && entryAtMaxTake.data.soundFile.trim().length > 0) {
-          const single = parseInt(entryAtMaxTake.data.soundFile, 10);
-          if (!Number.isNaN(single)) {
-            maxFileNumber = single;
-          }
-        }
-        
-        // toNumber should be the file number AFTER shifting, so add the increment
-        // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
-        if (maxFileNumber !== undefined && insertedSoundDelta > 0) {
-          soundToNumber = maxFileNumber + insertedSoundDelta;
-        } else if (maxFileNumber !== undefined) {
-          soundToNumber = maxFileNumber;
-        }
-      }
-    }
-    
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
-      // Sound files use a global numbering sequence - shift ALL sound files >= soundStart
-      // For "Insert Before" operations, we need to shift ALL subsequent files, not just up to maxTakeNumber
-      // maxTakeNumber is only used for take number shifting, not file number shifting
-      updateFileNumbers(
-        logSheet.projectId, 
-        'soundFile', 
-        soundStart, 
-        insertedSoundDelta, 
-        logSheet.id,
-        {
-          excludeLogIds: [logSheet.id],
-          toNumber: soundToNumber
-          // No filter for sound files - they shift globally regardless of scene/shot/classification
-          // No maxTakeNumber - we shift ALL subsequent files for "Insert Before" operations
-        }
-      );
+      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
     }
     
     if (camCount === 1) {
@@ -3852,182 +3651,7 @@ This would break the logging logic and create inconsistencies in the file number
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
-        // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range
-        // This ensures waste takes and other entries with ranges that start before the existing entry
-        // are also shifted correctly.
-        let start = cameraFromNumber;
-        let insertedRangeEnd: number | undefined = undefined;
-        if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
-          // Inserted log has a range - use its start (lower bound)
-          const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
-          const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
-          start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-          insertedRangeEnd = Math.max(insertedFrom, insertedTo); // Track the end of inserted range
-        } else if (takeData.cameraFile) {
-          // Inserted log has a single value
-          const insertedSingle = parseInt(String(takeData.cameraFile), 10) || 0;
-          start = insertedSingle;
-          insertedRangeEnd = insertedSingle; // Single value, so end = start
-        }
-        
-        // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
-        // This limits shifting to only the entries that are in the insertion zone
-        // CRITICAL: For ranges, we need to limit shifting to only files that conflict with the inserted range
-        // Files beyond the inserted range should NOT be shifted by the range size
-        let cameraToNumber: number | undefined = undefined;
-        if (maxTakeForFiles !== undefined) {
-          // Find the entry with takeNumber === maxTakeForFiles (before insertion)
-          // This is the highest take number that should be shifted
-          const entryAtMaxTake = projectLogSheets.find(sheet => {
-            if (sheet.id === logSheet.id) return false; // Exclude inserted log
-            const data = sheet.data || {};
-            if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-            const takeNum = parseInt(data.takeNumber || '0', 10);
-            return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
-          });
-          
-          if (entryAtMaxTake) {
-            const range = getRangeFromData(entryAtMaxTake.data, 'cameraFile');
-            let maxFileNumber: number | undefined = undefined;
-            if (range) {
-              const from = parseInt(range.from, 10) || 0;
-              const to = parseInt(range.to, 10) || 0;
-              maxFileNumber = Math.max(from, to);
-            } else if (typeof entryAtMaxTake.data?.cameraFile === 'string' && entryAtMaxTake.data.cameraFile.trim().length > 0) {
-              const single = parseInt(entryAtMaxTake.data.cameraFile, 10);
-              if (!Number.isNaN(single)) {
-                maxFileNumber = single;
-              }
-            }
-            
-            // For ranges, toNumber should be the end of the inserted range OR the maxFileNumber + increment, whichever is smaller
-            // This ensures files beyond the inserted range are not shifted by the range size
-            if (maxFileNumber !== undefined) {
-              if (insertedRangeEnd !== undefined) {
-                // Use the smaller of: (maxFileNumber + increment) OR (insertedRangeEnd)
-                // This prevents shifting files beyond the inserted range
-                const maxShifted = maxFileNumber + insertedCamDelta;
-                cameraToNumber = Math.min(maxShifted, insertedRangeEnd);
-              } else if (insertedCamDelta > 0) {
-                cameraToNumber = maxFileNumber + insertedCamDelta;
-              } else {
-                cameraToNumber = maxFileNumber;
-              }
-            }
-          }
-        } else if (insertedRangeEnd !== undefined) {
-          // If no maxTakeForFiles, limit toNumber to the end of the inserted range
-          // This prevents shifting files beyond the inserted range
-          cameraToNumber = insertedRangeEnd;
-        }
-        
-        // For ranges: Shift files that conflict with the inserted range by the range size
-        // Files beyond the inserted range should NOT be shifted (they're already past it)
-        // The toNumber limit ensures only files within the insertion zone are shifted
-        updateFileNumbers(
-          logSheet.projectId, 
-          'cameraFile', 
-          start, 
-          insertedCamDelta, 
-          logSheet.id,
-          {
-            excludeLogIds: [logSheet.id],
-            toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
-            // This prevents shifting files beyond the inserted range
-            // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
-            // maxTakeNumber is only used for take number shifting, not file number shifting
-            filter: finalClassification ? {
-              sceneNumber: targetSceneNumber,
-              shotNumber: targetShotNumber,
-              classification: finalClassification
-            } : {
-              sceneNumber: targetSceneNumber,
-              shotNumber: targetShotNumber
-            }
-          }
-        );
-        
-        // After shifting conflicting files, shift files beyond the inserted range by 1
-        // to maintain sequential numbering. Files beyond insertedRangeEnd need to shift
-        // to continue sequentially after the shifted zone.
-        if (insertedRangeEnd !== undefined && maxTakeForFiles !== undefined) {
-          // Find the highest file number after shifting (from the entry at maxTakeNumber)
-          const entryAtMaxTake = projectLogSheets.find(sheet => {
-            if (sheet.id === logSheet.id) return false;
-            const data = sheet.data || {};
-            if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-            const takeNum = parseInt(data.takeNumber || '0', 10);
-            return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
-          });
-          
-          if (entryAtMaxTake) {
-            // Get the current state after the first shift
-            const currentState = useProjectStore.getState();
-            const currentEntryAtMaxTake = currentState.logSheets.find(sheet => sheet.id === entryAtMaxTake.id);
-            const currentData = currentEntryAtMaxTake?.data || entryAtMaxTake.data;
-            
-            const range = getRangeFromData(currentData, 'cameraFile');
-            let shiftedMaxFileNumber: number | undefined = undefined;
-            if (range) {
-              const from = parseInt(range.from, 10) || 0;
-              const to = parseInt(range.to, 10) || 0;
-              shiftedMaxFileNumber = Math.max(from, to);
-            } else if (typeof currentData?.cameraFile === 'string' && currentData.cameraFile.trim().length > 0) {
-              const single = parseInt(currentData.cameraFile, 10);
-              if (!Number.isNaN(single)) {
-                shiftedMaxFileNumber = single;
-              }
-            }
-            
-            // If the shifted max file number is beyond the inserted range end,
-            // shift files beyond insertedRangeEnd to continue sequentially
-            if (shiftedMaxFileNumber !== undefined && shiftedMaxFileNumber > insertedRangeEnd) {
-              // Calculate the shift amount needed to close the gap and continue sequentially
-              // After the first shift, the last shifted file is at shiftedMaxFileNumber
-              // Files beyond insertedRangeEnd should start at (shiftedMaxFileNumber + 1)
-              // So the shift amount is: (shiftedMaxFileNumber + 1) - (insertedRangeEnd + 1)
-              // = shiftedMaxFileNumber - insertedRangeEnd
-              const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
-              
-              // CRITICAL: Collect IDs of entries that were already shifted in the first pass
-              // These entries have take numbers <= maxTakeForFiles and should NOT be shifted again
-              const alreadyShiftedIds = new Set<string>();
-              if (maxTakeForFiles !== undefined) {
-                const currentState = useProjectStore.getState();
-                const relevantSheets = currentState.logSheets.filter(sheet => {
-                  if (sheet.id === logSheet.id) return false;
-                  const data = sheet.data || {};
-                  if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-                  const takeNum = parseInt(data.takeNumber || '0', 10);
-                  return !Number.isNaN(takeNum) && takeNum <= maxTakeForFiles;
-                });
-                relevantSheets.forEach(sheet => alreadyShiftedIds.add(sheet.id));
-              }
-              
-              // Shift files beyond insertedRangeEnd to continue sequentially
-              // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
-              // Exclude entries that were already shifted in the first pass
-              updateFileNumbers(
-                logSheet.projectId,
-                'cameraFile',
-                insertedRangeEnd + 1, // Start from the file after the inserted range
-                sequentialShiftAmount, // Shift by the gap amount to continue sequentially
-                logSheet.id,
-                {
-                  excludeLogIds: [logSheet.id, ...Array.from(alreadyShiftedIds)], // Exclude inserted log AND already-shifted entries
-                  filter: finalClassification ? {
-                    sceneNumber: targetSceneNumber,
-                    shotNumber: targetShotNumber,
-                    classification: finalClassification
-                  } : {
-                    sceneNumber: targetSceneNumber,
-                    shotNumber: targetShotNumber
-                  }
-                }
-              );
-            }
-          }
-        }
+        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -4043,182 +3667,18 @@ This would break the logging logic and create inconsistencies in the file number
             : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
           
           if (!disabledFields.has(fieldId) && insertedCamDelta > 0) {
-            // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range
-            // This ensures waste takes and other entries with ranges that start before the existing entry
-            // are also shifted correctly.
-            let start = cameraFromNumber;
-            let insertedRangeEnd: number | undefined = undefined;
-            if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
-              // Inserted log has a range - use its start (lower bound)
-              const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
-              const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
-              start = Math.min(insertedFrom, insertedTo); // Use the lower bound
-              insertedRangeEnd = Math.max(insertedFrom, insertedTo); // Track the end of inserted range
-            } else if (takeData[fieldId]) {
-              // Inserted log has a single value
-              const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
-              start = insertedSingle;
-              insertedRangeEnd = insertedSingle; // Single value, so end = start
+            let camStart = cameraFromNumber;
+            const fromKey = `camera${i}_from` as const;
+            const fromVal = existingEntry.data?.[fromKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
             }
-            
-            // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
-            // This limits shifting to only the entries that are in the insertion zone
-            // CRITICAL: For ranges, we need to limit shifting to only files that conflict with the inserted range
-            // Files beyond the inserted range should NOT be shifted by the range size
-            let cameraToNumber: number | undefined = undefined;
-            if (maxTakeForFiles !== undefined) {
-              // Find the entry with takeNumber === maxTakeForFiles (before insertion)
-              // This is the highest take number that should be shifted
-              const entryAtMaxTake = projectLogSheets.find(sheet => {
-                if (sheet.id === logSheet.id) return false; // Exclude inserted log
-                const data = sheet.data || {};
-                if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-                const takeNum = parseInt(data.takeNumber || '0', 10);
-                return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
-              });
-              
-              if (entryAtMaxTake) {
-                const range = getRangeFromData(entryAtMaxTake.data, fieldId);
-                let maxFileNumber: number | undefined = undefined;
-                if (range) {
-                  const from = parseInt(range.from, 10) || 0;
-                  const to = parseInt(range.to, 10) || 0;
-                  maxFileNumber = Math.max(from, to);
-                } else if (typeof entryAtMaxTake.data?.[fieldId] === 'string' && entryAtMaxTake.data[fieldId].trim().length > 0) {
-                  const single = parseInt(entryAtMaxTake.data[fieldId], 10);
-                  if (!Number.isNaN(single)) {
-                    maxFileNumber = single;
-                  }
-                }
-                
-                // For ranges, toNumber should be the end of the inserted range OR the maxFileNumber + increment, whichever is smaller
-                // This ensures files beyond the inserted range are not shifted by the range size
-                if (maxFileNumber !== undefined) {
-                  if (insertedRangeEnd !== undefined) {
-                    // Use the smaller of: (maxFileNumber + increment) OR (insertedRangeEnd)
-                    // This prevents shifting files beyond the inserted range
-                    const maxShifted = maxFileNumber + insertedCamDelta;
-                    cameraToNumber = Math.min(maxShifted, insertedRangeEnd);
-                  } else if (insertedCamDelta > 0) {
-                    cameraToNumber = maxFileNumber + insertedCamDelta;
-                  } else {
-                    cameraToNumber = maxFileNumber;
-                  }
-                }
-              }
-            } else if (insertedRangeEnd !== undefined) {
-              // If no maxTakeForFiles, limit toNumber to the end of the inserted range
-              // This prevents shifting files beyond the inserted range
-              cameraToNumber = insertedRangeEnd;
-            }
-            
-            // For ranges: Shift files that conflict with the inserted range by the range size
-            // Files beyond the inserted range should NOT be shifted (they're already past it)
-            // The toNumber limit ensures only files within the insertion zone are shifted
-            updateFileNumbers(
-              logSheet.projectId, 
-              fieldId, 
-              start, 
-              insertedCamDelta, 
-              logSheet.id,
-              {
-                excludeLogIds: [logSheet.id],
-                toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
-                // This prevents shifting files beyond the inserted range
-                // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
-                // maxTakeNumber is only used for take number shifting, not file number shifting
-                filter: finalClassification ? {
-                  sceneNumber: targetSceneNumber,
-                  shotNumber: targetShotNumber,
-                  classification: finalClassification
-                } : {
-                  sceneNumber: targetSceneNumber,
-                  shotNumber: targetShotNumber
-                }
-              }
-            );
-            
-            // After shifting conflicting files, shift files beyond the inserted range
-            // to maintain sequential numbering. Files beyond insertedRangeEnd need to shift
-            // to continue sequentially after the shifted zone.
-            if (insertedRangeEnd !== undefined && maxTakeForFiles !== undefined) {
-              // Find the highest file number after shifting (from the entry at maxTakeNumber)
-              const entryAtMaxTake = projectLogSheets.find(sheet => {
-                if (sheet.id === logSheet.id) return false;
-                const data = sheet.data || {};
-                if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-                const takeNum = parseInt(data.takeNumber || '0', 10);
-                return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
-              });
-              
-              if (entryAtMaxTake) {
-                // Get the current state after the first shift
-                const currentState = useProjectStore.getState();
-                const currentEntryAtMaxTake = currentState.logSheets.find(sheet => sheet.id === entryAtMaxTake.id);
-                const currentData = currentEntryAtMaxTake?.data || entryAtMaxTake.data;
-                
-                const range = getRangeFromData(currentData, fieldId);
-                let shiftedMaxFileNumber: number | undefined = undefined;
-                if (range) {
-                  const from = parseInt(range.from, 10) || 0;
-                  const to = parseInt(range.to, 10) || 0;
-                  shiftedMaxFileNumber = Math.max(from, to);
-                } else if (typeof currentData?.[fieldId] === 'string' && currentData[fieldId].trim().length > 0) {
-                  const single = parseInt(currentData[fieldId], 10);
-                  if (!Number.isNaN(single)) {
-                    shiftedMaxFileNumber = single;
-                  }
-                }
-                
-                // If the shifted max file number is beyond the inserted range end,
-                // shift files beyond insertedRangeEnd to continue sequentially
-                if (shiftedMaxFileNumber !== undefined && shiftedMaxFileNumber > insertedRangeEnd) {
-                  // Calculate the shift amount needed to close the gap and continue sequentially
-                  // After the first shift, the last shifted file is at shiftedMaxFileNumber
-                  // Files beyond insertedRangeEnd should start at (shiftedMaxFileNumber + 1)
-                  // So the shift amount is: (shiftedMaxFileNumber + 1) - (insertedRangeEnd + 1)
-                  // = shiftedMaxFileNumber - insertedRangeEnd
-                  const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
-                  
-                  // CRITICAL: Collect IDs of entries that were already shifted in the first pass
-                  // These entries have take numbers <= maxTakeForFiles and should NOT be shifted again
-                  const alreadyShiftedIds = new Set<string>();
-                  if (maxTakeForFiles !== undefined) {
-                    const currentState = useProjectStore.getState();
-                    const relevantSheets = currentState.logSheets.filter(sheet => {
-                      if (sheet.id === logSheet.id) return false;
-                      const data = sheet.data || {};
-                      if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
-                      const takeNum = parseInt(data.takeNumber || '0', 10);
-                      return !Number.isNaN(takeNum) && takeNum <= maxTakeForFiles;
-                    });
-                    relevantSheets.forEach(sheet => alreadyShiftedIds.add(sheet.id));
-                  }
-                  
-                  // Shift files beyond insertedRangeEnd to continue sequentially
-                  // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
-                  // Exclude entries that were already shifted in the first pass
-                  updateFileNumbers(
-                    logSheet.projectId,
-                    fieldId,
-                    insertedRangeEnd + 1, // Start from the file after the inserted range
-                    sequentialShiftAmount, // Shift by the gap amount to continue sequentially
-                    logSheet.id,
-                    {
-                      excludeLogIds: [logSheet.id, ...Array.from(alreadyShiftedIds)], // Exclude inserted log AND already-shifted entries
-                      filter: finalClassification ? {
-                        sceneNumber: targetSceneNumber,
-                        shotNumber: targetShotNumber,
-                        classification: finalClassification
-                      } : {
-                        sceneNumber: targetSceneNumber,
-                        shotNumber: targetShotNumber
-                      }
-                    }
-                  );
-                }
-              }
-            }
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id);
           }
         }
       }
