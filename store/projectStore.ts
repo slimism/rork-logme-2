@@ -29,7 +29,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -153,52 +153,67 @@ export const useProjectStore = create<ProjectState>()(
         if (Number.isNaN(moving) || Number.isNaN(target)) return;
         if (moving === target) return;
 
-        // Only handle moving from later to earlier (decreasing id)
-        if (moving > target) {
-          const state = get();
-          const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
-          const beforeOrder = [...projectLogs]
-            .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+        const state = get();
+        const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
+        const beforeOrder = [...projectLogs]
+          .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
+          .map(s => ({
+            id: s.projectLocalId || s.id,
+            scene: (s.data as any)?.sceneNumber,
+            shot: (s.data as any)?.shotNumber,
+            take: (s.data as any)?.takeNumber,
+            camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
+            sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
+          }));
+        
+        set((prev) => {
+          // Find the moving log by projectLocalId or id
+          const movingLog = prev.logSheets.find(s => 
+            s.projectId === projectId && 
+            (parseInt((s as any).projectLocalId as string || '0', 10) === moving || s.id === movingLogId)
+          );
+          
+          if (!movingLog) return { logSheets: prev.logSheets };
+          
+          const updated = prev.logSheets.map(s => {
+            if (s.projectId !== projectId) return s;
+            
+            // Skip the moving log itself - we'll handle it separately
+            if (s.id === movingLog.id) return s;
+            
+            const nLocal = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
+            
+            // Increment all logs with projectLocalId > target (to make room for the inserted log)
+            // This ensures sequential projectLocalId values after insertion
+            if (nLocal > target) {
+              return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
+            }
+            
+            return s;
+          }).map(s => {
+            // Update the moving log to take the target's projectLocalId
+            if (s.projectId === projectId && s.id === movingLog.id) {
+              return { ...s, projectLocalId: target.toString(), updatedAt: new Date().toISOString() };
+            }
+            return s;
+          });
+          
+          const afterOrder = updated
+            .filter(s => s.projectId === projectId)
+            .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
             .map(s => ({
-              id: s.id,
+              id: s.projectLocalId || s.id,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
               camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
               sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
             }));
-          set((prev) => {
-            const updated = prev.logSheets.map(s => {
-              if (s.projectId !== projectId) return s;
-              const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
-              // Increment the closed range [target, moving-1] on local IDs
-              if (nLocal >= target && nLocal < moving) {
-                return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
-              }
-              return s;
-            }).map(s => {
-              if (s.projectId === projectId && (s.projectLocalId === movingLogId || s.id === movingLogId)) {
-                return { ...s, projectLocalId: target.toString(), updatedAt: new Date().toISOString() };
-              }
-              return s;
-            });
-            const afterOrder = updated
-              .filter(s => s.projectId === projectId)
-              .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
-              .map(s => ({
-                id: s.projectLocalId || s.id,
-                scene: (s.data as any)?.sceneNumber,
-                shot: (s.data as any)?.shotNumber,
-                take: (s.data as any)?.takeNumber,
-                camera: (s.data as any)?.cameraFile || (s.data as any)?.camera1_from ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}` : undefined,
-                sound: (s.data as any)?.soundFile || (s.data as any)?.sound_from ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}` : undefined,
-              }));
-            console.log(`[ACTION] Move Existing Before -> projectId=${projectId} movingLocalId=${moving} targetLocalId=${target}`);
-            console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
-            console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
-            return { logSheets: updated };
-          });
-        }
+          console.log(`[ACTION] Move Existing Before -> projectId=${projectId} movingLocalId=${moving} targetLocalId=${target}`);
+          console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
+          console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
+          return { logSheets: updated };
+        });
       },
       
       addProject: (name: string, settings?: ProjectSettings, logoUri?: string) => {
@@ -553,14 +568,15 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => {
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
           fieldId,
           fromNumber,
           increment,
-          excludeLogId
+          excludeLogId,
+          targetLocalId
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -753,10 +769,19 @@ export const useProjectStore = create<ProjectState>()(
           });
           
           // Sort each group by take number
+          // If targetLocalId is provided, also sort by projectLocalId to ensure correct processing order
           sheetsBySceneShot.forEach((sheets, key) => {
             sheets.sort((a, b) => {
               const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
               const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
+              // If targetLocalId is provided, prioritize projectLocalId ordering
+              if (targetLocalId) {
+                const aLocalId = parseInt((a as any).projectLocalId as string || '0', 10) || 0;
+                const bLocalId = parseInt((b as any).projectLocalId as string || '0', 10) || 0;
+                if (aLocalId !== bLocalId) {
+                  return aLocalId - bLocalId;
+                }
+              }
               return aTake - bTake;
             });
           });
@@ -972,7 +997,15 @@ export const useProjectStore = create<ProjectState>()(
               // Check if field needs shifting
               if (currentFieldVal && currentFieldVal.value !== null) {
                 // Field has a value
-                if (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber) {
+                // Shift if:
+                // 1. File number matches condition (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber), OR
+                // 2. targetLocalId is provided and this take's projectLocalId > targetLocalId (for shifting subsequent takes when editing existing take)
+                const logSheetLocalId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
+                const targetLocalIdNum = targetLocalId ? (parseInt(targetLocalId, 10) || 0) : null;
+                const needsShiftingByFileNumber = currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber;
+                const needsShiftingByLocalId = targetLocalIdNum !== null && logSheetLocalId > targetLocalIdNum;
+                
+                if (needsShiftingByFileNumber || needsShiftingByLocalId) {
                   // Needs shifting - use sequential logic: shift from the temp variable (previous take's upper bound) + 1
                   // For sequential shifting, we MUST use temp variables when available to ensure correct propagation
                   
@@ -1023,8 +1056,14 @@ export const useProjectStore = create<ProjectState>()(
                   //   (e.g., tempCamera = 4, range 001-003 (delta=2): newLower = 5, newUpper = 7)
                   let newLower = shiftBase + 1;
                   
-                  // Use centralized delta calculator for consistency
+                  // Determine which delta to use:
+                  // - Always use each take's own original delta (calculated from the take's current data)
+                  // - This ensures that when moving an existing take, the target duplicate uses its own original delta,
+                  //   and subsequent takes also use their own original deltas
+                  // - TempSound/TempCamera are initialized from inserted log's upper bound, but delta comes from the take being shifted
                   let delta: number;
+                  
+                  // Use centralized delta calculator for consistency - always use the take's own original delta
                   if (fieldId === 'soundFile') {
                     // Use sound delta calculator
                     const soundDeltaInput: DeltaCalculationInput = {
@@ -1042,6 +1081,16 @@ export const useProjectStore = create<ProjectState>()(
                     delta = currentFieldVal.isRange 
                       ? (currentFieldVal.upper - currentFieldVal.lower)  // Range: difference between upper and lower
                       : 1;  // Single value: delta is 1 (one file number has span of 1)
+                  }
+                  
+                  const logSheetLocalId = (logSheet as any).projectLocalId;
+                  const isTargetDuplicate = targetLocalId && 
+                    (parseInt(logSheetLocalId as string || '0', 10) || 0) === (parseInt(targetLocalId, 10) || 0);
+                  
+                  if (isTargetDuplicate) {
+                    logger.logDebug(`Using target duplicate's own original delta (${delta}) for shifting (Take ${takeNum}, projectLocalId=${logSheetLocalId})`);
+                  } else {
+                    logger.logDebug(`Using take's own original delta (${delta}) for subsequent take (Take ${takeNum}, projectLocalId=${logSheetLocalId})`);
                   }
                   
                   let newUpper = newLower + delta;
@@ -1084,14 +1133,9 @@ export const useProjectStore = create<ProjectState>()(
                   );
 
                   if (fieldId === 'soundFile') {
-                    // Use centralized sound delta calculator for consistency
-                    let soundDeltaForShift: number;
-                    
-                    // Calculate delta using centralized calculator
-                    const soundDeltaInput: DeltaCalculationInput = {
-                      logSheetData: data
-                    };
-                    soundDeltaForShift = calculateSoundDeltaForShifting(soundDeltaInput);
+                    // Use the take's own original delta (already calculated above as 'delta')
+                    // This ensures target duplicate uses its own original delta, and subsequent takes use their own deltas
+                    const soundDeltaForShift = delta;
                     
                     // ALWAYS use tempSound when available (including target duplicate)
                     // This ensures consistent sequential shifting and temp variable updates
@@ -1200,10 +1244,14 @@ export const useProjectStore = create<ProjectState>()(
                     // tempCamera tracks the previous take's upper bound (inserted log or previous shifted take)
                     // If tempCamera is available, ALWAYS use it: newLower = tempCamera + 1, newUpper = newLower + delta
                     // This way, temp variables are always updated through the same logic path
+                    // Note: delta was already calculated above - for target duplicate it's the inserted log's delta,
+                    //       for subsequent takes it's each take's own original delta
                     
                     if (tempCamera[cameraNum] !== null && tempCamera[cameraNum] !== undefined) {
                       // ALWAYS use tempCamera when available - this includes target duplicate
                       // Calculate what it should be based on tempCamera
+                      // delta is already set correctly above: inserted log's delta for target duplicate,
+                      // or the take's own original delta for subsequent takes
                       newLower = tempCamera[cameraNum]! + 1;
                       newUpper = newLower + delta;
                       

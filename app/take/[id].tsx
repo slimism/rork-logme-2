@@ -1769,13 +1769,15 @@ This would break the logging logic and create inconsistencies in the file number
       });
       
       if (soundFileResult.shouldCallUpdateFileNumbers && !disabledFields.has('soundFile')) {
+        const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
         console.log('✅ [handleSaveWithSelectiveDuplicateHandling] Calling updateFileNumbers for soundFile:', { 
           start: soundFileResult.soundStart, 
           delta: soundFileResult.soundDelta,
           projectId: logSheet.projectId,
-          fieldId: 'soundFile'
+          fieldId: 'soundFile',
+          targetLocalId
         });
-        updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta);
+        updateFileNumbers(logSheet.projectId, 'soundFile', soundFileResult.soundStart!, soundFileResult.soundDelta, undefined, targetLocalId);
       } else {
         console.log('❌ [handleSaveWithSelectiveDuplicateHandling] NOT calling updateFileNumbers for soundFile:', {
           reason: !soundFileResult.shouldCallUpdateFileNumbers ? 'shouldCallUpdateFileNumbers=false' : 'soundFile is disabled',
@@ -2063,13 +2065,29 @@ This would break the logging logic and create inconsistencies in the file number
       if (!disabledFields.has(targetFieldId) && camDelta > 0) {
         // Always use camStart (the beginning of the duplicate), not the end of the range
         // updateFileNumbers will skip the first occurrence and shift everything else
-        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta);
+        // Pass targetLocalId to ensure subsequent takes (with projectLocalId > target duplicate's projectLocalId) are shifted
+        const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
+        updateFileNumbers(logSheet.projectId, targetFieldId, camStart, camDelta, undefined, targetLocalId);
       }
     }
     
     // Update existingEntry after shifting
     if (existingEntryUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
+    }
+    
+    // Update projectLocalId values to ensure sequential ordering
+    // The inserted log should take the target duplicate's projectLocalId
+    // All logs with projectLocalId >= target duplicate's projectLocalId should be incremented by 1
+    try {
+      const movingLocalId = parseInt(String((logSheet as any)?.projectLocalId || ''), 10);
+      const targetLocalIdNum = parseInt(String((existingEntry as any)?.projectLocalId || ''), 10);
+      if (!Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalIdNum) && movingLocalId !== targetLocalIdNum) {
+        moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalIdNum));
+        console.log(`✅ [handleSaveWithSelectiveDuplicateHandling] Updated projectLocalId values: inserted log (${logSheet.id}) moved from ${movingLocalId} to ${targetLocalIdNum}`);
+      }
+    } catch (error) {
+      console.error('❌ [handleSaveWithSelectiveDuplicateHandling] Error updating projectLocalId values:', error);
     }
     
     // Ensure the last entry (by projectLocalId) is finalized so ACTION finalize/order snapshots include camera/sound
