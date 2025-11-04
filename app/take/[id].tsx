@@ -2044,6 +2044,21 @@ This would break the logging logic and create inconsistencies in the file number
     if (existingEntryUpdates) {
       await updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
+    
+    // Ensure the last entry (by projectLocalId) is finalized so ACTION finalize/order snapshots include camera/sound
+    // This ensures the ORDER AFTER snapshot in updateFileNumbers captures the latest populated fields
+    const currentState = useProjectStore.getState();
+    const projectLogs = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
+    if (projectLogs.length > 0) {
+      const sortedLogs = [...projectLogs].sort((a, b) => 
+        (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0)
+      );
+      const lastEntry = sortedLogs[sortedLogs.length - 1];
+      if (lastEntry && lastEntry.id !== logSheet.id && lastEntry.id !== existingEntry.id) {
+        // Finalize the last entry to ensure ACTION finalize/order snapshots include its camera/sound
+        await updateLogSheet(lastEntry.id, lastEntry.data);
+      }
+    }
 
     router.back();
   };
@@ -3697,6 +3712,20 @@ This would break the logging logic and create inconsistencies in the file number
       // Merge with updates calculated earlier (these position the target after the inserted log)
       const finalTargetUpdates = { ...currentTargetData, ...existingEntryUpdates };
       await updateLogSheet(existingEntry.id, finalTargetUpdates);
+    }
+    
+    // Ensure the last entry (by projectLocalId) is finalized so ACTION finalize/order snapshots include camera/sound
+    // This ensures the ORDER AFTER snapshot in updateFileNumbers captures the latest populated fields
+    const projectLogs = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
+    if (projectLogs.length > 0) {
+      const sortedLogs = [...projectLogs].sort((a, b) => 
+        (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0)
+      );
+      const lastEntry = sortedLogs[sortedLogs.length - 1];
+      if (lastEntry && lastEntry.id !== logSheet.id && lastEntry.id !== existingEntry.id) {
+        // Finalize the last entry to ensure ACTION finalize/order snapshots include its camera/sound
+        await updateLogSheet(lastEntry.id, lastEntry.data);
+      }
     }
 
     router.back();

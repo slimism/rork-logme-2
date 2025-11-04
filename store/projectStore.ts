@@ -1531,6 +1531,30 @@ export const useProjectStore = create<ProjectState>()(
           logger.logFunctionExit({ shiftedCount: updatedSheets.filter((s, i) => s !== state.logSheets[i]).length });
           return { logSheets: updatedSheets };
         });
+        
+        // Emit ORDER AFTER snapshot at end of updateFileNumbers to capture latest populated fields (e.g., last entry)
+        // This ensures the snapshot includes all updates made by updateFileNumbers
+        try {
+          const finalState = get();
+          const orderAfterFiles = finalState.logSheets
+            .filter(s => s.projectId === projectId)
+            .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
+            .map(s => ({
+              id: s.projectLocalId || s.id,
+              scene: (s.data as any)?.sceneNumber,
+              shot: (s.data as any)?.shotNumber,
+              take: (s.data as any)?.takeNumber,
+              camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
+                ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
+                : ((s.data as any)?.cameraFile || undefined),
+              sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
+                ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
+                : ((s.data as any)?.soundFile || undefined),
+              classification: (s.data as any)?.classification || undefined,
+              ...(() => { const d:any=(s.data as any)||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
+            }));
+          console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
+        } catch {}
       },
     }),
     {
