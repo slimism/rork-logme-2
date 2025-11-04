@@ -30,6 +30,7 @@ interface ProjectState {
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
   updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => void;
+  recalculateFileNumbersAfterMove: (projectId: string, movedLogId: string, targetLocalId: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -216,6 +217,230 @@ export const useProjectStore = create<ProjectState>()(
           console.log(`[ACTION] ORDER BEFORE -> projectId=${projectId}`, beforeOrder);
           console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, afterOrder);
           return { logSheets: updated };
+        });
+      },
+
+      recalculateFileNumbersAfterMove: (projectId: string, movedLogId: string, targetLocalId: string) => {
+        const targetLocalIdNum = parseInt(targetLocalId, 10);
+        if (Number.isNaN(targetLocalIdNum)) return;
+
+        const state = get();
+        const project = state.projects.find(p => p.id === projectId);
+        const camCount = project?.settings?.cameraConfiguration || 1;
+
+        // Find the moved log (it should now have projectLocalId = targetLocalId)
+        const movedLog = state.logSheets.find(s => 
+          s.projectId === projectId && 
+          (s.id === movedLogId || parseInt((s as any).projectLocalId as string || '0', 10) === targetLocalIdNum)
+        );
+
+        if (!movedLog) {
+          console.log(`[recalculateFileNumbersAfterMove] Moved log not found: movedLogId=${movedLogId}, targetLocalId=${targetLocalId}`);
+          return;
+        }
+
+        // Helper to get field upper bound
+        const getFieldUpperBound = (data: any, fieldId: string): number | null => {
+          if (fieldId === 'soundFile') {
+            const soundFrom = data['sound_from'];
+            const soundTo = data['sound_to'];
+            if (soundFrom && soundTo) {
+              return Math.max(parseInt(soundFrom, 10) || 0, parseInt(soundTo, 10) || 0);
+            }
+            const soundFile = data['soundFile'];
+            if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+              if (soundFile.includes('-')) {
+                const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                return Math.max(s, e);
+              }
+              const num = parseInt(soundFile, 10);
+              if (!Number.isNaN(num)) return num;
+            }
+          } else if (fieldId.startsWith('cameraFile')) {
+            const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+            const cameraFrom = data[`camera${cameraNum}_from`];
+            const cameraTo = data[`camera${cameraNum}_to`];
+            if (cameraFrom && cameraTo) {
+              return Math.max(parseInt(cameraFrom, 10) || 0, parseInt(cameraTo, 10) || 0);
+            }
+            const cameraFile = data[fieldId];
+            if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+              if (cameraFile.includes('-')) {
+                const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                return Math.max(s, e);
+              }
+              const num = parseInt(cameraFile, 10);
+              if (!Number.isNaN(num)) return num;
+            }
+          }
+          return null;
+        };
+
+        // Initialize temp variables from moved log's upper bounds
+        const movedData = movedLog.data || {};
+        const tempSound = getFieldUpperBound(movedData, 'soundFile');
+        const tempCamera: { [cameraNum: number]: number | null } = {};
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = i === 1 ? 'cameraFile' : `cameraFile${i}`;
+          tempCamera[i] = getFieldUpperBound(movedData, fieldId);
+        }
+
+        console.log(`[recalculateFileNumbersAfterMove] Initialized temp variables from moved log:`, {
+          movedLogId: movedLog.id,
+          targetLocalId: targetLocalIdNum,
+          tempSound,
+          tempCamera
+        });
+
+        // Find all logs with projectLocalId > targetLocalId and sort by projectLocalId
+        const subsequentLogs = state.logSheets
+          .filter(s => {
+            if (s.projectId !== projectId) return false;
+            if (s.id === movedLog.id) return false; // Exclude the moved log itself
+            const localId = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
+            return localId > targetLocalIdNum;
+          })
+          .sort((a, b) => {
+            const aLocal = parseInt((a as any).projectLocalId as string || '0', 10) || 0;
+            const bLocal = parseInt((b as any).projectLocalId as string || '0', 10) || 0;
+            return aLocal - bLocal;
+          });
+
+        console.log(`[recalculateFileNumbersAfterMove] Found ${subsequentLogs.length} subsequent logs to recalculate`);
+
+        // Process each subsequent log sequentially
+        let currentTempSound = tempSound;
+        const currentTempCamera: { [cameraNum: number]: number | null } = { ...tempCamera };
+
+        set((prevState) => {
+          const updatedLogs = prevState.logSheets.map(logSheet => {
+            if (logSheet.projectId !== projectId) return logSheet;
+            if (logSheet.id === movedLog.id) return logSheet; // Don't modify the moved log
+
+            const localId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
+            if (localId <= targetLocalIdNum) return logSheet; // Only process subsequent logs
+
+            const data = logSheet.data || {};
+            const newData: Record<string, any> = { ...data };
+            let updated = false;
+
+            // Process sound file
+            if (currentTempSound !== null) {
+              const soundFrom = data['sound_from'];
+              const soundTo = data['sound_to'];
+              const soundFile = data['soundFile'];
+              
+              if (soundFrom && soundTo) {
+                // Range: calculate new lower and upper
+                const oldLower = parseInt(soundFrom, 10) || 0;
+                const oldUpper = parseInt(soundTo, 10) || 0;
+                const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
+                const newLower = currentTempSound + 1;
+                const newUpper = currentTempSound + delta; // Upper = tempVariable + delta (as per user requirement)
+                
+                newData['sound_from'] = String(newLower).padStart(4, '0');
+                newData['sound_to'] = String(newUpper).padStart(4, '0');
+                if (typeof soundFile === 'string' && soundFile.includes('-')) {
+                  newData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                }
+                currentTempSound = newUpper; // Update temp variable to upper bound
+                updated = true;
+              } else if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+                if (soundFile.includes('-')) {
+                  // Range in inline format
+                  const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                  const oldLower = Math.min(s, e);
+                  const oldUpper = Math.max(s, e);
+                  const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
+                  const newLower = currentTempSound + 1;
+                  const newUpper = currentTempSound + delta; // Upper = tempVariable + delta (as per user requirement)
+                  
+                  newData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  newData['sound_from'] = String(newLower).padStart(4, '0');
+                  newData['sound_to'] = String(newUpper).padStart(4, '0');
+                  currentTempSound = newUpper;
+                  updated = true;
+                } else {
+                  // Single value
+                  const newValue = currentTempSound + 1;
+                  newData.soundFile = String(newValue).padStart(4, '0');
+                  delete newData['sound_from'];
+                  delete newData['sound_to'];
+                  currentTempSound = newValue; // For single values, upper = value itself
+                  updated = true;
+                }
+              }
+            }
+
+            // Process camera files
+            for (let i = 1; i <= camCount; i++) {
+              const fieldId = i === 1 ? 'cameraFile' : `cameraFile${i}`;
+              const fromKey = `camera${i}_from`;
+              const toKey = `camera${i}_to`;
+              
+              if (currentTempCamera[i] !== null && currentTempCamera[i] !== undefined) {
+                const cameraFrom = data[fromKey];
+                const cameraTo = data[toKey];
+                const cameraFile = data[fieldId];
+                
+                if (cameraFrom && cameraTo) {
+                  // Range: calculate new lower and upper
+                  const oldLower = parseInt(cameraFrom, 10) || 0;
+                  const oldUpper = parseInt(cameraTo, 10) || 0;
+                  const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
+                  const newLower = currentTempCamera[i]! + 1;
+                  const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
+                  
+                  newData[fromKey] = String(newLower).padStart(4, '0');
+                  newData[toKey] = String(newUpper).padStart(4, '0');
+                  if (typeof cameraFile === 'string' && cameraFile.includes('-')) {
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                  }
+                  currentTempCamera[i] = newUpper; // Update temp variable to upper bound
+                  updated = true;
+                } else if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+                  if (cameraFile.includes('-')) {
+                    // Range in inline format
+                    const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                    const oldLower = Math.min(s, e);
+                    const oldUpper = Math.max(s, e);
+                    const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
+                    const newLower = currentTempCamera[i]! + 1;
+                    const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
+                    
+                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                    newData[fromKey] = String(newLower).padStart(4, '0');
+                    newData[toKey] = String(newUpper).padStart(4, '0');
+                    currentTempCamera[i] = newUpper;
+                    updated = true;
+                  } else {
+                    // Single value
+                    const newValue = currentTempCamera[i]! + 1;
+                    newData[fieldId] = String(newValue).padStart(4, '0');
+                    delete newData[fromKey];
+                    delete newData[toKey];
+                    currentTempCamera[i] = newValue; // For single values, upper = value itself
+                    updated = true;
+                  }
+                }
+              }
+            }
+
+            if (updated) {
+              console.log(`[recalculateFileNumbersAfterMove] Updated log ${logSheet.id} (projectLocalId=${localId})`, {
+                newSound: newData.soundFile || (newData['sound_from'] && newData['sound_to'] ? `${newData['sound_from']}-${newData['sound_to']}` : null),
+                newCameras: Object.keys(newData).filter(k => k.startsWith('camera')).reduce((acc, k) => {
+                  acc[k] = newData[k];
+                  return acc;
+                }, {} as Record<string, any>)
+              });
+              return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
+            }
+
+            return logSheet;
+          });
+
+          return { logSheets: updatedLogs };
         });
       },
       

@@ -20,7 +20,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers, moveExistingLogBefore } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, updateFileNumbers, moveExistingLogBefore, recalculateFileNumbersAfterMove } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -2085,6 +2085,10 @@ This would break the logging logic and create inconsistencies in the file number
       if (!Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalIdNum) && movingLocalId !== targetLocalIdNum) {
         moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalIdNum));
         console.log(`✅ [handleSaveWithSelectiveDuplicateHandling] Updated projectLocalId values: inserted log (${logSheet.id}) moved from ${movingLocalId} to ${targetLocalIdNum}`);
+        
+        // After moving, recalculate file numbers for subsequent logs using moved log's upper bounds
+        recalculateFileNumbersAfterMove(logSheet.projectId, logSheet.id, String(targetLocalIdNum));
+        console.log(`✅ [handleSaveWithSelectiveDuplicateHandling] Recalculated file numbers for subsequent logs after move`);
       }
     } catch (error) {
       console.error('❌ [handleSaveWithSelectiveDuplicateHandling] Error updating projectLocalId values:', error);
@@ -3763,6 +3767,10 @@ This would break the logging logic and create inconsistencies in the file number
       if (!Number.isNaN(movingLocalId) && !Number.isNaN(targetLocalIdNum) && movingLocalId !== targetLocalIdNum) {
         moveExistingLogBefore(logSheet.projectId, String(movingLocalId), String(targetLocalIdNum));
         console.log(`✅ [handleSaveWithDuplicatePair] Updated projectLocalId values: inserted log (${logSheet.id}) moved from ${movingLocalId} to ${targetLocalIdNum}`);
+        
+        // After moving, recalculate file numbers for subsequent logs using moved log's upper bounds
+        recalculateFileNumbersAfterMove(logSheet.projectId, logSheet.id, String(targetLocalIdNum));
+        console.log(`✅ [handleSaveWithDuplicatePair] Recalculated file numbers for subsequent logs after move`);
       }
     } catch (error) {
       console.error('❌ [handleSaveWithDuplicatePair] Error updating projectLocalId values:', error);
