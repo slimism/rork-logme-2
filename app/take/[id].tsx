@@ -2854,6 +2854,10 @@ This would break the logging logic and create inconsistencies in the file number
         console.log('  Edited log ID:', logSheet.id);
         console.log('  Existing entry ID:', existingEntry.id);
 
+        // Read the inserted log's range from the store after saving (rangeData might not be available)
+        const insertedLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === logSheet.id);
+        const insertedLogData = insertedLogSheet?.data || {};
+
         console.log('DEBUG - Processing camera shifts for camCount=1');
         if (camCount === 1) {
           let camStart = targetTakeNumber;
@@ -2876,10 +2880,17 @@ This would break the logging logic and create inconsistencies in the file number
               { 
                 // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
                 // This ensures waste takes and other entries with ranges that start before the existing entry
-                // are also shifted correctly.
+                // are also shifted correctly. For range-to-range duplicates, we need to shift the existing entry itself.
                 let start = camStart;
-                if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
+                // First, try to get range from saved inserted log (most reliable after save)
+                const insertedRange = getRangeFromData(insertedLogData, 'cameraFile');
+                if (insertedRange) {
                   // Inserted log has a range - use its start (lower bound)
+                  const insertedFrom = parseInt(insertedRange.from, 10) || 0;
+                  const insertedTo = parseInt(insertedRange.to, 10) || 0;
+                  start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                } else if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from) {
+                  // Fallback: use rangeData if available (before save)
                   const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
                   const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
                   start = Math.min(insertedFrom, insertedTo); // Use the lower bound
@@ -2992,14 +3003,37 @@ This would break the logging logic and create inconsistencies in the file number
                 const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
                   { 
-                    const targetRange = getRangeFromData(existingEntry.data, fieldId); 
-                    const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
+                    // Calculate fromNumber from the INSERTED log's range start, not the existing entry's range end
+                    // This ensures waste takes and other entries with ranges that start before the existing entry
+                    // are also shifted correctly. For range-to-range duplicates, we need to shift the existing entry itself.
+                    let start = camStart;
+                    // First, try to get range from saved inserted log (most reliable after save)
+                    const insertedRange = getRangeFromData(insertedLogData, fieldId);
+                    if (insertedRange) {
+                      // Inserted log has a range - use its start (lower bound)
+                      const insertedFrom = parseInt(insertedRange.from, 10) || 0;
+                      const insertedTo = parseInt(insertedRange.to, 10) || 0;
+                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                    } else if (showRangeMode[fieldId] && rangeData[fieldId]?.from) {
+                      // Fallback: use rangeData if available (before save)
+                      const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                      const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                      start = Math.min(insertedFrom, insertedTo); // Use the lower bound
+                    } else if (takeData[fieldId]) {
+                      // Inserted log has a single value
+                      const insertedSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                      start = insertedSingle;
+                    } else {
+                      // Fallback to existing entry's start
+                      const targetRange = getRangeFromData(existingEntry.data, fieldId);
+                      start = targetRange ? Math.min(parseInt(targetRange.from, 10) || 0, parseInt(targetRange.to, 10) || 0) : camStart;
+                    }
                     updateFileNumbers(
                       logSheet.projectId, 
                       fieldId, 
                       start, 
                       camDelta, 
-                      logSheet.id,
+                      logSheet.id, 
                       {
                         excludeLogIds: [logSheet.id],
                         filter: classification ? {
