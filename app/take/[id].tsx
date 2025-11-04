@@ -3776,64 +3776,42 @@ This would break the logging logic and create inconsistencies in the file number
     // This uses sequential shifting logic that handles all subsequent logs automatically
     // Note: targetSceneNumber and targetShotNumber are already declared earlier in this function
     
-    // Find the maximum file number that should be shifted
-    // This includes all entries in the same scene/shot with take numbers >= existing entry's take number
-    // that have file numbers >= fromNumber, to ensure we shift all entries that would conflict
+    // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
+    // This limits shifting to only the entries that are in the insertion zone
+    // For example, if maxTakeNumber is 4, we only shift entries up to the file number of Take 4
     const projectLogSheets = useProjectStore.getState().logSheets.filter(sheet => sheet.projectId === logSheet.projectId);
-    const existingSoundRange = getRangeFromData(existingEntry.data, 'soundFile');
-    const existingSoundValue = existingSoundRange 
-      ? Math.max(parseInt(existingSoundRange.from, 10) || 0, parseInt(existingSoundRange.to, 10) || 0)
-      : (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0
-          ? parseInt(existingEntry.data.soundFile, 10)
-          : null);
     
-    let soundToNumber: number | undefined = undefined;
-    if (!Number.isNaN(existingSoundValue) && existingSoundValue !== null) {
-      // Find maximum file number among entries that should shift
-      // This includes entries with same scene/shot, take >= existing take, and file numbers >= fromNumber
-      // But we stop at entries with file numbers that are clearly beyond the insertion zone
-      // (i.e., more than the existing entry's value + a reasonable delta)
-      const existingTakeNum = parseInt(existingEntry.data?.takeNumber || '0', 10);
-      if (!Number.isNaN(existingTakeNum)) {
-        let maxFileNumber = existingSoundValue;
-        // Limit search to entries with file numbers not too far beyond the existing entry
-        // This prevents including entries like Take 6 (0006) when inserting before Take 3 (0003)
-        const maxReasonableFileNumber = existingSoundValue + 10; // Allow some buffer for gaps
-        
-        projectLogSheets.forEach(sheet => {
-          if (sheet.id === logSheet.id) return; // Exclude inserted log
-          const data = sheet.data || {};
-          if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return;
-          const takeNum = parseInt(data.takeNumber || '0', 10);
-          if (Number.isNaN(takeNum) || takeNum < existingTakeNum) return; // Only entries with take >= existing
-          
-          const range = getRangeFromData(data, 'soundFile');
-          if (range) {
-            const from = parseInt(range.from, 10) || 0;
-            const to = parseInt(range.to, 10) || 0;
-            const upper = Math.max(from, to);
-            // Only include if file number >= fromNumber AND not too far beyond existing entry
-            if (upper >= soundStart && upper <= maxReasonableFileNumber && upper > maxFileNumber) {
-              maxFileNumber = upper;
-            }
-          } else if (typeof data.soundFile === 'string' && data.soundFile.trim().length > 0) {
-            const single = parseInt(data.soundFile, 10);
-            if (!Number.isNaN(single) && single >= soundStart && single <= maxReasonableFileNumber && single > maxFileNumber) {
-              maxFileNumber = single;
-            }
-          }
-        });
-        soundToNumber = maxFileNumber;
-      } else {
-        // Fallback to existing entry's value if we can't determine take number
-        soundToNumber = existingSoundValue;
-      }
-    }
-    
-    // Calculate maxTake for file shifting (same logic as for take number shifting)
+    // Calculate maxTakeForFiles (same logic as for take number shifting)
     const maxTakeForFiles = !Number.isNaN(targetTake) 
       ? (parseInt(logSheet.data?.takeNumber || '0', 10) > targetTake ? parseInt(logSheet.data?.takeNumber || '0', 10) - 1 : undefined)
       : undefined;
+    
+    let soundToNumber: number | undefined = undefined;
+    if (maxTakeForFiles !== undefined) {
+      // Find the entry with takeNumber === maxTakeForFiles (before insertion)
+      // This is the highest take number that should be shifted
+      const entryAtMaxTake = projectLogSheets.find(sheet => {
+        if (sheet.id === logSheet.id) return false; // Exclude inserted log
+        const data = sheet.data || {};
+        if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+        const takeNum = parseInt(data.takeNumber || '0', 10);
+        return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
+      });
+      
+      if (entryAtMaxTake) {
+        const range = getRangeFromData(entryAtMaxTake.data, 'soundFile');
+        if (range) {
+          const from = parseInt(range.from, 10) || 0;
+          const to = parseInt(range.to, 10) || 0;
+          soundToNumber = Math.max(from, to);
+        } else if (typeof entryAtMaxTake.data?.soundFile === 'string' && entryAtMaxTake.data.soundFile.trim().length > 0) {
+          const single = parseInt(entryAtMaxTake.data.soundFile, 10);
+          if (!Number.isNaN(single)) {
+            soundToNumber = single;
+          }
+        }
+      }
+    }
     
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
       // Sound files use a global numbering sequence - shift sound files in range [soundStart, soundToNumber]
@@ -3881,55 +3859,32 @@ This would break the logging logic and create inconsistencies in the file number
           start = insertedSingle;
         }
         
-        // Find the maximum camera file number that should be shifted
-        // This includes all entries in the same scene/shot with take numbers >= existing entry's take number
-        // that have file numbers >= fromNumber, to ensure we shift all entries that would conflict
-        const existingCameraRange = getRangeFromData(existingEntry.data, 'cameraFile');
-        const existingCameraValue = existingCameraRange 
-          ? Math.max(parseInt(existingCameraRange.from, 10) || 0, parseInt(existingCameraRange.to, 10) || 0)
-          : (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.trim().length > 0
-              ? parseInt(existingEntry.data.cameraFile, 10)
-              : null);
-        
+        // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
+        // This limits shifting to only the entries that are in the insertion zone
         let cameraToNumber: number | undefined = undefined;
-        if (!Number.isNaN(existingCameraValue) && existingCameraValue !== null) {
-          // Find maximum file number among entries that should shift
-          // This includes entries with same scene/shot, take >= existing take, and file numbers >= fromNumber
-          // But we stop at entries with file numbers that are clearly beyond the insertion zone
-          const existingTakeNum = parseInt(existingEntry.data?.takeNumber || '0', 10);
-          if (!Number.isNaN(existingTakeNum)) {
-            let maxFileNumber = existingCameraValue;
-            // Limit search to entries with file numbers not too far beyond the existing entry
-            // This prevents including entries like Take 6 (0006) when inserting before Take 3 (0003)
-            const maxReasonableFileNumber = existingCameraValue + 10; // Allow some buffer for gaps
-            
-            projectLogSheets.forEach(sheet => {
-              if (sheet.id === logSheet.id) return; // Exclude inserted log
-              const data = sheet.data || {};
-              if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return;
-              const takeNum = parseInt(data.takeNumber || '0', 10);
-              if (Number.isNaN(takeNum) || takeNum < existingTakeNum) return; // Only entries with take >= existing
-              
-              const range = getRangeFromData(data, 'cameraFile');
-              if (range) {
-                const from = parseInt(range.from, 10) || 0;
-                const to = parseInt(range.to, 10) || 0;
-                const upper = Math.max(from, to);
-                // Only include if file number >= fromNumber AND not too far beyond existing entry
-                if (upper >= start && upper <= maxReasonableFileNumber && upper > maxFileNumber) {
-                  maxFileNumber = upper;
-                }
-              } else if (typeof data.cameraFile === 'string' && data.cameraFile.trim().length > 0) {
-                const single = parseInt(data.cameraFile, 10);
-                if (!Number.isNaN(single) && single >= start && single <= maxReasonableFileNumber && single > maxFileNumber) {
-                  maxFileNumber = single;
-                }
+        if (maxTakeForFiles !== undefined) {
+          // Find the entry with takeNumber === maxTakeForFiles (before insertion)
+          // This is the highest take number that should be shifted
+          const entryAtMaxTake = projectLogSheets.find(sheet => {
+            if (sheet.id === logSheet.id) return false; // Exclude inserted log
+            const data = sheet.data || {};
+            if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+            const takeNum = parseInt(data.takeNumber || '0', 10);
+            return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
+          });
+          
+          if (entryAtMaxTake) {
+            const range = getRangeFromData(entryAtMaxTake.data, 'cameraFile');
+            if (range) {
+              const from = parseInt(range.from, 10) || 0;
+              const to = parseInt(range.to, 10) || 0;
+              cameraToNumber = Math.max(from, to);
+            } else if (typeof entryAtMaxTake.data?.cameraFile === 'string' && entryAtMaxTake.data.cameraFile.trim().length > 0) {
+              const single = parseInt(entryAtMaxTake.data.cameraFile, 10);
+              if (!Number.isNaN(single)) {
+                cameraToNumber = single;
               }
-            });
-            cameraToNumber = maxFileNumber;
-          } else {
-            // Fallback to existing entry's value if we can't determine take number
-            cameraToNumber = existingCameraValue;
+            }
           }
         }
         
@@ -3983,55 +3938,32 @@ This would break the logging logic and create inconsistencies in the file number
               start = insertedSingle;
             }
             
-            // Find the maximum camera file number that should be shifted
-            // This includes all entries in the same scene/shot with take numbers >= existing entry's take number
-            // that have file numbers >= fromNumber, to ensure we shift all entries that would conflict
-            const existingCameraRange = getRangeFromData(existingEntry.data, fieldId);
-            const existingCameraValue = existingCameraRange 
-              ? Math.max(parseInt(existingCameraRange.from, 10) || 0, parseInt(existingCameraRange.to, 10) || 0)
-              : (typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].trim().length > 0
-                  ? parseInt(existingEntry.data[fieldId], 10)
-                  : null);
-            
+            // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
+            // This limits shifting to only the entries that are in the insertion zone
             let cameraToNumber: number | undefined = undefined;
-            if (!Number.isNaN(existingCameraValue) && existingCameraValue !== null) {
-              // Find maximum file number among entries that should shift
-              // This includes entries with same scene/shot, take >= existing take, and file numbers >= fromNumber
-              // But we stop at entries with file numbers that are clearly beyond the insertion zone
-              const existingTakeNum = parseInt(existingEntry.data?.takeNumber || '0', 10);
-              if (!Number.isNaN(existingTakeNum)) {
-                let maxFileNumber = existingCameraValue;
-                // Limit search to entries with file numbers not too far beyond the existing entry
-                // This prevents including entries like Take 6 (0006) when inserting before Take 3 (0003)
-                const maxReasonableFileNumber = existingCameraValue + 10; // Allow some buffer for gaps
-                
-                projectLogSheets.forEach(sheet => {
-                  if (sheet.id === logSheet.id) return; // Exclude inserted log
-                  const data = sheet.data || {};
-                  if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return;
-                  const takeNum = parseInt(data.takeNumber || '0', 10);
-                  if (Number.isNaN(takeNum) || takeNum < existingTakeNum) return; // Only entries with take >= existing
-                  
-                  const range = getRangeFromData(data, fieldId);
-                  if (range) {
-                    const from = parseInt(range.from, 10) || 0;
-                    const to = parseInt(range.to, 10) || 0;
-                    const upper = Math.max(from, to);
-                    // Only include if file number >= fromNumber AND not too far beyond existing entry
-                    if (upper >= start && upper <= maxReasonableFileNumber && upper > maxFileNumber) {
-                      maxFileNumber = upper;
-                    }
-                  } else if (typeof data[fieldId] === 'string' && data[fieldId].trim().length > 0) {
-                    const single = parseInt(data[fieldId], 10);
-                    if (!Number.isNaN(single) && single >= start && single <= maxReasonableFileNumber && single > maxFileNumber) {
-                      maxFileNumber = single;
-                    }
+            if (maxTakeForFiles !== undefined) {
+              // Find the entry with takeNumber === maxTakeForFiles (before insertion)
+              // This is the highest take number that should be shifted
+              const entryAtMaxTake = projectLogSheets.find(sheet => {
+                if (sheet.id === logSheet.id) return false; // Exclude inserted log
+                const data = sheet.data || {};
+                if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+                const takeNum = parseInt(data.takeNumber || '0', 10);
+                return !Number.isNaN(takeNum) && takeNum === maxTakeForFiles;
+              });
+              
+              if (entryAtMaxTake) {
+                const range = getRangeFromData(entryAtMaxTake.data, fieldId);
+                if (range) {
+                  const from = parseInt(range.from, 10) || 0;
+                  const to = parseInt(range.to, 10) || 0;
+                  cameraToNumber = Math.max(from, to);
+                } else if (typeof entryAtMaxTake.data?.[fieldId] === 'string' && entryAtMaxTake.data[fieldId].trim().length > 0) {
+                  const single = parseInt(entryAtMaxTake.data[fieldId], 10);
+                  if (!Number.isNaN(single)) {
+                    cameraToNumber = single;
                   }
-                });
-                cameraToNumber = maxFileNumber;
-              } else {
-                // Fallback to existing entry's value if we can't determine take number
-                cameraToNumber = existingCameraValue;
+                }
               }
             }
             
