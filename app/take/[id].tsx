@@ -3800,15 +3800,24 @@ This would break the logging logic and create inconsistencies in the file number
       
       if (entryAtMaxTake) {
         const range = getRangeFromData(entryAtMaxTake.data, 'soundFile');
+        let maxFileNumber: number | undefined = undefined;
         if (range) {
           const from = parseInt(range.from, 10) || 0;
           const to = parseInt(range.to, 10) || 0;
-          soundToNumber = Math.max(from, to);
+          maxFileNumber = Math.max(from, to);
         } else if (typeof entryAtMaxTake.data?.soundFile === 'string' && entryAtMaxTake.data.soundFile.trim().length > 0) {
           const single = parseInt(entryAtMaxTake.data.soundFile, 10);
           if (!Number.isNaN(single)) {
-            soundToNumber = single;
+            maxFileNumber = single;
           }
+        }
+        
+        // toNumber should be the file number AFTER shifting, so add the increment
+        // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
+        if (maxFileNumber !== undefined && insertedSoundDelta > 0) {
+          soundToNumber = maxFileNumber + insertedSoundDelta;
+        } else if (maxFileNumber !== undefined) {
+          soundToNumber = maxFileNumber;
         }
       }
     }
@@ -3858,7 +3867,7 @@ This would break the logging logic and create inconsistencies in the file number
           start = insertedSingle;
         }
         
-        // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
+        // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
         // This limits shifting to only the entries that are in the insertion zone
         let cameraToNumber: number | undefined = undefined;
         if (maxTakeForFiles !== undefined) {
@@ -3874,15 +3883,24 @@ This would break the logging logic and create inconsistencies in the file number
           
           if (entryAtMaxTake) {
             const range = getRangeFromData(entryAtMaxTake.data, 'cameraFile');
+            let maxFileNumber: number | undefined = undefined;
             if (range) {
               const from = parseInt(range.from, 10) || 0;
               const to = parseInt(range.to, 10) || 0;
-              cameraToNumber = Math.max(from, to);
+              maxFileNumber = Math.max(from, to);
             } else if (typeof entryAtMaxTake.data?.cameraFile === 'string' && entryAtMaxTake.data.cameraFile.trim().length > 0) {
               const single = parseInt(entryAtMaxTake.data.cameraFile, 10);
               if (!Number.isNaN(single)) {
-                cameraToNumber = single;
+                maxFileNumber = single;
               }
+            }
+            
+            // toNumber should be the file number AFTER shifting, so add the increment
+            // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
+            if (maxFileNumber !== undefined && insertedCamDelta > 0) {
+              cameraToNumber = maxFileNumber + insertedCamDelta;
+            } else if (maxFileNumber !== undefined) {
+              cameraToNumber = maxFileNumber;
             }
           }
         }
@@ -3938,7 +3956,7 @@ This would break the logging logic and create inconsistencies in the file number
               start = insertedSingle;
             }
             
-            // Calculate toNumber: the file number of the entry at maxTakeNumber position (before insertion)
+            // Calculate toNumber: the file number of the entry at maxTakeNumber position AFTER shifting
             // This limits shifting to only the entries that are in the insertion zone
             let cameraToNumber: number | undefined = undefined;
             if (maxTakeForFiles !== undefined) {
@@ -3954,15 +3972,24 @@ This would break the logging logic and create inconsistencies in the file number
               
               if (entryAtMaxTake) {
                 const range = getRangeFromData(entryAtMaxTake.data, fieldId);
+                let maxFileNumber: number | undefined = undefined;
                 if (range) {
                   const from = parseInt(range.from, 10) || 0;
                   const to = parseInt(range.to, 10) || 0;
-                  cameraToNumber = Math.max(from, to);
+                  maxFileNumber = Math.max(from, to);
                 } else if (typeof entryAtMaxTake.data?.[fieldId] === 'string' && entryAtMaxTake.data[fieldId].trim().length > 0) {
                   const single = parseInt(entryAtMaxTake.data[fieldId], 10);
                   if (!Number.isNaN(single)) {
-                    cameraToNumber = single;
+                    maxFileNumber = single;
                   }
+                }
+                
+                // toNumber should be the file number AFTER shifting, so add the increment
+                // This ensures all entries that need to shift (including the one at maxTakeNumber) are included
+                if (maxFileNumber !== undefined && insertedCamDelta > 0) {
+                  cameraToNumber = maxFileNumber + insertedCamDelta;
+                } else if (maxFileNumber !== undefined) {
+                  cameraToNumber = maxFileNumber;
                 }
               }
             }
