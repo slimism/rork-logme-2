@@ -218,15 +218,9 @@ export default function ProjectScreen() {
     Object.keys(scenes).forEach(sceneKey => {
       Object.keys(scenes[sceneKey]).forEach(shotKey => {
         scenes[sceneKey][shotKey].sort((a, b) => {
-          const takeA = parseInt(a.data?.takeNumber || '0', 10) || 0;
-          const takeB = parseInt(b.data?.takeNumber || '0', 10) || 0;
-          if (takeA !== takeB) {
-            return takeA - takeB;
-          }
-          // If take numbers are equal, sort by projectLocalId
-          const localIdA = parseInt(a.projectLocalId as string || '0', 10) || 0;
-          const localIdB = parseInt(b.projectLocalId as string || '0', 10) || 0;
-          return localIdA - localIdB;
+          const takeA = parseInt(a.data?.takeNumber || '0');
+          const takeB = parseInt(b.data?.takeNumber || '0');
+          return takeB - takeA;
         });
       });
     });
