@@ -281,7 +281,9 @@ export const useProjectStore = create<ProjectState>()(
         const tempSound = getFieldUpperBound(movedData, 'soundFile');
         const tempCamera: { [cameraNum: number]: number | null } = {};
         for (let i = 1; i <= camCount; i++) {
-          const fieldId = i === 1 ? 'cameraFile' : `cameraFile${i}`;
+          // In multi-camera mode, always use cameraFile${i}, even for camera 1
+          // Only use 'cameraFile' (without number) in single-camera mode
+          const fieldId = (camCount === 1 && i === 1) ? 'cameraFile' : `cameraFile${i}`;
           tempCamera[i] = getFieldUpperBound(movedData, fieldId);
         }
 
@@ -374,7 +376,9 @@ export const useProjectStore = create<ProjectState>()(
 
             // Process camera files
             for (let i = 1; i <= camCount; i++) {
-              const fieldId = i === 1 ? 'cameraFile' : `cameraFile${i}`;
+              // In multi-camera mode, always use cameraFile${i}, even for camera 1
+              // Only use 'cameraFile' (without number) in single-camera mode
+              const fieldId = (camCount === 1 && i === 1) ? 'cameraFile' : `cameraFile${i}`;
               const fromKey = `camera${i}_from`;
               const toKey = `camera${i}_to`;
               
