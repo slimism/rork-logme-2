@@ -3814,10 +3814,9 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
-      // Sound files use a global numbering sequence - shift sound files in range [soundStart, soundToNumber]
-      // If soundToNumber is undefined, shift all files >= soundStart (backward compatibility)
-      // This prevents shifting files beyond the insertion zone
-      // Also respect maxTakeNumber to prevent shifting entries beyond the insertion zone (e.g., Take 6 when maxTake is 4)
+      // Sound files use a global numbering sequence - shift ALL sound files >= soundStart
+      // For "Insert Before" operations, we need to shift ALL subsequent files, not just up to maxTakeNumber
+      // maxTakeNumber is only used for take number shifting, not file number shifting
       updateFileNumbers(
         logSheet.projectId, 
         'soundFile', 
@@ -3826,9 +3825,9 @@ This would break the logging logic and create inconsistencies in the file number
         logSheet.id,
         {
           excludeLogIds: [logSheet.id],
-          toNumber: soundToNumber,
-          maxTakeNumber: maxTakeForFiles
+          toNumber: soundToNumber
           // No filter for sound files - they shift globally regardless of scene/shot/classification
+          // No maxTakeNumber - we shift ALL subsequent files for "Insert Before" operations
         }
       );
     }
@@ -3897,7 +3896,8 @@ This would break the logging logic and create inconsistencies in the file number
           {
             excludeLogIds: [logSheet.id],
             toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
-            maxTakeNumber: maxTakeForFiles, // Respect maxTakeNumber to prevent shifting entries beyond insertion zone
+            // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
+            // maxTakeNumber is only used for take number shifting, not file number shifting
             filter: finalClassification ? {
               sceneNumber: targetSceneNumber,
               shotNumber: targetShotNumber,
@@ -3976,7 +3976,8 @@ This would break the logging logic and create inconsistencies in the file number
               {
                 excludeLogIds: [logSheet.id],
                 toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
-                maxTakeNumber: maxTakeForFiles, // Respect maxTakeNumber to prevent shifting entries beyond insertion zone
+                // No maxTakeNumber - for "Insert Before" operations, we shift ALL subsequent files
+                // maxTakeNumber is only used for take number shifting, not file number shifting
                 filter: finalClassification ? {
                   sceneNumber: targetSceneNumber,
                   shotNumber: targetShotNumber,
