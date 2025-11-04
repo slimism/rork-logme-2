@@ -187,8 +187,10 @@ export const useProjectStore = create<ProjectState>()(
             
             const nLocal = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
             
-            // Increment all logs with projectLocalId >= target and < tempProjectLocalId (including the target duplicate)
-            // This shifts all logs in the range [target, tempProjectLocalId) to make room for the moved log
+            // Increment all logs with projectLocalId >= target (after the inserted log, including the target duplicate)
+            // AND projectLocalId < tempProjectLocalId (less than the original moving log's ID)
+            // This includes the target duplicate and all logs in the range [target, tempProjectLocalId)
+            // The moving log itself is already skipped above, so we don't need to check for it here
             if (nLocal >= target && nLocal < tempProjectLocalId) {
               return { ...s, projectLocalId: (nLocal + 1).toString(), updatedAt: new Date().toISOString() };
             }
@@ -311,6 +313,8 @@ export const useProjectStore = create<ProjectState>()(
           });
 
         console.log(`[recalculateFileNumbersAfterMove] Found ${subsequentLogs.length} subsequent logs to recalculate`);
+        console.log(`[recalculateFileNumbersAfterMove] Moved log (${movedLog.id}) will be excluded from recalculation - it keeps its original ranges`);
+        console.log(`[recalculateFileNumbersAfterMove] Target duplicate and all subsequent logs will be recalculated using moved log's upper bounds as starting temp variables`);
 
         // Process each subsequent log sequentially
         let currentTempSound = tempSound;
@@ -319,7 +323,10 @@ export const useProjectStore = create<ProjectState>()(
         set((prevState) => {
           const updatedLogs = prevState.logSheets.map(logSheet => {
             if (logSheet.projectId !== projectId) return logSheet;
-            if (logSheet.id === movedLog.id) return logSheet; // Don't modify the moved log
+            if (logSheet.id === movedLog.id) {
+              // Moved log keeps its camera and sound ranges unchanged - skip recalculation
+              return logSheet;
+            }
 
             const localId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
             // Process all logs with projectLocalId > targetLocalId
@@ -330,6 +337,8 @@ export const useProjectStore = create<ProjectState>()(
             const data = logSheet.data || {};
             const newData: Record<string, any> = { ...data };
             let updated = false;
+            
+            console.log(`[recalculateFileNumbersAfterMove] Processing log ${logSheet.id} (projectLocalId=${localId}) - using tempSound=${currentTempSound}, tempCamera=${JSON.stringify(currentTempCamera)}`);
 
             // Process sound file
             // Check if sound field is blank/waste (delta = 0)
