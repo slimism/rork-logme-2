@@ -493,7 +493,30 @@ export const useProjectStore = create<ProjectState>()(
         }
       },
       
-      updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => {
+      updateTakeNumbers: (
+        projectId: string, 
+        sceneNumber: string, 
+        shotNumber: string, 
+        fromTakeNumber: number, 
+        increment: number, 
+        excludeLogId?: string,
+        maxTakeNumber?: number,
+        options?: {
+          excludeLogIds?: string[];
+          filter?: {
+            classification?: string;
+          };
+        }
+      ) => {
+        // Support both old excludeLogId and new excludeLogIds array
+        const excludeLogIds = new Set<string>();
+        if (excludeLogId) excludeLogIds.add(excludeLogId);
+        if (options?.excludeLogIds) {
+          options.excludeLogIds.forEach(id => excludeLogIds.add(id));
+        }
+        
+        const filter = options?.filter;
+        
         logger.logFunctionEntry({
           functionName: 'updateTakeNumbers',
           projectId,
@@ -502,7 +525,9 @@ export const useProjectStore = create<ProjectState>()(
           fromTakeNumber,
           increment,
           excludeLogId,
-          maxTakeNumber
+          excludeLogIds: Array.from(excludeLogIds),
+          maxTakeNumber,
+          filter
         });
         
         set((state) => ({
@@ -510,10 +535,16 @@ export const useProjectStore = create<ProjectState>()(
             try {
               if (logSheet.projectId !== projectId) return logSheet;
               
-              // Skip the excluded log (the edited log being moved)
-              if (excludeLogId && logSheet.id === excludeLogId) {
+              // Skip any logs matching excludeLogIds
+              if (excludeLogIds.has(logSheet.id)) {
                 logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id, takeNumber: logSheet.data?.takeNumber });
                 return logSheet;
+              }
+              
+              // Apply classification filter if provided
+              if (filter?.classification !== undefined) {
+                const logClassification = logSheet.data?.classification;
+                if (logClassification !== filter.classification) return logSheet;
               }
 
               const data = logSheet.data ?? {} as Record<string, unknown>;
@@ -553,14 +584,39 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string) => {
+      updateFileNumbers: (
+        projectId: string, 
+        fieldId: string, 
+        fromNumber: number, 
+        increment: number, 
+        excludeLogId?: string,
+        options?: {
+          excludeLogIds?: string[];
+          filter?: {
+            sceneNumber?: string;
+            shotNumber?: string;
+            classification?: string;
+          };
+        }
+      ) => {
+        // Support both old excludeLogId and new excludeLogIds array
+        const excludeLogIds = new Set<string>();
+        if (excludeLogId) excludeLogIds.add(excludeLogId);
+        if (options?.excludeLogIds) {
+          options.excludeLogIds.forEach(id => excludeLogIds.add(id));
+        }
+        
+        const filter = options?.filter;
+        
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
           fieldId,
           fromNumber,
           increment,
-          excludeLogId
+          excludeLogId,
+          excludeLogIds: Array.from(excludeLogIds),
+          filter
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -622,7 +678,24 @@ export const useProjectStore = create<ProjectState>()(
 
           const updatedSimple = activeState.logSheets.map((logSheet) => {
             if (logSheet.projectId !== projectId) return logSheet;
-            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
+            // Skip any logs matching excludeLogIds
+            if (excludeLogIds.has(logSheet.id)) return logSheet;
+            
+            // Apply classification filter if provided
+            if (filter?.classification !== undefined) {
+              const logClassification = logSheet.data?.classification;
+              if (logClassification !== filter.classification) return logSheet;
+            }
+            
+            // Apply scene/shot filter if provided
+            if (filter?.sceneNumber !== undefined) {
+              const logScene = logSheet.data?.sceneNumber;
+              if (logScene !== filter.sceneNumber) return logSheet;
+            }
+            if (filter?.shotNumber !== undefined) {
+              const logShot = logSheet.data?.shotNumber;
+              if (logShot !== filter.shotNumber) return logSheet;
+            }
 
             const data = logSheet.data || {} as any;
             const fieldVal = getFieldValue(data, fieldId);
@@ -780,13 +853,18 @@ export const useProjectStore = create<ProjectState>()(
             // This is more reliable than searching by file number, which can match multiple logs
             let insertedLog: LogSheet | null = null;
             
-            // Strategy 1: If excludeLogId is provided, use it directly (most reliable)
-            // The excludeLogId is the newly inserted log that we just saved
-            if (excludeLogId) {
-              insertedLog = sheets.find(sheet => sheet.id === excludeLogId) || null;
-              if (insertedLog) {
-                logger.logDebug(`Found inserted log via excludeLogId: Take ${insertedLog.data?.takeNumber}, ID: ${excludeLogId}`);
-              } else {
+            // Strategy 1: If excludeLogIds are provided, use them directly (most reliable)
+            // The excludeLogIds contain the newly inserted log(s) that we just saved
+            if (excludeLogIds.size > 0) {
+              // Try to find the inserted log from any of the excludeLogIds
+              for (const id of excludeLogIds) {
+                insertedLog = sheets.find(sheet => sheet.id === id) || null;
+                if (insertedLog) {
+                  logger.logDebug(`Found inserted log via excludeLogIds: Take ${insertedLog.data?.takeNumber}, ID: ${id}`);
+                  break;
+                }
+              }
+              if (!insertedLog && excludeLogId) {
                 logger.logWarning(`excludeLogId ${excludeLogId} provided but log not found in sheets - will fall back to search by file number`);
               }
             }
@@ -945,10 +1023,36 @@ export const useProjectStore = create<ProjectState>()(
             }
             
             sheets.forEach((logSheet, index) => {
-              if (excludeLogId && logSheet.id === excludeLogId) {
+              // Skip any logs matching excludeLogIds
+              if (excludeLogIds.has(logSheet.id)) {
                 logger.logDebug(`Skipping excluded log`, { logSheetId: logSheet.id });
                 updatedSheetsMap.set(logSheet.id, logSheet);
                 return;
+              }
+              
+              // Apply classification filter if provided
+              if (filter?.classification !== undefined) {
+                const logClassification = logSheet.data?.classification;
+                if (logClassification !== filter.classification) {
+                  updatedSheetsMap.set(logSheet.id, logSheet);
+                  return;
+                }
+              }
+              
+              // Apply scene/shot filter if provided
+              if (filter?.sceneNumber !== undefined) {
+                const logScene = logSheet.data?.sceneNumber;
+                if (logScene !== filter.sceneNumber) {
+                  updatedSheetsMap.set(logSheet.id, logSheet);
+                  return;
+                }
+              }
+              if (filter?.shotNumber !== undefined) {
+                const logShot = logSheet.data?.shotNumber;
+                if (logShot !== filter.shotNumber) {
+                  updatedSheetsMap.set(logSheet.id, logSheet);
+                  return;
+                }
               }
               
               const data = logSheet.data || {};

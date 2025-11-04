@@ -2222,14 +2222,27 @@ This would break the logging logic and create inconsistencies in the file number
           newLogData.takeNumber = existingEntry.data?.takeNumber;
           const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
           const maxTake = originalTakeNumber > targetTakeNumber ? originalTakeNumber - 1 : undefined;
-          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogId and maxTake:', {
+          console.log('DEBUG handleSaveWithDuplicateHandling type=take - Calling updateTakeNumbers with excludeLogIds and maxTake:', {
             fromTakeNumber: targetTakeNumber,
             increment: 1,
-            excludeLogId: logSheet.id,
+            excludeLogIds: [logSheet.id],
             originalTakeNumber,
-            maxTakeNumber: maxTake
+            maxTakeNumber: maxTake,
+            classification: classification || undefined
           });
-          updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTakeNumber, 1, logSheet.id, maxTake);
+          updateTakeNumbers(
+            logSheet.projectId, 
+            targetSceneNumber, 
+            targetShotNumber, 
+            targetTakeNumber, 
+            1, 
+            logSheet.id, 
+            maxTake,
+            {
+              excludeLogIds: [logSheet.id],
+              filter: classification ? { classification } : undefined
+            }
+          );
         }
 
         // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -2782,13 +2795,15 @@ This would break the logging logic and create inconsistencies in the file number
             }
           }
           const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
+          // Preserve existing classification if state variable is null (don't clear it)
+          const finalClassification = classification !== null ? classification : (logSheet.data?.classification || null);
           const updatedData = {
             ...finalData,
-            classification,
+            classification: finalClassification,
             shotDetails: filteredShotDetails,
             isGoodTake,
-            wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-            insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+            wasteOptions: finalClassification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+            insertSoundSpeed: finalClassification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
             cameraRecState: camCount > 1 ? cameraRecState : undefined
           };
           
@@ -2835,9 +2850,28 @@ This would break the logging logic and create inconsistencies in the file number
                   camStart,
                   targetRange,
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
-                  'editedLogId_ToExclude': logSheet.id
+                  'editedLogId_ToExclude': logSheet.id,
+                  'existingEntry.classification': existingEntry.data?.classification,
+                  'editedLog.classification': classification
                 });
-                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
+                updateFileNumbers(
+                  logSheet.projectId, 
+                  'cameraFile', 
+                  start, 
+                  camDelta, 
+                  logSheet.id,
+                  {
+                    excludeLogIds: [logSheet.id],
+                    filter: classification ? {
+                      sceneNumber: targetSceneNumber,
+                      shotNumber: targetShotNumber,
+                      classification
+                    } : {
+                      sceneNumber: targetSceneNumber,
+                      shotNumber: targetShotNumber
+                    }
+                  }
+                ); 
               }
               
               // Read current state of the log from store (after updateFileNumbers may have updated it)
@@ -2921,7 +2955,28 @@ This would break the logging logic and create inconsistencies in the file number
                 };
                 const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
                 if (!disabledFields.has(fieldId)) {
-                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
+                  { 
+                    const targetRange = getRangeFromData(existingEntry.data, fieldId); 
+                    const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
+                    updateFileNumbers(
+                      logSheet.projectId, 
+                      fieldId, 
+                      start, 
+                      camDelta, 
+                      logSheet.id,
+                      {
+                        excludeLogIds: [logSheet.id],
+                        filter: classification ? {
+                          sceneNumber: targetSceneNumber,
+                          shotNumber: targetShotNumber,
+                          classification
+                        } : {
+                          sceneNumber: targetSceneNumber,
+                          shotNumber: targetShotNumber
+                        }
+                      }
+                    ); 
+                  }
                   
                   // Read current state of the log from store (after updateFileNumbers may have updated it)
                   const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
@@ -3038,7 +3093,24 @@ This would break the logging logic and create inconsistencies in the file number
                 if (!Number.isNaN(n)) soundStartForShift = n;
               }
             }
-            updateFileNumbers(logSheet.projectId, 'soundFile', soundStartForShift, soundIncrementLocal, logSheet.id);
+            updateFileNumbers(
+              logSheet.projectId, 
+              'soundFile', 
+              soundStartForShift, 
+              soundIncrementLocal, 
+              logSheet.id,
+              {
+                excludeLogIds: [logSheet.id],
+                filter: classification ? {
+                  sceneNumber: targetSceneNumber,
+                  shotNumber: targetShotNumber,
+                  classification
+                } : {
+                  sceneNumber: targetSceneNumber,
+                  shotNumber: targetShotNumber
+                }
+              }
+            );
           }
         } catch {}
       }
@@ -3241,14 +3313,27 @@ This would break the logging logic and create inconsistencies in the file number
       newLogData.takeNumber = existingEntry.data?.takeNumber;
       const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
       const maxTake = originalTakeNumber > targetTake ? originalTakeNumber - 1 : undefined;
-      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogId and maxTake:', {
+      console.log('DEBUG handleSaveWithDuplicatePair - Calling updateTakeNumbers with excludeLogIds and maxTake:', {
         fromTakeNumber: targetTake,
         increment: 1,
-        excludeLogId: logSheet.id,
+        excludeLogIds: [logSheet.id],
         originalTakeNumber,
-        maxTakeNumber: maxTake
+        maxTakeNumber: maxTake,
+        classification: finalClassification || undefined
       });
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id, maxTake);
+      updateTakeNumbers(
+        logSheet.projectId, 
+        targetSceneNumber || '', 
+        targetShotNumber || '', 
+        targetTake, 
+        1, 
+        logSheet.id, 
+        maxTake,
+        {
+          excludeLogIds: [logSheet.id],
+          filter: finalClassification ? { classification: finalClassification } : undefined
+        }
+      );
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -3602,13 +3687,15 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX') ? shotDetails.filter(d => d !== 'MOS') : shotDetails;
+    // Preserve existing classification if state variable is null (don't clear it)
+    const finalClassification = classification !== null ? classification : (logSheet.data?.classification || null);
     const updatedData = {
       ...finalData,
-      classification,
+      classification: finalClassification,
       shotDetails: filteredShotDetails,
       isGoodTake,
-      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      wasteOptions: finalClassification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: finalClassification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
     
@@ -3634,10 +3721,30 @@ This would break the logging logic and create inconsistencies in the file number
     });
     
     // Call updateFileNumbers FIRST - this will shift ALL logs starting from the target's position
-    // The excludeLogId ensures the inserted log is not shifted
+    // The excludeLogIds ensures the inserted log is not shifted
     // This uses sequential shifting logic that handles all subsequent logs automatically
+    const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
+    const targetShotNumber = existingEntry.data?.shotNumber as string | undefined;
+    
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
-      updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id);
+      updateFileNumbers(
+        logSheet.projectId, 
+        'soundFile', 
+        soundStart, 
+        insertedSoundDelta, 
+        logSheet.id,
+        {
+          excludeLogIds: [logSheet.id],
+          filter: finalClassification ? {
+            sceneNumber: targetSceneNumber,
+            shotNumber: targetShotNumber,
+            classification: finalClassification
+          } : {
+            sceneNumber: targetSceneNumber,
+            shotNumber: targetShotNumber
+          }
+        }
+      );
     }
     
     if (camCount === 1) {
@@ -3651,7 +3758,24 @@ This would break the logging logic and create inconsistencies in the file number
         : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
       if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
-        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id);
+        updateFileNumbers(
+          logSheet.projectId, 
+          'cameraFile', 
+          cameraFromNumber, 
+          insertedCamDelta, 
+          logSheet.id,
+          {
+            excludeLogIds: [logSheet.id],
+            filter: finalClassification ? {
+              sceneNumber: targetSceneNumber,
+              shotNumber: targetShotNumber,
+              classification: finalClassification
+            } : {
+              sceneNumber: targetSceneNumber,
+              shotNumber: targetShotNumber
+            }
+          }
+        );
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
@@ -3678,7 +3802,24 @@ This would break the logging logic and create inconsistencies in the file number
               const n = parseInt(val, 10);
               if (!Number.isNaN(n)) camStart = n;
             }
-            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id);
+            updateFileNumbers(
+              logSheet.projectId, 
+              fieldId, 
+              camStart, 
+              insertedCamDelta, 
+              logSheet.id,
+              {
+                excludeLogIds: [logSheet.id],
+                filter: finalClassification ? {
+                  sceneNumber: targetSceneNumber,
+                  shotNumber: targetShotNumber,
+                  classification: finalClassification
+                } : {
+                  sceneNumber: targetSceneNumber,
+                  shotNumber: targetShotNumber
+                }
+              }
+            );
           }
         }
       }
