@@ -3989,8 +3989,24 @@ This would break the logging logic and create inconsistencies in the file number
               // = shiftedMaxFileNumber - insertedRangeEnd
               const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
               
+              // CRITICAL: Collect IDs of entries that were already shifted in the first pass
+              // These entries have take numbers <= maxTakeForFiles and should NOT be shifted again
+              const alreadyShiftedIds = new Set<string>();
+              if (maxTakeForFiles !== undefined) {
+                const currentState = useProjectStore.getState();
+                const relevantSheets = currentState.logSheets.filter(sheet => {
+                  if (sheet.id === logSheet.id) return false;
+                  const data = sheet.data || {};
+                  if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+                  const takeNum = parseInt(data.takeNumber || '0', 10);
+                  return !Number.isNaN(takeNum) && takeNum <= maxTakeForFiles;
+                });
+                relevantSheets.forEach(sheet => alreadyShiftedIds.add(sheet.id));
+              }
+              
               // Shift files beyond insertedRangeEnd to continue sequentially
               // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
+              // Exclude entries that were already shifted in the first pass
               updateFileNumbers(
                 logSheet.projectId,
                 'cameraFile',
@@ -3998,7 +4014,7 @@ This would break the logging logic and create inconsistencies in the file number
                 sequentialShiftAmount, // Shift by the gap amount to continue sequentially
                 logSheet.id,
                 {
-                  excludeLogIds: [logSheet.id],
+                  excludeLogIds: [logSheet.id, ...Array.from(alreadyShiftedIds)], // Exclude inserted log AND already-shifted entries
                   filter: finalClassification ? {
                     sceneNumber: targetSceneNumber,
                     shotNumber: targetShotNumber,
@@ -4164,8 +4180,24 @@ This would break the logging logic and create inconsistencies in the file number
                   // = shiftedMaxFileNumber - insertedRangeEnd
                   const sequentialShiftAmount = shiftedMaxFileNumber - insertedRangeEnd;
                   
+                  // CRITICAL: Collect IDs of entries that were already shifted in the first pass
+                  // These entries have take numbers <= maxTakeForFiles and should NOT be shifted again
+                  const alreadyShiftedIds = new Set<string>();
+                  if (maxTakeForFiles !== undefined) {
+                    const currentState = useProjectStore.getState();
+                    const relevantSheets = currentState.logSheets.filter(sheet => {
+                      if (sheet.id === logSheet.id) return false;
+                      const data = sheet.data || {};
+                      if (data.sceneNumber !== targetSceneNumber || data.shotNumber !== targetShotNumber) return false;
+                      const takeNum = parseInt(data.takeNumber || '0', 10);
+                      return !Number.isNaN(takeNum) && takeNum <= maxTakeForFiles;
+                    });
+                    relevantSheets.forEach(sheet => alreadyShiftedIds.add(sheet.id));
+                  }
+                  
                   // Shift files beyond insertedRangeEnd to continue sequentially
                   // This ensures Take 6 (0016) becomes 0022, Take 7 (0017) becomes 0023, etc.
+                  // Exclude entries that were already shifted in the first pass
                   updateFileNumbers(
                     logSheet.projectId,
                     fieldId,
@@ -4173,7 +4205,7 @@ This would break the logging logic and create inconsistencies in the file number
                     sequentialShiftAmount, // Shift by the gap amount to continue sequentially
                     logSheet.id,
                     {
-                      excludeLogIds: [logSheet.id],
+                      excludeLogIds: [logSheet.id, ...Array.from(alreadyShiftedIds)], // Exclude inserted log AND already-shifted entries
                       filter: finalClassification ? {
                         sceneNumber: targetSceneNumber,
                         shotNumber: targetShotNumber,
