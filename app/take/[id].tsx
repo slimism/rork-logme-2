@@ -3775,9 +3775,26 @@ This would break the logging logic and create inconsistencies in the file number
     // The excludeLogIds ensures the inserted log is not shifted
     // This uses sequential shifting logic that handles all subsequent logs automatically
     // Note: targetSceneNumber and targetShotNumber are already declared earlier in this function
+    
+    // Extract existing entry's file number (or upper bound if range) to limit shifting range
+    // This prevents shifting files beyond the insertion zone (e.g., Take 6 when inserting Take 5 before Take 3)
+    const existingSoundRange = getRangeFromData(existingEntry.data, 'soundFile');
+    let soundToNumber: number | undefined = undefined;
+    if (existingSoundRange) {
+      const exFrom = parseInt(existingSoundRange.from, 10) || 0;
+      const exTo = parseInt(existingSoundRange.to, 10) || 0;
+      soundToNumber = Math.max(exFrom, exTo); // Use upper bound for range
+    } else if (typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim().length > 0) {
+      const exSingle = parseInt(existingEntry.data.soundFile, 10);
+      if (!Number.isNaN(exSingle)) {
+        soundToNumber = exSingle; // Use single value
+      }
+    }
+    
     if (!disabledFields.has('soundFile') && insertedSoundDelta > 0) {
-      // Sound files use a global numbering sequence - shift ALL sound files >= soundStart
-      // regardless of scene/shot numbers (this includes SFX/Ambience logs)
+      // Sound files use a global numbering sequence - shift sound files in range [soundStart, soundToNumber]
+      // If soundToNumber is undefined, shift all files >= soundStart (backward compatibility)
+      // This prevents shifting files beyond the insertion zone
       updateFileNumbers(
         logSheet.projectId, 
         'soundFile', 
@@ -3785,7 +3802,8 @@ This would break the logging logic and create inconsistencies in the file number
         insertedSoundDelta, 
         logSheet.id,
         {
-          excludeLogIds: [logSheet.id]
+          excludeLogIds: [logSheet.id],
+          toNumber: soundToNumber
           // No filter for sound files - they shift globally regardless of scene/shot/classification
         }
       );
@@ -3817,6 +3835,20 @@ This would break the logging logic and create inconsistencies in the file number
           start = insertedSingle;
         }
         
+        // Extract existing entry's camera file number (or upper bound if range) to limit shifting range
+        const existingCameraRange = getRangeFromData(existingEntry.data, 'cameraFile');
+        let cameraToNumber: number | undefined = undefined;
+        if (existingCameraRange) {
+          const exFrom = parseInt(existingCameraRange.from, 10) || 0;
+          const exTo = parseInt(existingCameraRange.to, 10) || 0;
+          cameraToNumber = Math.max(exFrom, exTo); // Use upper bound for range
+        } else if (typeof existingEntry.data?.cameraFile === 'string' && existingEntry.data.cameraFile.trim().length > 0) {
+          const exSingle = parseInt(existingEntry.data.cameraFile, 10);
+          if (!Number.isNaN(exSingle)) {
+            cameraToNumber = exSingle; // Use single value
+          }
+        }
+        
         updateFileNumbers(
           logSheet.projectId, 
           'cameraFile', 
@@ -3825,6 +3857,7 @@ This would break the logging logic and create inconsistencies in the file number
           logSheet.id,
           {
             excludeLogIds: [logSheet.id],
+            toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
             filter: finalClassification ? {
               sceneNumber: targetSceneNumber,
               shotNumber: targetShotNumber,
@@ -3865,6 +3898,21 @@ This would break the logging logic and create inconsistencies in the file number
               start = insertedSingle;
             }
             
+            // Extract existing entry's camera file number (or upper bound if range) to limit shifting range
+            // This prevents shifting files beyond the insertion zone (e.g., Take 6 when inserting Take 5 before Take 3)
+            const existingCameraRange = getRangeFromData(existingEntry.data, fieldId);
+            let cameraToNumber: number | undefined = undefined;
+            if (existingCameraRange) {
+              const exFrom = parseInt(existingCameraRange.from, 10) || 0;
+              const exTo = parseInt(existingCameraRange.to, 10) || 0;
+              cameraToNumber = Math.max(exFrom, exTo); // Use upper bound for range
+            } else if (typeof existingEntry.data?.[fieldId] === 'string' && existingEntry.data[fieldId].trim().length > 0) {
+              const exSingle = parseInt(existingEntry.data[fieldId], 10);
+              if (!Number.isNaN(exSingle)) {
+                cameraToNumber = exSingle; // Use single value
+              }
+            }
+            
             updateFileNumbers(
               logSheet.projectId, 
               fieldId, 
@@ -3873,6 +3921,7 @@ This would break the logging logic and create inconsistencies in the file number
               logSheet.id,
               {
                 excludeLogIds: [logSheet.id],
+                toNumber: cameraToNumber, // Limit shifting to entries within [start, cameraToNumber]
                 filter: finalClassification ? {
                   sceneNumber: targetSceneNumber,
                   shotNumber: targetShotNumber,

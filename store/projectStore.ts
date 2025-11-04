@@ -597,6 +597,7 @@ export const useProjectStore = create<ProjectState>()(
             shotNumber?: string;
             classification?: string;
           };
+          toNumber?: number; // Maximum file number to shift (inclusive). If undefined, shifts all files >= fromNumber
         }
       ) => {
         // Support both old excludeLogId and new excludeLogIds array
@@ -701,8 +702,10 @@ export const useProjectStore = create<ProjectState>()(
             const fieldVal = getFieldValue(data, fieldId);
             if (!fieldVal || fieldVal.value === null) return logSheet;
 
-            // Only shift entries at or after fromNumber
+            // Only shift entries within the range [fromNumber, toNumber] (inclusive)
+            // If toNumber is undefined, shift all entries >= fromNumber (backward compatibility)
             if (fieldVal.upper < fromNumber) return logSheet;
+            if (options?.toNumber !== undefined && fieldVal.upper > options.toNumber) return logSheet;
 
             const newData: Record<string, any> = { ...data };
 
