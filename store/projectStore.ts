@@ -327,11 +327,13 @@ export const useProjectStore = create<ProjectState>()(
             let updated = false;
 
             // Process sound file
-            if (currentTempSound !== null) {
-              const soundFrom = data['sound_from'];
-              const soundTo = data['sound_to'];
-              const soundFile = data['soundFile'];
-              
+            // Check if sound field is blank/waste (delta = 0)
+            const soundFrom = data['sound_from'];
+            const soundTo = data['sound_to'];
+            const soundFile = data['soundFile'];
+            const isSoundBlank = !soundFrom && !soundTo && (!soundFile || typeof soundFile !== 'string' || !soundFile.trim());
+            
+            if (currentTempSound !== null && !isSoundBlank) {
               if (soundFrom && soundTo) {
                 // Range: calculate new lower and upper
                 const oldLower = parseInt(soundFrom, 10) || 0;
@@ -373,6 +375,7 @@ export const useProjectStore = create<ProjectState>()(
                 }
               }
             }
+            // If sound is blank/waste, delta = 0, so we don't update the field and tempSound stays the same
 
             // Process camera files
             for (let i = 1; i <= camCount; i++) {
@@ -387,46 +390,52 @@ export const useProjectStore = create<ProjectState>()(
                 const cameraTo = data[toKey];
                 const cameraFile = data[fieldId];
                 
-                if (cameraFrom && cameraTo) {
-                  // Range: calculate new lower and upper
-                  const oldLower = parseInt(cameraFrom, 10) || 0;
-                  const oldUpper = parseInt(cameraTo, 10) || 0;
-                  const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
-                  const newLower = currentTempCamera[i]! + 1;
-                  const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
-                  
-                  newData[fromKey] = String(newLower).padStart(4, '0');
-                  newData[toKey] = String(newUpper).padStart(4, '0');
-                  if (typeof cameraFile === 'string' && cameraFile.includes('-')) {
-                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                  }
-                  currentTempCamera[i] = newUpper; // Update temp variable to upper bound
-                  updated = true;
-                } else if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
-                  if (cameraFile.includes('-')) {
-                    // Range in inline format
-                    const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
-                    const oldLower = Math.min(s, e);
-                    const oldUpper = Math.max(s, e);
-                    const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
+                // Check if camera field is blank/waste (delta = 0)
+                const isCameraBlank = !cameraFrom && !cameraTo && (!cameraFile || typeof cameraFile !== 'string' || !cameraFile.trim());
+                
+                if (!isCameraBlank) {
+                  if (cameraFrom && cameraTo) {
+                    // Range: calculate new lower and upper
+                    const oldLower = parseInt(cameraFrom, 10) || 0;
+                    const oldUpper = parseInt(cameraTo, 10) || 0;
+                    const delta = Math.abs(oldUpper - oldLower) + 1; // Use the log's own original delta (span includes both endpoints)
                     const newLower = currentTempCamera[i]! + 1;
                     const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
                     
-                    newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
                     newData[fromKey] = String(newLower).padStart(4, '0');
                     newData[toKey] = String(newUpper).padStart(4, '0');
-                    currentTempCamera[i] = newUpper;
+                    if (typeof cameraFile === 'string' && cameraFile.includes('-')) {
+                      newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                    }
+                    currentTempCamera[i] = newUpper; // Update temp variable to upper bound
                     updated = true;
-                  } else {
-                    // Single value
-                    const newValue = currentTempCamera[i]! + 1;
-                    newData[fieldId] = String(newValue).padStart(4, '0');
-                    delete newData[fromKey];
-                    delete newData[toKey];
-                    currentTempCamera[i] = newValue; // For single values, upper = value itself
-                    updated = true;
+                  } else if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+                    if (cameraFile.includes('-')) {
+                      // Range in inline format
+                      const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+                      const oldLower = Math.min(s, e);
+                      const oldUpper = Math.max(s, e);
+                      const delta = Math.abs(oldUpper - oldLower) + 1; // Span includes both endpoints
+                      const newLower = currentTempCamera[i]! + 1;
+                      const newUpper = currentTempCamera[i]! + delta; // Upper = tempVariable + delta (as per user requirement)
+                      
+                      newData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+                      newData[fromKey] = String(newLower).padStart(4, '0');
+                      newData[toKey] = String(newUpper).padStart(4, '0');
+                      currentTempCamera[i] = newUpper;
+                      updated = true;
+                    } else {
+                      // Single value
+                      const newValue = currentTempCamera[i]! + 1;
+                      newData[fieldId] = String(newValue).padStart(4, '0');
+                      delete newData[fromKey];
+                      delete newData[toKey];
+                      currentTempCamera[i] = newValue; // For single values, upper = value itself
+                      updated = true;
+                    }
                   }
                 }
+                // If camera field is blank/waste, delta = 0, so we don't update the field and tempCamera[i] stays the same
               }
             }
 
