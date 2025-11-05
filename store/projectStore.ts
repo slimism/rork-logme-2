@@ -650,6 +650,163 @@ export const useProjectStore = create<ProjectState>()(
           // Use resolvedTargetLocalId throughout the sequential logic
           const effectiveTargetLocalId = resolvedTargetLocalId;
 
+          // SPECIAL HANDLING FOR SOUND FILES: When editing a log to insert before another log,
+          // process ALL logs by projectLocalId (not by scene/shot groups) for sequential shifting
+          // This automatically handles SFX, Ambience, and regular logs uniformly
+          const updatedSheetsMap = new Map<string, LogSheet>();
+          
+          if (fieldId === 'soundFile' && effectiveTargetLocalId) {
+            const targetLocalIdNum = parseInt(effectiveTargetLocalId, 10) || 0;
+            
+            // Get all project logs sorted by projectLocalId
+            const allProjectLogs = activeState.logSheets
+              .filter(sheet => sheet.projectId === projectId)
+              .map(sheet => ({
+                sheet,
+                localId: parseInt((sheet as any).projectLocalId as string || '0', 10) || 0
+              }))
+              .sort((a, b) => a.localId - b.localId);
+            
+            // Find the inserted log (excludeLogId) to initialize tempSound from its upper bound
+            let insertedLog: LogSheet | null = null;
+            let tempSound: number | null = null;
+            
+            if (excludeLogId) {
+              insertedLog = allProjectLogs.find(item => item.sheet.id === excludeLogId)?.sheet || null;
+            }
+            
+            // If not found by ID, try to find by file number matching fromNumber
+            if (!insertedLog) {
+              const matching = allProjectLogs.find(item => {
+                const fieldVal = getFieldValue(item.sheet.data || {}, fieldId);
+                return fieldVal && (fieldVal.lower === fromNumber || fieldVal.upper === fromNumber);
+              });
+              insertedLog = matching?.sheet || null;
+            }
+            
+            // Initialize tempSound from inserted log's upper bound
+            if (insertedLog) {
+              const insertedFieldVal = getFieldValue(insertedLog.data || {}, fieldId);
+              if (insertedFieldVal && insertedFieldVal.value !== null) {
+                tempSound = insertedFieldVal.upper;
+                console.log(`[SOUND INIT] tempSound initialized from inserted log: ${tempSound} (from inserted log soundFile: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
+                logger.logDebug(`Initialized tempSound from inserted log: ${tempSound}`);
+              }
+            }
+            
+            // Fallback: if inserted log not found or has blank sound, use fromNumber
+            if (tempSound === null) {
+              tempSound = fromNumber;
+              console.log(`[SOUND INIT] tempSound initialized from fromNumber fallback: ${tempSound}`);
+              logger.logDebug(`tempSound initialized from fromNumber fallback: ${tempSound}`);
+            }
+            
+            // Process all logs with projectLocalId > targetLocalId sequentially
+            for (const { sheet, localId } of allProjectLogs) {
+              // Skip the inserted log itself
+              if (excludeLogId && sheet.id === excludeLogId) {
+                updatedSheetsMap.set(sheet.id, sheet);
+                continue;
+              }
+              
+              // Only process logs after the insertion point
+              if (localId <= targetLocalIdNum) {
+                updatedSheetsMap.set(sheet.id, sheet);
+                continue;
+              }
+              
+              const data = sheet.data || {};
+              const currentFieldVal = getFieldValue(data, fieldId);
+              const newData: Record<string, any> = { ...data };
+              let updated = false;
+              
+              if (!currentFieldVal || currentFieldVal.value === null) {
+                // Waste (blank sound): delta = 0, tempSound stays unchanged
+                console.log(`[SOUND SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): BLANK sound, tempSound remains ${tempSound} (delta = 0)`);
+                logger.logDebug(`Sound file blank (Waste) - tempSound remains ${tempSound}`);
+                // tempSound stays the same, no update needed
+              } else {
+                // Calculate delta based on the current entry's original range span
+                const soundDeltaInput: DeltaCalculationInput = { logSheetData: data } as any;
+                const delta = calculateSoundDeltaForShifting(soundDeltaInput);
+                
+                let soundNewLower: number;
+                let soundNewUpper: number;
+                
+                if (currentFieldVal.isRange) {
+                  // Range: newLower = tempSound + 1, newUpper = newLower + delta
+                  soundNewLower = tempSound! + 1;
+                  soundNewUpper = soundNewLower + delta;
+                } else {
+                  // Single value: newLower = tempSound + delta, newUpper = newLower
+                  soundNewLower = tempSound! + delta;
+                  soundNewUpper = soundNewLower;
+                }
+                
+                const soundCalcFormula = currentFieldVal.isRange
+                  ? `Range: newLower = tempSound(${tempSound}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
+                  : `Single: newLower = tempSound(${tempSound}) + delta(${delta}) = ${soundNewLower}, newUpper = ${soundNewLower}`;
+                
+                console.log(`[SOUND SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): tempSound=${tempSound}, delta=${delta}, current=${currentFieldVal.lower}/${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${soundCalcFormula}", result: ${soundNewLower}/${soundNewUpper}`);
+                
+                logger.logCalculation(
+                  'Sound File Sequential Shift (projectLocalId)',
+                  `Shifting sound file for log ${sheet.id} (projectLocalId: ${localId})`,
+                  {
+                    tempSound,
+                    delta,
+                    currentLower: currentFieldVal.lower,
+                    currentUpper: currentFieldVal.upper,
+                    isRange: currentFieldVal.isRange
+                  },
+                  soundCalcFormula,
+                  { newLower: soundNewLower, newUpper: soundNewUpper }
+                );
+                
+                // Update the data
+                if (currentFieldVal.isRange) {
+                  newData['sound_from'] = String(soundNewLower).padStart(4, '0');
+                  newData['sound_to'] = String(soundNewUpper).padStart(4, '0');
+                  if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
+                    newData.soundFile = `${String(soundNewLower).padStart(4, '0')}-${String(soundNewUpper).padStart(4, '0')}`;
+                  }
+                } else {
+                  newData.soundFile = String(soundNewLower).padStart(4, '0');
+                  delete newData['sound_from'];
+                  delete newData['sound_to'];
+                }
+                
+                // Update tempSound for next iteration
+                const previousTempSound = tempSound;
+                tempSound = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+                console.log(`[SOUND UPDATE] tempSound: ${previousTempSound} -> ${tempSound} (after processing Log ${sheet.id}, projectLocalId: ${localId})`);
+                logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing log ${sheet.id}`);
+                
+                updated = true;
+              }
+              
+              if (updated) {
+                logger.logSave('updateFileNumbers', sheet.id, newData, data);
+                updatedSheetsMap.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
+              } else {
+                updatedSheetsMap.set(sheet.id, sheet);
+              }
+            }
+            
+            // For sound files with targetLocalId, we've handled all processing above
+            // Skip the scene/shot grouping logic below
+            // Convert map back to array and return
+            const updatedSheets = activeState.logSheets.map(logSheet => {
+              if (logSheet.projectId !== projectId) return logSheet;
+              const updatedSheet = updatedSheetsMap.get(logSheet.id);
+              if (updatedSheet) return updatedSheet;
+              return logSheet;
+            });
+            
+            logger.logFunctionExit({ shiftedCount: updatedSheets.filter((s, i) => s !== state.logSheets[i]).length });
+            return { logSheets: updatedSheets };
+          }
+
           // Helper to find last valid field value before a given take
           const getPreviousValidValue = (logSheets: LogSheet[], currentTakeNum: number, sceneNum: string, shotNum: string, fId: string, excludeIds: Set<string>): number | null => {
             for (const sheet of logSheets) {
@@ -720,9 +877,8 @@ export const useProjectStore = create<ProjectState>()(
             });
           });
           
-          const updatedSheetsMap = new Map<string, LogSheet>();
-          
           // Process each scene/shot group sequentially
+          // Note: updatedSheetsMap is already initialized above for sound file special handling
           sheetsBySceneShot.forEach((sheets, sceneShotKey) => {
             const [sceneNum, shotNum] = sceneShotKey.split(':');
             
@@ -1383,7 +1539,8 @@ export const useProjectStore = create<ProjectState>()(
           });
 
           // For sound files: also sequentially shift SFX/Ambience entries project-wide that occur after the insertion
-          if (fieldId === 'soundFile') {
+          // Skip this if we already handled sound files with targetLocalId above
+          if (fieldId === 'soundFile' && !effectiveTargetLocalId) {
             // Build a project-wide ordered list (by take asc, then createdAt asc)
             const projectOrdered = activeState.logSheets
               .filter(s => s.projectId === projectId)
