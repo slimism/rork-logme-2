@@ -18,7 +18,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore, updateFileNumbers } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -1769,7 +1769,105 @@ This would break the logging logic and create inconsistencies in the file number
       moveExistingLogBefore(logSheet.projectId, String(tempProjectLocalId), String(targetLocalId));
       console.log(`✅ [handleSaveWithInsertBefore] Moved log: projectLocalId ${tempProjectLocalId} -> ${targetLocalId}`);
       
-      // 5. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
+      // 5. Shift file numbers using sequential shifting logic (tempCamera/tempSound)
+      // Get the inserted log's file numbers from the saved data to determine fromNumber and increment
+      const insertedLogData = updatedData;
+      
+      // Helper to get file number lower bound (for fromNumber calculation)
+      const getFileNumberLower = (data: any, fieldId: string): number | null => {
+        if (fieldId === 'soundFile') {
+          if (data.sound_from && data.sound_to) {
+            return Math.min(parseInt(data.sound_from, 10) || 0, parseInt(data.sound_to, 10) || 0);
+          }
+          if (data.soundFile) {
+            const val = String(data.soundFile);
+            if (val.includes('-')) {
+              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
+              return Math.min(from, to);
+            }
+            return parseInt(val, 10) || null;
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const fromKey = `camera${cameraNum}_from`;
+          const toKey = `camera${cameraNum}_to`;
+          if (data[fromKey] && data[toKey]) {
+            return Math.min(parseInt(data[fromKey], 10) || 0, parseInt(data[toKey], 10) || 0);
+          }
+          if (data[fieldId]) {
+            const val = String(data[fieldId]);
+            if (val.includes('-')) {
+              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
+              return Math.min(from, to);
+            }
+            return parseInt(val, 10) || null;
+          }
+        }
+        return null;
+      };
+      
+      // Helper to calculate delta (increment) for a field
+      const calculateDelta = (data: any, fieldId: string): number => {
+        if (fieldId === 'soundFile') {
+          if (data.sound_from && data.sound_to) {
+            const from = parseInt(data.sound_from, 10) || 0;
+            const to = parseInt(data.sound_to, 10) || 0;
+            return Math.abs(to - from) + 1;
+          }
+          return 1; // Single value
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const fromKey = `camera${cameraNum}_from`;
+          const toKey = `camera${cameraNum}_to`;
+          if (data[fromKey] && data[toKey]) {
+            const from = parseInt(data[fromKey], 10) || 0;
+            const to = parseInt(data[toKey], 10) || 0;
+            return Math.abs(to - from) + 1;
+          }
+          return 1; // Single value
+        }
+        return 1;
+      };
+      
+      // Shift sound file numbers if present
+      if (!disabledFields.has('soundFile')) {
+        const soundFromNumber = getFileNumberLower(insertedLogData, 'soundFile');
+        if (soundFromNumber !== null) {
+          const soundDelta = calculateDelta(insertedLogData, 'soundFile');
+          console.log(`[handleSaveWithInsertBefore] Shifting sound files: fromNumber=${soundFromNumber}, delta=${soundDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundFromNumber, soundDelta, logSheet.id, String(targetLocalId));
+          console.log(`✅ [handleSaveWithInsertBefore] Shifted sound file numbers`);
+        }
+      }
+      
+      // Shift camera file numbers if present
+      if (cameraConfiguration === 1) {
+        if (!disabledFields.has('cameraFile')) {
+          const cameraFromNumber = getFileNumberLower(insertedLogData, 'cameraFile');
+          if (cameraFromNumber !== null) {
+            const cameraDelta = calculateDelta(insertedLogData, 'cameraFile');
+            console.log(`[handleSaveWithInsertBefore] Shifting camera files: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+            updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
+            console.log(`✅ [handleSaveWithInsertBefore] Shifted camera file numbers`);
+          }
+        }
+      } else {
+        // Multi-camera setup
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
+            const cameraFromNumber = getFileNumberLower(insertedLogData, fieldId);
+            if (cameraFromNumber !== null) {
+              const cameraDelta = calculateDelta(insertedLogData, fieldId);
+              console.log(`[handleSaveWithInsertBefore] Shifting ${fieldId}: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+              updateFileNumbers(logSheet.projectId, fieldId, cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
+              console.log(`✅ [handleSaveWithInsertBefore] Shifted ${fieldId} file numbers`);
+            }
+          }
+        }
+      }
+      
+      // 6. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
       // After moveExistingLogBefore:
       // - The inserted log is now at projectLocalId = targetLocalId
       // - The target duplicate (originally at targetLocalId) is now at projectLocalId = targetLocalId + 1
