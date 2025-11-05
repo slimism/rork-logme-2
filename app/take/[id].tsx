@@ -1866,28 +1866,38 @@ This would break the logging logic and create inconsistencies in the file number
         return 0;
       };
       
-      // Get the starting number for shifting (from target duplicate)
-      const getTargetFieldStart = (fieldId: string): number => {
-        const targetData = targetDuplicate.data || {};
+      // Get the starting number for shifting (from inserted log's lower bound)
+      // This is used to determine which logs need shifting (logs with file numbers >= this value)
+      // It should be the inserted log's lower bound, not the target duplicate's starting number
+      const getInsertedFieldStart = (fieldId: string): number => {
         if (fieldId === 'soundFile') {
-          const soundFrom = targetData['sound_from'];
-          const soundTo = targetData['sound_to'];
-          if (soundFrom) {
-            return parseInt(soundFrom, 10) || 0;
+          const soundFrom = shiftedLogData['sound_from'];
+          const soundTo = shiftedLogData['sound_to'];
+          if (soundFrom && soundTo) {
+            return Math.min(parseInt(soundFrom, 10) || 0, parseInt(soundTo, 10) || 0);
           }
-          const soundFile = targetData['soundFile'];
-          if (soundFile && typeof soundFile === 'string') {
+          const soundFile = shiftedLogData['soundFile'];
+          if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+            if (soundFile.includes('-')) {
+              const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.min(s, e);
+            }
             const num = parseInt(soundFile, 10);
             if (!Number.isNaN(num)) return num;
           }
         } else if (fieldId.startsWith('cameraFile')) {
           const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-          const cameraFrom = targetData[`camera${cameraNum}_from`];
-          if (cameraFrom) {
-            return parseInt(cameraFrom, 10) || 0;
+          const cameraFrom = shiftedLogData[`camera${cameraNum}_from`];
+          const cameraTo = shiftedLogData[`camera${cameraNum}_to`];
+          if (cameraFrom && cameraTo) {
+            return Math.min(parseInt(cameraFrom, 10) || 0, parseInt(cameraTo, 10) || 0);
           }
-          const cameraFile = targetData[fieldId];
-          if (cameraFile && typeof cameraFile === 'string') {
+          const cameraFile = shiftedLogData[fieldId];
+          if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+            if (cameraFile.includes('-')) {
+              const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.min(s, e);
+            }
             const num = parseInt(cameraFile, 10);
             if (!Number.isNaN(num)) return num;
           }
@@ -1897,33 +1907,33 @@ This would break the logging logic and create inconsistencies in the file number
       
       // Shift sound files if not disabled
       if (!disabledFields.has('soundFile') && tempSound !== null) {
-        const soundStart = getTargetFieldStart('soundFile');
+        const soundStart = getInsertedFieldStart('soundFile'); // Use inserted log's lower bound
         const soundIncrement = calculateInsertedIncrement('soundFile');
         if (soundIncrement > 0) {
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundIncrement, logSheet.id, String(targetLocalId));
-          console.log(`✅ [handleSaveWithInsertBefore] Shifted sound files: start=${soundStart}, increment=${soundIncrement}`);
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundIncrement, logSheet.id, String(targetLocalId), String(tempProjectLocalId));
+          console.log(`✅ [handleSaveWithInsertBefore] Shifted sound files: start=${soundStart} (inserted log lower bound), increment=${soundIncrement}, tempSound=${tempSound} (upper bound), tempProjectLocalId=${tempProjectLocalId}`);
         }
       }
       
       // Shift camera files if not disabled
       if (cameraConfiguration === 1) {
         if (!disabledFields.has('cameraFile') && tempCamera[1] !== null) {
-          const camStart = getTargetFieldStart('cameraFile');
+          const camStart = getInsertedFieldStart('cameraFile'); // Use inserted log's lower bound
           const camIncrement = calculateInsertedIncrement('cameraFile');
           if (camIncrement > 0) {
-            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camIncrement, logSheet.id, String(targetLocalId));
-            console.log(`✅ [handleSaveWithInsertBefore] Shifted camera files: start=${camStart}, increment=${camIncrement}`);
+            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camIncrement, logSheet.id, String(targetLocalId), String(tempProjectLocalId));
+            console.log(`✅ [handleSaveWithInsertBefore] Shifted camera files: start=${camStart} (inserted log lower bound), increment=${camIncrement}, tempCamera[1]=${tempCamera[1]} (upper bound), tempProjectLocalId=${tempProjectLocalId}`);
           }
         }
       } else {
         for (let i = 1; i <= cameraConfiguration; i++) {
           const fieldId = `cameraFile${i}`;
           if (!disabledFields.has(fieldId) && tempCamera[i] !== null) {
-            const camStart = getTargetFieldStart(fieldId);
+            const camStart = getInsertedFieldStart(fieldId); // Use inserted log's lower bound
             const camIncrement = calculateInsertedIncrement(fieldId);
             if (camIncrement > 0) {
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, camIncrement, logSheet.id, String(targetLocalId));
-              console.log(`✅ [handleSaveWithInsertBefore] Shifted ${fieldId}: start=${camStart}, increment=${camIncrement}`);
+              updateFileNumbers(logSheet.projectId, fieldId, camStart, camIncrement, logSheet.id, String(targetLocalId), String(tempProjectLocalId));
+              console.log(`✅ [handleSaveWithInsertBefore] Shifted ${fieldId}: start=${camStart} (inserted log lower bound), increment=${camIncrement}, tempCamera[${i}]=${tempCamera[i]} (upper bound), tempProjectLocalId=${tempProjectLocalId}`);
             }
           }
         }
