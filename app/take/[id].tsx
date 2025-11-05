@@ -7,7 +7,6 @@ import { useProjectStore } from '@/store/projectStore';
 import { useColors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType } from '@/types';
 import Toast from 'react-native-toast-message';
-import { handleSoundFileForDuplicateInsertion } from '@/components/CameraHandlers/SoundHandler';
 
 interface FieldType {
   id: string;
@@ -19,7 +18,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore, updateFileNumbers } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -1291,7 +1290,7 @@ export default function EditTakeScreen() {
             const exMax = Math.max(exFrom, exTo);
             if (!(curMax < exMin || curMin > exMax)) {
               // Duplicate detected: current range overlaps with existing range
-              return { fieldId, number: curFrom, existingEntry: sheet };
+                return { fieldId, number: curFrom, existingEntry: sheet };
             }
           }
           const existingVal = data[fieldId] as string | undefined;
@@ -1299,7 +1298,7 @@ export default function EditTakeScreen() {
             const exNum = parseNum(existingVal);
             if (exNum >= curMin && exNum <= curMax) {
               // Duplicate detected: existing value is within current range
-              return { fieldId, number: curMin, existingEntry: sheet };
+                return { fieldId, number: curMin, existingEntry: sheet };
             }
           }
         } else {
@@ -1310,7 +1309,7 @@ export default function EditTakeScreen() {
             const exMax = Math.max(exFrom, exTo);
             if (valNum >= exMin && valNum <= exMax) {
               // Duplicate detected: current value is within existing range
-              return { fieldId, number: valNum, existingEntry: sheet };
+                return { fieldId, number: valNum, existingEntry: sheet };
             }
           }
           if (data[fieldId] === currentVal) {
@@ -1359,8 +1358,11 @@ export default function EditTakeScreen() {
         
         Alert.alert(
           'Duplicate Detected',
-          `Camera and Sound files are duplicates found in ${location}. Please adjust the file numbers to avoid conflicts.`,
-          [{ text: 'OK', style: 'default' }]
+          `Camera and Sound files are duplicates found in ${location}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Insert Before', onPress: () => handleSaveWithInsertBefore(existingEntry) }
+          ]
         );
         return;
       } else {
@@ -1423,8 +1425,8 @@ export default function EditTakeScreen() {
           const targetClassification = e.data?.classification;
           const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           
-          Alert.alert(
-            'Duplicate Detected',
+            Alert.alert(
+              'Duplicate Detected',
             `Sound file is a duplicate at ${loc}. Please adjust the file numbers to avoid conflicts.`,
             [{ text: 'OK', style: 'default' }]
           );
@@ -1437,8 +1439,8 @@ export default function EditTakeScreen() {
           const targetClassification = e.data?.classification;
           const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
           
-          Alert.alert(
-            'Duplicate Detected',
+            Alert.alert(
+              'Duplicate Detected',
             `Camera file is a duplicate at ${loc}. Please adjust the file numbers to avoid conflicts.`,
             [{ text: 'OK', style: 'default' }]
           );
@@ -1587,9 +1589,12 @@ This would break the logging logic and create inconsistencies in the file number
       }
       
       Alert.alert(
-        'Duplicate Found',
-        `${label} file is a duplicate at ${loc}. The Log cannot be inserted with the current configuration to maintain the logging history and order.`,
-        [{ text: 'OK', style: 'default' }]
+        'Duplicate Detected',
+        `${label} file is a duplicate at ${loc}. Do you want to insert before?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Insert Before', onPress: () => handleSaveWithInsertBefore(e) }
+        ]
       );
       return;
     }
@@ -1601,13 +1606,319 @@ This would break the logging logic and create inconsistencies in the file number
       const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e?.data?.sceneNumber || 'Unknown'}, Shot ${e?.data?.shotNumber || 'Unknown'}, Take ${e?.data?.takeNumber || 'Unknown'}`);
       Alert.alert(
         'Duplicate Detected',
-        `A duplicate take was found at ${loc}. Please adjust the take number to avoid conflicts.`,
-        [{ text: 'OK', style: 'default' }]
+        `A duplicate take was found at ${loc}. Do you want to insert before?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Insert Before', onPress: () => handleSaveWithInsertBefore(e) }
+        ]
       );
       return;
     }
 
     saveNormally();
+  };
+
+  const handleSaveWithInsertBefore = async (targetDuplicate: any) => {
+    console.log('========== SAVE INITIATED: handleSaveWithInsertBefore ==========');
+    if (!logSheet || !project) return;
+    
+    try {
+      // 1. Save tempProjectLocalId (current log's projectLocalId before moving)
+      const tempProjectLocalId = parseInt(String((logSheet as any)?.projectLocalId || '0'), 10);
+      const targetLocalId = parseInt(String((targetDuplicate as any)?.projectLocalId || '0'), 10);
+      
+      if (Number.isNaN(tempProjectLocalId) || Number.isNaN(targetLocalId)) {
+        Alert.alert('Error', 'Could not determine log positions. Please try again.');
+        return;
+      }
+      
+      if (tempProjectLocalId === targetLocalId) {
+        Alert.alert('Error', 'Cannot insert log before itself.');
+        return;
+      }
+      
+      console.log(`[handleSaveWithInsertBefore] tempProjectLocalId: ${tempProjectLocalId}, targetLocalId: ${targetLocalId}`);
+      
+      // 2. Prepare the edited log data (preserve edited ranges)
+      let finalTakeData = { ...takeData } as Record<string, any>;
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      
+      if (cameraConfiguration > 1) {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fieldId] ?? true;
+          if (!isRecActive) {
+            delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
+    const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+      const applyRangePersistence = (data: Record<string, any>) => {
+        const out: Record<string, any> = { ...data };
+        const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+          const inRange = showRangeMode[fieldId] === true;
+          const r = rangeData[fieldId];
+          
+          // First, clear any existing range or single values
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          
+          // For disabled fields (waste), still save range data if it exists
+          if (!enabled) {
+            if (inRange && r && r.from && r.to) {
+              if (fieldId === 'soundFile') {
+                out['sound_from'] = pad4(r.from);
+                out['sound_to'] = pad4(r.to);
+              } else if (idx != null) {
+                out[`camera${idx}_from`] = pad4(r.from);
+                out[`camera${idx}_to`] = pad4(r.to);
+              }
+            }
+            return;
+          }
+          
+          // Field is enabled - apply normal logic
+          if (inRange && r && r.from && r.to) {
+            // Range mode - set _from and _to fields
+          if (fieldId === 'soundFile') {
+              out['sound_from'] = pad4(r.from);
+              out['sound_to'] = pad4(r.to);
+            } else if (idx != null) {
+              out[`camera${idx}_from`] = pad4(r.from);
+              out[`camera${idx}_to`] = pad4(r.to);
+            }
+          } else if (!inRange) {
+            // Single value mode
+            if (fieldId === 'soundFile' && data.soundFile) {
+              out.soundFile = data.soundFile;
+            } else if (idx != null) {
+              const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+              if (data[base]) {
+                out[base] = data[base];
+              }
+            }
+          }
+        };
+        
+        const soundEnabled = !disabledFields.has('soundFile');
+        handleField('soundFile', soundEnabled);
+        
+        if (cameraConfiguration === 1) {
+          const camEnabled = !disabledFields.has('cameraFile');
+          handleField('cameraFile', camEnabled, 1);
+      } else {
+          for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+            const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+            handleField(fieldId, camEnabled, i);
+          }
+        }
+        return out;
+      };
+      
+      finalTakeData = pruneDisabled(finalTakeData);
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      finalTakeData = applyRangePersistence(finalTakeData);
+      
+      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
+        ? shotDetails.filter(d => d !== 'MOS')
+        : shotDetails;
+      
+      const updatedData = {
+        ...finalTakeData,
+        classification: classification || '',
+        shotDetails: filteredShotDetails.length > 0 ? filteredShotDetails : [],
+        isGoodTake: isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+        cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
+      };
+      
+      // 3. Save the edited log with its edited ranges (preserved above)
+      await updateLogSheet(logSheet.id, updatedData);
+      console.log(`✅ [handleSaveWithInsertBefore] Saved edited log with preserved ranges`);
+      
+      // 4. Move the log before the target duplicate (update projectLocalId)
+      moveExistingLogBefore(logSheet.projectId, String(tempProjectLocalId), String(targetLocalId));
+      console.log(`✅ [handleSaveWithInsertBefore] Moved log: projectLocalId ${tempProjectLocalId} -> ${targetLocalId}`);
+      
+      // 5. Calculate tempCamera and tempSound from the shifted log's upper bounds
+      // Use the data we just saved (updatedData) since that's what was persisted
+      const shiftedLogData = updatedData;
+      
+      // Helper to get upper bound
+      const getFieldUpperBound = (data: any, fieldId: string): number | null => {
+        if (fieldId === 'soundFile') {
+          const soundFrom = data['sound_from'];
+          const soundTo = data['sound_to'];
+          if (soundFrom && soundTo) {
+            return Math.max(parseInt(soundFrom, 10) || 0, parseInt(soundTo, 10) || 0);
+          }
+          const soundFile = data['soundFile'];
+          if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+            if (soundFile.includes('-')) {
+              const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.max(s, e);
+            }
+            const num = parseInt(soundFile, 10);
+            if (!Number.isNaN(num)) return num;
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const cameraFrom = data[`camera${cameraNum}_from`];
+          const cameraTo = data[`camera${cameraNum}_to`];
+          if (cameraFrom && cameraTo) {
+            return Math.max(parseInt(cameraFrom, 10) || 0, parseInt(cameraTo, 10) || 0);
+          }
+          const cameraFile = data[fieldId];
+          if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+            if (cameraFile.includes('-')) {
+              const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.max(s, e);
+            }
+            const num = parseInt(cameraFile, 10);
+            if (!Number.isNaN(num)) return num;
+          }
+        }
+        return null;
+      };
+      
+      // Calculate tempSound from shifted log's upper bound
+      const tempSound = getFieldUpperBound(shiftedLogData, 'soundFile');
+      console.log(`[handleSaveWithInsertBefore] tempSound: ${tempSound}`);
+      
+      // Calculate tempCamera for each camera (multiple cameras need multiple tempCamera values)
+      const tempCamera: { [cameraNum: number]: number | null } = {};
+      if (cameraConfiguration === 1) {
+        tempCamera[1] = getFieldUpperBound(shiftedLogData, 'cameraFile');
+        console.log(`[handleSaveWithInsertBefore] tempCamera[1]: ${tempCamera[1]}`);
+            } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          tempCamera[i] = getFieldUpperBound(shiftedLogData, fieldId);
+          console.log(`[handleSaveWithInsertBefore] tempCamera[${i}]: ${tempCamera[i]}`);
+        }
+      }
+      
+      // 6. Call updateFileNumbers to shift subsequent logs
+      // This will shift all logs with projectLocalId > targetLocalId
+      // The increment parameter should be the inclusive count (number of files in the range)
+      const calculateInsertedIncrement = (fieldId: string): number => {
+        if (fieldId === 'soundFile') {
+          const soundFrom = shiftedLogData['sound_from'];
+          const soundTo = shiftedLogData['sound_to'];
+          if (soundFrom && soundTo) {
+            return Math.abs(parseInt(soundTo, 10) - parseInt(soundFrom, 10)) + 1; // Inclusive count
+          }
+          const soundFile = shiftedLogData['soundFile'];
+          if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
+            if (soundFile.includes('-')) {
+              const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.abs(e - s) + 1; // Inclusive count
+            }
+            return 1; // Single value
+          }
+          return 0; // Blank
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const cameraFrom = shiftedLogData[`camera${cameraNum}_from`];
+          const cameraTo = shiftedLogData[`camera${cameraNum}_to`];
+          if (cameraFrom && cameraTo) {
+            return Math.abs(parseInt(cameraTo, 10) - parseInt(cameraFrom, 10)) + 1; // Inclusive count
+          }
+          const cameraFile = shiftedLogData[fieldId];
+          if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
+            if (cameraFile.includes('-')) {
+              const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
+              return Math.abs(e - s) + 1; // Inclusive count
+            }
+            return 1; // Single value
+          }
+          return 0; // Blank
+        }
+        return 0;
+      };
+      
+      // Get the starting number for shifting (from target duplicate)
+      const getTargetFieldStart = (fieldId: string): number => {
+        const targetData = targetDuplicate.data || {};
+        if (fieldId === 'soundFile') {
+          const soundFrom = targetData['sound_from'];
+          const soundTo = targetData['sound_to'];
+          if (soundFrom) {
+            return parseInt(soundFrom, 10) || 0;
+          }
+          const soundFile = targetData['soundFile'];
+          if (soundFile && typeof soundFile === 'string') {
+            const num = parseInt(soundFile, 10);
+            if (!Number.isNaN(num)) return num;
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const cameraFrom = targetData[`camera${cameraNum}_from`];
+          if (cameraFrom) {
+            return parseInt(cameraFrom, 10) || 0;
+          }
+          const cameraFile = targetData[fieldId];
+          if (cameraFile && typeof cameraFile === 'string') {
+            const num = parseInt(cameraFile, 10);
+            if (!Number.isNaN(num)) return num;
+          }
+        }
+        return 0;
+      };
+      
+      // Shift sound files if not disabled
+      if (!disabledFields.has('soundFile') && tempSound !== null) {
+        const soundStart = getTargetFieldStart('soundFile');
+        const soundIncrement = calculateInsertedIncrement('soundFile');
+        if (soundIncrement > 0) {
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundIncrement, logSheet.id, String(targetLocalId));
+          console.log(`✅ [handleSaveWithInsertBefore] Shifted sound files: start=${soundStart}, increment=${soundIncrement}`);
+        }
+      }
+      
+      // Shift camera files if not disabled
+      if (cameraConfiguration === 1) {
+        if (!disabledFields.has('cameraFile') && tempCamera[1] !== null) {
+          const camStart = getTargetFieldStart('cameraFile');
+          const camIncrement = calculateInsertedIncrement('cameraFile');
+          if (camIncrement > 0) {
+            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camIncrement, logSheet.id, String(targetLocalId));
+            console.log(`✅ [handleSaveWithInsertBefore] Shifted camera files: start=${camStart}, increment=${camIncrement}`);
+          }
+        }
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (!disabledFields.has(fieldId) && tempCamera[i] !== null) {
+            const camStart = getTargetFieldStart(fieldId);
+            const camIncrement = calculateInsertedIncrement(fieldId);
+            if (camIncrement > 0) {
+              updateFileNumbers(logSheet.projectId, fieldId, camStart, camIncrement, logSheet.id, String(targetLocalId));
+              console.log(`✅ [handleSaveWithInsertBefore] Shifted ${fieldId}: start=${camStart}, increment=${camIncrement}`);
+            }
+          }
+        }
+      }
+      
+      // Emit ORDER AFTER snapshot
+    emitOrderAfterSnapshot(logSheet.projectId);
+    
+    router.back();
+    } catch (error) {
+      console.error('❌ [handleSaveWithInsertBefore] Error:', error);
+      Alert.alert('Error', 'Failed to insert log before duplicate. Please try again.');
+    }
   };
 
   const pruneDisabled = (data: Record<string, any>) => {
