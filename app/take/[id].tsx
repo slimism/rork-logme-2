@@ -2932,21 +2932,24 @@ This would break the logging logic and create inconsistencies in the file number
             // Get new range from edited take
             const newFrom = parseInt(rangeData[fieldId]?.from) || 
                            parseInt(takeData[fieldId] as string) || 0;
-            const newTo = parseInt(rangeData[fieldId]?.to) || 
-                         (parseInt(takeData[fieldId] as string) || newFrom);
+            // CRITICAL FIX: Calculate the recalculated 'to' value based on original range size
+            // This ensures we use the correct range size (7 files) not the old 'to' value (0015)
+            const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+            const calculatedNewTo = newFrom + originalRangeSize - 1; // Recalculate based on range size
 
             console.log(`🔍 [TWO-PHASE] Camera shift for ${fieldId}:`, {
               projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
               editedLogId: logSheet.id,
               originalRange: `${originalFrom}-${originalTo}`,
-              newRange: `${newFrom}-${newTo}`,
+              originalRangeSize: originalRangeSize,
+              newRange: `${newFrom}-${calculatedNewTo}`,
               excludeLogId: logSheet.id
             });
 
             // PHASE 1: Shift files that are newly consumed (before original range)
             let phase1Delta = 0;
             if (newFrom < originalFrom) {
-              phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+              phase1Delta = Math.abs(calculatedNewTo - newFrom) + 1; // Use recalculated 'to' value
               
               console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id})`);
               
@@ -2999,21 +3002,24 @@ This would break the logging logic and create inconsistencies in the file number
                 // Get new range from edited take
                 const newFrom = parseInt(rangeData[fieldId]?.from) || 
                                parseInt(takeData[fieldId] as string) || 0;
-                const newTo = parseInt(rangeData[fieldId]?.to) || 
-                             (parseInt(takeData[fieldId] as string) || newFrom);
+                // CRITICAL FIX: Calculate the recalculated 'to' value based on original range size
+                // This ensures we use the correct range size (7 files) not the old 'to' value (0015)
+                const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+                const calculatedNewTo = newFrom + originalRangeSize - 1; // Recalculate based on range size
 
                 console.log(`🔍 [TWO-PHASE] Camera shift for ${fieldId}:`, {
                   projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
                   editedLogId: logSheet.id,
                   originalRange: `${originalFrom}-${originalTo}`,
-                  newRange: `${newFrom}-${newTo}`,
+                  originalRangeSize: originalRangeSize,
+                  newRange: `${newFrom}-${calculatedNewTo}`,
                   excludeLogId: logSheet.id
                 });
 
                 // PHASE 1: Shift files that are newly consumed (before original range)
                 let phase1Delta = 0;
                 if (newFrom < originalFrom) {
-                  phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+                  phase1Delta = Math.abs(calculatedNewTo - newFrom) + 1; // Use recalculated 'to' value
                   
                   console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id})`);
                   
