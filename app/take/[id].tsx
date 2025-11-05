@@ -3304,13 +3304,29 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     // Update scene/shot/take to match the target position
+    // If target has scene/shot/take, use them; otherwise preserve original values from edited take
     const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
     const targetShotNumber = existingEntry.data?.shotNumber as string | undefined;
     const targetTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
 
-    newLogData.sceneNumber = targetSceneNumber;
-    newLogData.shotNumber = targetShotNumber;
-    if (!Number.isNaN(targetTake)) {
+    // Only use target's scene/shot if they exist (don't overwrite with undefined for SFX/Ambience)
+    if (targetSceneNumber) {
+      newLogData.sceneNumber = targetSceneNumber;
+    } else {
+      // Preserve original scene number from edited take
+      newLogData.sceneNumber = logSheet.data?.sceneNumber;
+      console.log(`[handleSaveWithDuplicatePair] Target has no scene, preserving original: ${logSheet.data?.sceneNumber} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
+    }
+    
+    if (targetShotNumber) {
+      newLogData.shotNumber = targetShotNumber;
+    } else {
+      // Preserve original shot number from edited take
+      newLogData.shotNumber = logSheet.data?.shotNumber;
+      console.log(`[handleSaveWithDuplicatePair] Target has no shot, preserving original: ${logSheet.data?.shotNumber} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
+    }
+    
+    if (!Number.isNaN(targetTake) && targetTake > 0) {
       newLogData.takeNumber = existingEntry.data?.takeNumber;
       const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
       const maxTake = originalTakeNumber > targetTake ? originalTakeNumber - 1 : undefined;
@@ -3321,7 +3337,13 @@ This would break the logging logic and create inconsistencies in the file number
         originalTakeNumber,
         maxTakeNumber: maxTake
       });
-      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id, maxTake);
+      // Only call updateTakeNumbers if target has scene/shot (not for SFX/Ambience)
+      if (targetSceneNumber && targetShotNumber) {
+        updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTake, 1, logSheet.id, maxTake);
+      }
+    } else {
+      // Preserve original take number from edited take if target doesn't have one
+      newLogData.takeNumber = logSheet.data?.takeNumber;
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
