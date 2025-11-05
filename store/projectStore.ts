@@ -29,7 +29,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, maxNumber?: number) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => void;
   recalculateFileNumbersAfterMove: (projectId: string, movedLogId: string, targetLocalId: string) => void;
 }
 
@@ -800,7 +800,7 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, maxNumber?: number) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => {
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
@@ -808,18 +808,7 @@ export const useProjectStore = create<ProjectState>()(
           fromNumber,
           increment,
           excludeLogId,
-          targetLocalId,
-          maxNumber
-        });
-        
-        console.log('🔍 [updateFileNumbers] ENTRY:', {
-          projectId,
-          fieldId,
-          fromNumber,
-          increment,
-          excludeLogId: excludeLogId || 'NOT PROVIDED',
-          targetLocalId: targetLocalId || 'NOT PROVIDED',
-          maxNumber: maxNumber || 'NOT PROVIDED'
+          targetLocalId
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -881,74 +870,16 @@ export const useProjectStore = create<ProjectState>()(
 
           const updatedSimple = activeState.logSheets.map((logSheet) => {
             if (logSheet.projectId !== projectId) return logSheet;
-            
-            // Check exclusion first - this is critical for the edited take
-            if (excludeLogId && logSheet.id === excludeLogId) {
-              console.log(`🚫 [updateFileNumbers] EXCLUDING logSheet:`, {
-                id: logSheet.id,
-                projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-                excludeLogId,
-                fieldId,
-                reason: 'excludeLogId matches logSheet.id',
-                data: {
-                  camera1_from: (logSheet.data as any)?.camera1_from,
-                  camera1_to: (logSheet.data as any)?.camera1_to,
-                  cameraFile: (logSheet.data as any)?.cameraFile,
-                  cameraFile1: (logSheet.data as any)?.cameraFile1,
-                  cameraFile2: (logSheet.data as any)?.cameraFile2
-                }
-              });
-              return logSheet;
-            }
+            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
 
             const data = logSheet.data || {} as any;
             const fieldVal = getFieldValue(data, fieldId);
-            if (!fieldVal || fieldVal.value === null) {
-              // Log why we're skipping (blank/waste field)
-              return logSheet;
-            }
+            if (!fieldVal || fieldVal.value === null) return logSheet;
 
             // Only shift entries at or after fromNumber
-            if (fieldVal.upper < fromNumber) {
-              console.log(`⏭️ [updateFileNumbers] SKIPPING (below fromNumber):`, {
-                logSheetId: logSheet.id,
-                projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-                fieldId,
-                fieldValUpper: fieldVal.upper,
-                fromNumber
-              });
-              return logSheet;
-            }
-            
-            // Apply maxNumber limit if provided
-            if (maxNumber !== undefined && fieldVal.lower > maxNumber) {
-              console.log(`⏭️ [updateFileNumbers] SKIPPING (above maxNumber):`, {
-                logSheetId: logSheet.id,
-                projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-                fieldId,
-                fieldValLower: fieldVal.lower,
-                maxNumber
-              });
-              return logSheet;
-            }
+            if (fieldVal.upper < fromNumber) return logSheet;
 
             const newData: Record<string, any> = { ...data };
-
-            // Log that we're about to shift this logSheet
-            console.log(`📝 [updateFileNumbers] SHIFTING logSheet:`, {
-              logSheetId: logSheet.id,
-              projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-              fieldId,
-              before: {
-                isRange: fieldVal.isRange,
-                lower: fieldVal.lower,
-                upper: fieldVal.upper,
-                value: fieldVal.value
-              },
-              increment,
-              fromNumber,
-              maxNumber: maxNumber || 'unlimited'
-            });
 
             if (fieldId === 'soundFile') {
               if (fieldVal.isRange) {
@@ -977,28 +908,11 @@ export const useProjectStore = create<ProjectState>()(
                 if (typeof data[fieldId] === 'string' && (data[fieldId] as string).includes('-')) {
                   newData[fieldId] = `${pad4(newLower)}-${pad4(newUpper)}`;
                 }
-                
-                console.log(`✅ [updateFileNumbers] SHIFTED range:`, {
-                  logSheetId: logSheet.id,
-                  projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-                  fieldId,
-                  from: `${fieldVal.lower} → ${newLower}`,
-                  to: `${fieldVal.upper} → ${newUpper}`,
-                  fromKey,
-                  toKey
-                });
               } else {
                 const newSingle = fieldVal.value! + increment;
                 newData[fieldId] = pad4(newSingle);
                 delete newData[fromKey];
                 delete newData[toKey];
-                
-                console.log(`✅ [updateFileNumbers] SHIFTED single:`, {
-                  logSheetId: logSheet.id,
-                  projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
-                  fieldId,
-                  value: `${fieldVal.value} → ${newSingle}`
-                });
               }
             }
 
@@ -1031,21 +945,7 @@ export const useProjectStore = create<ProjectState>()(
             console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
           } catch {}
 
-          const shiftedCount = updatedSimple.filter((s, i) => s !== state.logSheets[i]).length;
-          
-          console.log(`📊 [updateFileNumbers] SUMMARY:`, {
-            projectId,
-            fieldId,
-            fromNumber,
-            increment,
-            maxNumber: maxNumber || 'unlimited',
-            excludeLogId: excludeLogId || 'NONE',
-            totalLogSheets: activeState.logSheets.filter(s => s.projectId === projectId).length,
-            shiftedCount,
-            excluded: excludeLogId ? 1 : 0
-          });
-          
-          logger.logFunctionExit({ shiftedCount });
+          logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
           return { logSheets: updatedSimple };
 
           // Helper to find last valid field value before a given take
