@@ -592,10 +592,7 @@ export const useProjectStore = create<ProjectState>()(
           // This ensures we see the latest updates when processing multiple camera fields
           const activeState = currentState;
           
-          // SIMPLE SHIFTING: remove anchoring logic. Shift any values >= fromNumber by `increment`.
-          const pad4 = (n: number) => String(n).padStart(4, '0');
-
-          // Helper to get field value and determine if blank
+          // Helper to get field value and determine if blank (used by both shifting logics)
           const getFieldValue = (sheetData: any, fId: string): { value: number | null; isRange: boolean; upper: number; lower: number } | null => {
             if (fId === 'soundFile') {
               const soundFrom = sheetData['sound_from'];
@@ -640,85 +637,18 @@ export const useProjectStore = create<ProjectState>()(
             return null; // Blank/waste field
           };
 
-          const updatedSimple = activeState.logSheets.map((logSheet) => {
-            if (logSheet.projectId !== projectId) return logSheet;
-            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
-
-            const data = logSheet.data || {} as any;
-            const fieldVal = getFieldValue(data, fieldId);
-            if (!fieldVal || fieldVal.value === null) return logSheet;
-
-            // Only shift entries at or after fromNumber
-            if (fieldVal.upper < fromNumber) return logSheet;
-
-            const newData: Record<string, any> = { ...data };
-
-            if (fieldId === 'soundFile') {
-              if (fieldVal.isRange) {
-                const newLower = fieldVal.lower + increment;
-                const newUpper = fieldVal.upper + increment;
-                newData['sound_from'] = pad4(newLower);
-                newData['sound_to'] = pad4(newUpper);
-                if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
-                  newData.soundFile = `${pad4(newLower)}-${pad4(newUpper)}`;
-                }
-              } else {
-                const newSingle = fieldVal.value! + increment;
-                newData['soundFile'] = pad4(newSingle);
-                delete newData['sound_from'];
-                delete newData['sound_to'];
-              }
-            } else if (fieldId.startsWith('cameraFile')) {
-              const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-              const fromKey = `camera${cameraNum}_from` as const;
-              const toKey = `camera${cameraNum}_to` as const;
-              if (fieldVal.isRange) {
-                const newLower = fieldVal.lower + increment;
-                const newUpper = fieldVal.upper + increment;
-                newData[fromKey] = pad4(newLower);
-                newData[toKey] = pad4(newUpper);
-                if (typeof data[fieldId] === 'string' && (data[fieldId] as string).includes('-')) {
-                  newData[fieldId] = `${pad4(newLower)}-${pad4(newUpper)}`;
-                }
-              } else {
-                const newSingle = fieldVal.value! + increment;
-                newData[fieldId] = pad4(newSingle);
-                delete newData[fromKey];
-                delete newData[toKey];
-              }
+          // Always use sequential shifting logic (tempCamera/tempSound)
+          // If targetLocalId is not provided, try to determine it from the excluded log (inserted log)
+          let resolvedTargetLocalId = targetLocalId;
+          if (!resolvedTargetLocalId && excludeLogId) {
+            const insertedLog = activeState.logSheets.find(s => s.id === excludeLogId && s.projectId === projectId);
+            if (insertedLog && (insertedLog as any).projectLocalId) {
+              resolvedTargetLocalId = String((insertedLog as any).projectLocalId);
             }
-
-            if (JSON.stringify(newData) !== JSON.stringify(data)) {
-              logger.logSave('updateFileNumbers', logSheet.id, newData, data);
-              return { ...logSheet, data: newData, updatedAt: new Date().toISOString() };
-            }
-            return logSheet;
-          });
-
-          // Emit ORDER AFTER snapshot for this project to ensure latest entry appears populated
-          try {
-            const orderAfterFiles = updatedSimple
-              .filter(s => s.projectId === projectId)
-              .sort((a, b) => (parseInt((a as any).projectLocalId as string, 10) || 0) - (parseInt((b as any).projectLocalId as string, 10) || 0))
-              .map(s => ({
-                id: (s as any).projectLocalId || s.id,
-                scene: (s.data as any)?.sceneNumber,
-                shot: (s.data as any)?.shotNumber,
-                take: (s.data as any)?.takeNumber,
-                camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
-                  ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
-                  : ((s.data as any)?.cameraFile || undefined),
-                sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
-                  ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
-                  : ((s.data as any)?.soundFile || undefined),
-                classification: (s.data as any)?.classification || undefined,
-                ...(() => { const d:any=(s as any).data||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
-              }));
-            console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfterFiles);
-          } catch {}
-
-          logger.logFunctionExit({ shiftedCount: updatedSimple.filter((s, i) => s !== state.logSheets[i]).length });
-          return { logSheets: updatedSimple };
+          }
+          
+          // Use resolvedTargetLocalId throughout the sequential logic
+          const effectiveTargetLocalId = resolvedTargetLocalId;
 
           // Helper to find last valid field value before a given take
           const getPreviousValidValue = (logSheets: LogSheet[], currentTakeNum: number, sceneNum: string, shotNum: string, fId: string, excludeIds: Set<string>): number | null => {
@@ -773,13 +703,13 @@ export const useProjectStore = create<ProjectState>()(
           });
           
           // Sort each group by take number
-          // If targetLocalId is provided, also sort by projectLocalId to ensure correct processing order
+          // If effectiveTargetLocalId is provided, also sort by projectLocalId to ensure correct processing order
           sheetsBySceneShot.forEach((sheets, key) => {
             sheets.sort((a, b) => {
               const aTake = parseInt(a.data?.takeNumber as string || '0', 10);
               const bTake = parseInt(b.data?.takeNumber as string || '0', 10);
-              // If targetLocalId is provided, prioritize projectLocalId ordering
-              if (targetLocalId) {
+              // If effectiveTargetLocalId is provided, prioritize projectLocalId ordering
+              if (effectiveTargetLocalId) {
                 const aLocalId = parseInt((a as any).projectLocalId as string || '0', 10) || 0;
                 const bLocalId = parseInt((b as any).projectLocalId as string || '0', 10) || 0;
                 if (aLocalId !== bLocalId) {
@@ -1003,9 +933,9 @@ export const useProjectStore = create<ProjectState>()(
                 // Field has a value
                 // Shift if:
                 // 1. File number matches condition (currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber), OR
-                // 2. targetLocalId is provided and this take's projectLocalId > targetLocalId (for shifting subsequent takes when editing existing take)
+                // 2. effectiveTargetLocalId is provided and this take's projectLocalId > effectiveTargetLocalId (for shifting subsequent takes when editing existing take)
                 const logSheetLocalId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
-                const targetLocalIdNum = targetLocalId ? (parseInt(targetLocalId, 10) || 0) : null;
+                const targetLocalIdNum = effectiveTargetLocalId ? (parseInt(effectiveTargetLocalId, 10) || 0) : null;
                 const needsShiftingByFileNumber = currentFieldVal.lower >= fromNumber || currentFieldVal.upper >= fromNumber;
                 const needsShiftingByLocalId = targetLocalIdNum !== null && logSheetLocalId > targetLocalIdNum;
                 
@@ -1088,8 +1018,8 @@ export const useProjectStore = create<ProjectState>()(
                   }
                   
                   const logSheetLocalId = (logSheet as any).projectLocalId;
-                  const isTargetDuplicate = targetLocalId && 
-                    (parseInt(logSheetLocalId as string || '0', 10) || 0) === (parseInt(targetLocalId, 10) || 0);
+                  const isTargetDuplicate = effectiveTargetLocalId && 
+                    (parseInt(logSheetLocalId as string || '0', 10) || 0) === (parseInt(effectiveTargetLocalId, 10) || 0);
                   
                   if (isTargetDuplicate) {
                     logger.logDebug(`Using target duplicate's own original delta (${delta}) for shifting (Take ${takeNum}, projectLocalId=${logSheetLocalId})`);
