@@ -3720,11 +3720,11 @@ This would break the logging logic and create inconsistencies in the file number
     if (camCount === 1) {
       const fieldId = 'cameraFile';
       if (!disabledFields.has(fieldId)) {
-        // Get original range from existingEntry
-        const originalFrom = parseInt(existingEntry.data?.['camera1_from'] as string) || 
-                             parseInt(existingEntry.data?.[fieldId] as string) || 0;
-        const originalTo = parseInt(existingEntry.data?.['camera1_to'] as string) || 
-                          (parseInt(existingEntry.data?.[fieldId] as string) || originalFrom);
+        // Get original range from logSheet.data (the take being edited)
+        const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
+                             parseInt(logSheet.data?.[fieldId] as string) || 0;
+        const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
+                          (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
 
         // Get new range from edited take
         const newFrom = parseInt(rangeData[fieldId]?.from) || 
@@ -3736,7 +3736,7 @@ This would break the logging logic and create inconsistencies in the file number
         if (newFrom < originalFrom) {
           const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
           
-          console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta}`);
+          console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
           
           updateFileNumbers(
             logSheet.projectId, 
@@ -3753,7 +3753,7 @@ This would break the logging logic and create inconsistencies in the file number
         const phase2Delta = originalFrom - newFrom;
         
         if (phase2Delta !== 0) {
-          console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta}`);
+          console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
           
           updateFileNumbers(
             logSheet.projectId, 
@@ -3771,11 +3771,11 @@ This would break the logging logic and create inconsistencies in the file number
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
           if (!disabledFields.has(fieldId)) {
-            // Get original range from existingEntry
-            const originalFrom = parseInt(existingEntry.data?.[`camera${i}_from`] as string) || 
-                                 parseInt(existingEntry.data?.[fieldId] as string) || 0;
-            const originalTo = parseInt(existingEntry.data?.[`camera${i}_to`] as string) || 
-                              (parseInt(existingEntry.data?.[fieldId] as string) || originalFrom);
+            // Get original range from logSheet.data (the take being edited)
+            const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
+                                 parseInt(logSheet.data?.[fieldId] as string) || 0;
+            const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
+                              (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
 
             // Get new range from edited take
             const newFrom = parseInt(rangeData[fieldId]?.from) || 
@@ -3787,7 +3787,7 @@ This would break the logging logic and create inconsistencies in the file number
             if (newFrom < originalFrom) {
               const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
               
-              console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta}`);
+              console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
               
               updateFileNumbers(
                 logSheet.projectId, 
@@ -3804,7 +3804,7 @@ This would break the logging logic and create inconsistencies in the file number
             const phase2Delta = originalFrom - newFrom;
             
             if (phase2Delta !== 0) {
-              console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta}`);
+              console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
               
               updateFileNumbers(
                 logSheet.projectId, 
