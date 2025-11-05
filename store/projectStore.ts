@@ -1048,14 +1048,14 @@ export const useProjectStore = create<ProjectState>()(
                     shiftBase = currentFieldVal.lower >= fromNumber ? currentFieldVal.lower : currentFieldVal.upper;
                   }
                   
-                  // Calculate new bounds: newLower = shiftBase + 1, newUpper = newLower + delta
+                  // Calculate new bounds: newLower = shiftBase + 1, newUpper based on whether it's a range or single value
                   // Delta calculation rules:
                   // - For ranges: delta = upper - lower (difference between bounds)
-                  // - For single values: delta = 1 (the field represents 1 file number, so span is 1)
+                  // - For single values: delta = 0 (no range, just a single file number)
                   // - For blank/waste: delta = 0 (field stays blank, temp variable unchanged)
-                  // Formula: newLower = tempValue + 1, newUpper = newLower + delta
-                  // For single values: newLower = tempValue + 1, newUpper = newLower + 1
-                  //   (e.g., tempCamera = 4: newLower = 5, newUpper = 6, but we store 5 as single value, tempCamera = 5)
+                  // Formula: newLower = tempValue + 1, newUpper = newLower + delta (for ranges) or newLower (for single values)
+                  // For single values: newLower = tempValue + 1, newUpper = newLower (single file number, no range)
+                  //   (e.g., tempCamera = 4: newLower = 5, newUpper = 5, store 5 as single value, tempCamera = 5)
                   // For ranges: newLower = tempValue + 1, newUpper = newLower + (upper - lower)
                   //   (e.g., tempCamera = 4, range 001-003 (delta=2): newLower = 5, newUpper = 7)
                   let newLower = shiftBase + 1;
@@ -1097,7 +1097,9 @@ export const useProjectStore = create<ProjectState>()(
                     logger.logDebug(`Using take's own original delta (${delta}) for subsequent take (Take ${takeNum}, projectLocalId=${logSheetLocalId})`);
                   }
                   
-                  let newUpper = newLower + delta;
+                  // For single values, newUpper equals newLower (no range)
+                  // For ranges, newUpper = newLower + delta
+                  let newUpper = currentFieldVal.isRange ? (newLower + delta) : newLower;
                   
                   // Check if value is already correctly shifted (target duplicate case)
                   // This happens when the target duplicate was already shifted by duplicate insertion logic
@@ -1176,9 +1178,9 @@ export const useProjectStore = create<ProjectState>()(
                       soundNewLower = soundShiftBase + 1;
                       soundNewUpper = soundNewLower + soundDeltaForShift;
                     } else {
-                      // Single value: newLower = tempSound + delta (single file number)
-                      // For single values, delta represents the span (1 file), so we add it directly
-                      soundNewLower = soundShiftBase + soundDeltaForShift;
+                      // Single value: newLower = tempSound + 1 (single file number)
+                      // For single values, newUpper equals newLower (no range)
+                      soundNewLower = soundShiftBase + 1;
                       soundNewUpper = soundNewLower; // Single value: upper equals lower
                     }
                     
@@ -1257,7 +1259,9 @@ export const useProjectStore = create<ProjectState>()(
                       // delta is already set correctly above: inserted log's delta for target duplicate,
                       // or the take's own original delta for subsequent takes
                       newLower = tempCamera[cameraNum]! + 1;
-                      newUpper = newLower + delta;
+                      // For single values, newUpper should equal newLower (no range)
+                      // For ranges, newUpper = newLower + delta
+                      newUpper = currentFieldVal.isRange ? (newLower + delta) : newLower;
                       
                       const cameraCalcFormula = currentFieldVal.isRange
                         ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
