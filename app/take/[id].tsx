@@ -18,7 +18,7 @@ interface FieldType {
 
 export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore, updateFileNumbers } = useProjectStore();
+  const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore } = useProjectStore();
   const colors = useColors();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
@@ -1769,11 +1769,12 @@ This would break the logging logic and create inconsistencies in the file number
       moveExistingLogBefore(logSheet.projectId, String(tempProjectLocalId), String(targetLocalId));
       console.log(`✅ [handleSaveWithInsertBefore] Moved log: projectLocalId ${tempProjectLocalId} -> ${targetLocalId}`);
       
-      // 5. Calculate tempCamera and tempSound from the shifted log's upper bounds
-      // Use the data we just saved (updatedData) since that's what was persisted
-      const shiftedLogData = updatedData;
+      // 5. Sequential shifting: Process subsequent takes after target duplicate using tempCamera and tempSound
+      // Get all logs in the same scene/shot that come after the target duplicate
+      const currentState = useProjectStore.getState();
+      const projectLogSheets = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
       
-      // Helper to get upper bound
+      // Helper to get upper bound from log data
       const getFieldUpperBound = (data: any, fieldId: string): number | null => {
         if (fieldId === 'soundFile') {
           const soundFrom = data['sound_from'];
@@ -1810,16 +1811,31 @@ This would break the logging logic and create inconsistencies in the file number
         return null;
       };
       
-      // Calculate tempSound from shifted log's upper bound
-      const tempSound = getFieldUpperBound(shiftedLogData, 'soundFile');
+      // Helper to get range from data
+      const getRangeFromData = (data: any, fieldId: string): { from: string; to: string } | null => {
+        if (fieldId === 'soundFile') {
+          const from = data['sound_from'];
+          const to = data['sound_to'];
+          if (from && to) return { from, to };
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const from = data[`camera${cameraNum}_from`];
+          const to = data[`camera${cameraNum}_to`];
+          if (from && to) return { from, to };
+        }
+        return null;
+      };
+      
+      // Calculate tempSound and tempCamera from the shifted log (inserted log)
+      const shiftedLogData = updatedData;
+      let tempSound = getFieldUpperBound(shiftedLogData, 'soundFile');
       console.log(`[handleSaveWithInsertBefore] tempSound: ${tempSound}`);
       
-      // Calculate tempCamera for each camera (multiple cameras need multiple tempCamera values)
       const tempCamera: { [cameraNum: number]: number | null } = {};
       if (cameraConfiguration === 1) {
         tempCamera[1] = getFieldUpperBound(shiftedLogData, 'cameraFile');
         console.log(`[handleSaveWithInsertBefore] tempCamera[1]: ${tempCamera[1]}`);
-            } else {
+      } else {
         for (let i = 1; i <= cameraConfiguration; i++) {
           const fieldId = `cameraFile${i}`;
           tempCamera[i] = getFieldUpperBound(shiftedLogData, fieldId);
@@ -1827,107 +1843,173 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      // 6. Call updateFileNumbers to shift subsequent logs
-      // This will shift all logs with projectLocalId > targetLocalId
-      // The increment parameter should be the inclusive count (number of files in the range)
-      const calculateInsertedIncrement = (fieldId: string): number => {
-        if (fieldId === 'soundFile') {
-          const soundFrom = shiftedLogData['sound_from'];
-          const soundTo = shiftedLogData['sound_to'];
-          if (soundFrom && soundTo) {
-            return Math.abs(parseInt(soundTo, 10) - parseInt(soundFrom, 10)) + 1; // Inclusive count
-          }
-          const soundFile = shiftedLogData['soundFile'];
-          if (soundFile && typeof soundFile === 'string' && soundFile.trim()) {
-            if (soundFile.includes('-')) {
-              const [s, e] = soundFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
-              return Math.abs(e - s) + 1; // Inclusive count
-            }
-            return 1; // Single value
-          }
-          return 0; // Blank
-        } else if (fieldId.startsWith('cameraFile')) {
-          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-          const cameraFrom = shiftedLogData[`camera${cameraNum}_from`];
-          const cameraTo = shiftedLogData[`camera${cameraNum}_to`];
-          if (cameraFrom && cameraTo) {
-            return Math.abs(parseInt(cameraTo, 10) - parseInt(cameraFrom, 10)) + 1; // Inclusive count
-          }
-          const cameraFile = shiftedLogData[fieldId];
-          if (cameraFile && typeof cameraFile === 'string' && cameraFile.trim()) {
-            if (cameraFile.includes('-')) {
-              const [s, e] = cameraFile.split('-').map((x: string) => parseInt(x.trim(), 10) || 0);
-              return Math.abs(e - s) + 1; // Inclusive count
-            }
-            return 1; // Single value
-          }
-          return 0; // Blank
-        }
-        return 0;
-      };
+      // Find all subsequent takes after target duplicate (same scene/shot, ordered by take number)
+      const targetTakeNum = parseInt(targetTakeNumber || '0', 10);
+      const subsequentTakes = projectLogSheets
+        .filter(sheet => {
+          if (sheet.id === logSheet.id) return false; // Exclude the shifted log itself
+          const data = sheet.data || {};
+          return (
+            data.sceneNumber === targetSceneNumber &&
+            data.shotNumber === targetShotNumber
+          );
+        })
+        .map(sheet => {
+          const data = sheet.data || {};
+          const takeNum = parseInt(data.takeNumber as string || '0', 10);
+          return { sheet, takeNum };
+        })
+        .filter(({ takeNum }) => !isNaN(takeNum) && takeNum > targetTakeNum)
+        .sort((a, b) => a.takeNum - b.takeNum)
+        .map(({ sheet }) => sheet);
       
-      // Get the starting number for shifting (from target duplicate)
-      const getTargetFieldStart = (fieldId: string): number => {
-        const targetData = targetDuplicate.data || {};
-        if (fieldId === 'soundFile') {
-          const soundFrom = targetData['sound_from'];
-          const soundTo = targetData['sound_to'];
-          if (soundFrom) {
-            return parseInt(soundFrom, 10) || 0;
+      console.log(`[handleSaveWithInsertBefore] Found ${subsequentTakes.length} subsequent takes to shift sequentially`);
+      
+      // Process each subsequent take sequentially
+      let previousTakeData = shiftedLogData;
+      
+      for (const subsequentTake of subsequentTakes) {
+        const subsequentData = subsequentTake.data || {};
+        const updatedSubsequentData: Record<string, any> = { ...subsequentData };
+        let hasChanges = false;
+        
+        // Helper to calculate new field value based on temp variable and target's delta
+        const calculateNewFieldValue = (fieldId: string, tempValue: number | null): boolean => {
+          if (tempValue === null) return false; // Skip if temp value not available
+          
+          // Get target field's current value and delta
+          const targetRange = getRangeFromData(subsequentData, fieldId);
+          const targetSingleValue = subsequentData[fieldId];
+          const targetIsBlank = !targetRange && (!targetSingleValue || !targetSingleValue.trim());
+          
+          if (targetIsBlank) {
+            // Blank field stays blank - temp variable persists but field doesn't shift
+            return false;
           }
-          const soundFile = targetData['soundFile'];
-          if (soundFile && typeof soundFile === 'string') {
-            const num = parseInt(soundFile, 10);
-            if (!Number.isNaN(num)) return num;
+          
+          // Calculate delta (upper - lower, not inclusive count)
+          let targetDelta = 0;
+          if (targetRange) {
+            const fromNum = parseInt(targetRange.from, 10) || 0;
+            const toNum = parseInt(targetRange.to, 10) || 0;
+            const upper = Math.max(fromNum, toNum);
+            const lower = Math.min(fromNum, toNum);
+            targetDelta = Math.abs(upper - lower);
+          } else if (targetSingleValue && typeof targetSingleValue === 'string' && targetSingleValue.includes('-')) {
+            const parts = targetSingleValue.split('-').map(p => parseInt(p.trim(), 10) || 0);
+            if (parts.length === 2) {
+              const upper = Math.max(parts[0], parts[1]);
+              const lower = Math.min(parts[0], parts[1]);
+              targetDelta = Math.abs(upper - lower);
+            }
           }
-        } else if (fieldId.startsWith('cameraFile')) {
-          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-          const cameraFrom = targetData[`camera${cameraNum}_from`];
-          if (cameraFrom) {
-            return parseInt(cameraFrom, 10) || 0;
+          
+          // Calculate new bounds: newLower = tempValue + 1, newUpper = newLower + targetDelta
+          const newLower = tempValue + 1;
+          const newUpper = newLower + targetDelta;
+          
+          // Update the field
+          if (fieldId === 'soundFile') {
+            if (targetRange || (targetSingleValue && typeof targetSingleValue === 'string' && targetSingleValue.includes('-'))) {
+              updatedSubsequentData['sound_from'] = String(newLower).padStart(4, '0');
+              updatedSubsequentData['sound_to'] = String(newUpper).padStart(4, '0');
+              if (typeof subsequentData.soundFile === 'string' && subsequentData.soundFile.includes('-')) {
+                updatedSubsequentData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+              }
+            } else {
+              updatedSubsequentData.soundFile = String(newLower).padStart(4, '0');
+              delete updatedSubsequentData['sound_from'];
+              delete updatedSubsequentData['sound_to'];
+            }
+            // Update tempSound to new upper bound
+            tempSound = newUpper;
+            return true;
+          } else if (fieldId.startsWith('cameraFile')) {
+            const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+            const fromKey = `camera${cameraNum}_from`;
+            const toKey = `camera${cameraNum}_to`;
+            
+            if (targetRange || (targetSingleValue && typeof targetSingleValue === 'string' && targetSingleValue.includes('-'))) {
+              updatedSubsequentData[fromKey] = String(newLower).padStart(4, '0');
+              updatedSubsequentData[toKey] = String(newUpper).padStart(4, '0');
+              if (typeof subsequentData[fieldId] === 'string' && (subsequentData[fieldId] as string).includes('-')) {
+                updatedSubsequentData[fieldId] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
+              }
+            } else {
+              updatedSubsequentData[fieldId] = String(newLower).padStart(4, '0');
+              delete updatedSubsequentData[fromKey];
+              delete updatedSubsequentData[toKey];
+            }
+            // Update tempCamera to new upper bound
+            tempCamera[cameraNum] = newUpper;
+            return true;
           }
-          const cameraFile = targetData[fieldId];
-          if (cameraFile && typeof cameraFile === 'string') {
-            const num = parseInt(cameraFile, 10);
-            if (!Number.isNaN(num)) return num;
+          return false;
+        };
+        
+        // Shift sound file if not disabled and tempSound is available
+        if (!disabledFields.has('soundFile') && tempSound !== null) {
+          if (calculateNewFieldValue('soundFile', tempSound)) {
+            hasChanges = true;
           }
         }
-        return 0;
-      };
-      
-      // Shift sound files if not disabled
-      if (!disabledFields.has('soundFile') && tempSound !== null) {
-        const soundStart = getTargetFieldStart('soundFile');
-        const soundIncrement = calculateInsertedIncrement('soundFile');
-        if (soundIncrement > 0) {
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, soundIncrement, logSheet.id, String(targetLocalId));
-          console.log(`✅ [handleSaveWithInsertBefore] Shifted sound files: start=${soundStart}, increment=${soundIncrement}`);
+        
+        // Shift camera files if not disabled and tempCamera is available
+        if (cameraConfiguration === 1) {
+          if (!disabledFields.has('cameraFile') && tempCamera[1] !== null) {
+            if (calculateNewFieldValue('cameraFile', tempCamera[1])) {
+              hasChanges = true;
+            }
+          }
+        } else {
+          for (let i = 1; i <= cameraConfiguration; i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!disabledFields.has(fieldId) && tempCamera[i] !== null) {
+              if (calculateNewFieldValue(fieldId, tempCamera[i])) {
+                hasChanges = true;
+              }
+            }
+          }
+        }
+        
+        // Update the take if there were changes
+        if (hasChanges) {
+          await updateLogSheet(subsequentTake.id, updatedSubsequentData);
+          console.log(`✅ [handleSaveWithInsertBefore] Sequentially shifted subsequent take ${subsequentTake.id} (Take ${subsequentData.takeNumber})`);
+          previousTakeData = updatedSubsequentData;
+          
+          // Update temp variables from the shifted result
+          tempSound = getFieldUpperBound(updatedSubsequentData, 'soundFile');
+          if (cameraConfiguration === 1) {
+            tempCamera[1] = getFieldUpperBound(updatedSubsequentData, 'cameraFile');
+          } else {
+            for (let i = 1; i <= cameraConfiguration; i++) {
+              const fieldId = `cameraFile${i}`;
+              tempCamera[i] = getFieldUpperBound(updatedSubsequentData, fieldId);
+            }
+          }
+        } else {
+          // No changes, but still update previousTakeData for next iteration
+          previousTakeData = subsequentData;
+          
+          // Update temp variables from current data (even if not shifted)
+          const currentTempSound = getFieldUpperBound(subsequentData, 'soundFile');
+          if (currentTempSound !== null) tempSound = currentTempSound;
+          
+          if (cameraConfiguration === 1) {
+            const currentTempCamera = getFieldUpperBound(subsequentData, 'cameraFile');
+            if (currentTempCamera !== null) tempCamera[1] = currentTempCamera;
+          } else {
+            for (let i = 1; i <= cameraConfiguration; i++) {
+              const fieldId = `cameraFile${i}`;
+              const currentTempCamera = getFieldUpperBound(subsequentData, fieldId);
+              if (currentTempCamera !== null) tempCamera[i] = currentTempCamera;
+            }
+          }
         }
       }
       
-      // Shift camera files if not disabled
-      if (cameraConfiguration === 1) {
-        if (!disabledFields.has('cameraFile') && tempCamera[1] !== null) {
-          const camStart = getTargetFieldStart('cameraFile');
-          const camIncrement = calculateInsertedIncrement('cameraFile');
-          if (camIncrement > 0) {
-            updateFileNumbers(logSheet.projectId, 'cameraFile', camStart, camIncrement, logSheet.id, String(targetLocalId));
-            console.log(`✅ [handleSaveWithInsertBefore] Shifted camera files: start=${camStart}, increment=${camIncrement}`);
-          }
-        }
-      } else {
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          const fieldId = `cameraFile${i}`;
-          if (!disabledFields.has(fieldId) && tempCamera[i] !== null) {
-            const camStart = getTargetFieldStart(fieldId);
-            const camIncrement = calculateInsertedIncrement(fieldId);
-            if (camIncrement > 0) {
-              updateFileNumbers(logSheet.projectId, fieldId, camStart, camIncrement, logSheet.id, String(targetLocalId));
-              console.log(`✅ [handleSaveWithInsertBefore] Shifted ${fieldId}: start=${camStart}, increment=${camIncrement}`);
-            }
-          }
-        }
-      }
+      console.log(`✅ [handleSaveWithInsertBefore] Completed sequential shifting of ${subsequentTakes.length} subsequent takes`);
       
       // 7. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
       // After moveExistingLogBefore:
