@@ -29,7 +29,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, maxNumber?: number) => void;
   recalculateFileNumbersAfterMove: (projectId: string, movedLogId: string, targetLocalId: string) => void;
 }
 
@@ -800,7 +800,7 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, maxNumber?: number) => {
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
@@ -808,7 +808,8 @@ export const useProjectStore = create<ProjectState>()(
           fromNumber,
           increment,
           excludeLogId,
-          targetLocalId
+          targetLocalId,
+          maxNumber
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -870,7 +871,10 @@ export const useProjectStore = create<ProjectState>()(
 
           const updatedSimple = activeState.logSheets.map((logSheet) => {
             if (logSheet.projectId !== projectId) return logSheet;
-            if (excludeLogId && logSheet.id === excludeLogId) return logSheet;
+            if (excludeLogId && logSheet.id === excludeLogId) {
+              console.log(`🔍 Skipping excluded log ID: ${logSheet.id}`);
+              return logSheet;
+            }
 
             const data = logSheet.data || {} as any;
             const fieldVal = getFieldValue(data, fieldId);
@@ -878,6 +882,9 @@ export const useProjectStore = create<ProjectState>()(
 
             // Only shift entries at or after fromNumber
             if (fieldVal.upper < fromNumber) return logSheet;
+            
+            // If maxNumber is provided, only shift entries up to maxNumber
+            if (maxNumber !== undefined && fieldVal.lower > maxNumber) return logSheet;
 
             const newData: Record<string, any> = { ...data };
 

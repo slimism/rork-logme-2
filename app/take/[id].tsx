@@ -3714,45 +3714,108 @@ This would break the logging logic and create inconsistencies in the file number
       updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id, targetLocalId);
     }
     
+    // TWO-PHASE SHIFTING for camera files
+    // Phase 1: Shift files that are newly consumed (before original range)
+    // Phase 2: Shift files after the original range
     if (camCount === 1) {
-      const cameraDeltaInput = {
-        takeData,
-        showRangeMode,
-        rangeData
-      };
-      const insertedCamDelta = disabledFields.has('cameraFile')
-        ? 0
-        : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
+      const fieldId = 'cameraFile';
+      if (!disabledFields.has(fieldId)) {
+        // Get original range from existingEntry
+        const originalFrom = parseInt(existingEntry.data?.['camera1_from'] as string) || 
+                             parseInt(existingEntry.data?.[fieldId] as string) || 0;
+        const originalTo = parseInt(existingEntry.data?.['camera1_to'] as string) || 
+                          (parseInt(existingEntry.data?.[fieldId] as string) || originalFrom);
 
-      if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
-        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id, targetLocalId);
+        // Get new range from edited take
+        const newFrom = parseInt(rangeData[fieldId]?.from) || 
+                       parseInt(takeData[fieldId] as string) || 0;
+        const newTo = parseInt(rangeData[fieldId]?.to) || 
+                     (parseInt(takeData[fieldId] as string) || newFrom);
+
+        // PHASE 1: Shift files that are newly consumed (before original range)
+        if (newFrom < originalFrom) {
+          const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+          
+          console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta}`);
+          
+          updateFileNumbers(
+            logSheet.projectId, 
+            fieldId, 
+            newFrom, 
+            phase1Delta, 
+            logSheet.id, 
+            targetLocalId,
+            originalFrom - 1  // maxNumber: limit to files before original range
+          );
+        }
+
+        // PHASE 2: Shift files after the original range
+        const phase2Delta = originalFrom - newFrom;
+        
+        if (phase2Delta !== 0) {
+          console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta}`);
+          
+          updateFileNumbers(
+            logSheet.projectId, 
+            fieldId, 
+            originalTo + 1, 
+            phase2Delta, 
+            logSheet.id, 
+            targetLocalId
+            // No maxNumber: shift all files after original range
+          );
+        }
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-          const cameraDeltaInput = {
-            takeData,
-            showRangeMode,
-            rangeData
-          };
-          const insertedCamDelta = disabledFields.has(fieldId)
-            ? 0
-            : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
-          
-          if (!disabledFields.has(fieldId) && insertedCamDelta > 0) {
-            let camStart = cameraFromNumber;
-            const fromKey = `camera${i}_from` as const;
-            const fromVal = existingEntry.data?.[fromKey];
-            const val = existingEntry.data?.[fieldId];
-            if (typeof fromVal === 'string') {
-              const n = parseInt(fromVal, 10);
-              if (!Number.isNaN(n)) camStart = n;
-            } else if (typeof val === 'string') {
-              const n = parseInt(val, 10);
-              if (!Number.isNaN(n)) camStart = n;
+          if (!disabledFields.has(fieldId)) {
+            // Get original range from existingEntry
+            const originalFrom = parseInt(existingEntry.data?.[`camera${i}_from`] as string) || 
+                                 parseInt(existingEntry.data?.[fieldId] as string) || 0;
+            const originalTo = parseInt(existingEntry.data?.[`camera${i}_to`] as string) || 
+                              (parseInt(existingEntry.data?.[fieldId] as string) || originalFrom);
+
+            // Get new range from edited take
+            const newFrom = parseInt(rangeData[fieldId]?.from) || 
+                           parseInt(takeData[fieldId] as string) || 0;
+            const newTo = parseInt(rangeData[fieldId]?.to) || 
+                         (parseInt(takeData[fieldId] as string) || newFrom);
+
+            // PHASE 1: Shift files that are newly consumed (before original range)
+            if (newFrom < originalFrom) {
+              const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+              
+              console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta}`);
+              
+              updateFileNumbers(
+                logSheet.projectId, 
+                fieldId, 
+                newFrom, 
+                phase1Delta, 
+                logSheet.id, 
+                targetLocalId,
+                originalFrom - 1  // maxNumber: limit to files before original range
+              );
             }
-            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id, targetLocalId);
+
+            // PHASE 2: Shift files after the original range
+            const phase2Delta = originalFrom - newFrom;
+            
+            if (phase2Delta !== 0) {
+              console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta}`);
+              
+              updateFileNumbers(
+                logSheet.projectId, 
+                fieldId, 
+                originalTo + 1, 
+                phase2Delta, 
+                logSheet.id, 
+                targetLocalId
+                // No maxNumber: shift all files after original range
+              );
+            }
           }
         }
       }
