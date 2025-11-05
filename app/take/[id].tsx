@@ -2872,9 +2872,11 @@ This would break the logging logic and create inconsistencies in the file number
         // Process cameras first, then sound ONCE after all camera processing
         console.log('===== handleSaveWithDuplicateHandling type=file - Starting shift operations =====');
         console.log('  Edited log ID:', logSheet.id);
+        console.log('  Edited log projectLocalId:', (logSheet as any)?.projectLocalId || 'N/A');
         console.log('  Existing entry ID:', existingEntry.id);
+        console.log('  Existing entry projectLocalId:', (existingEntry as any)?.projectLocalId || 'N/A');
 
-        console.log('DEBUG - Processing camera shifts for camCount=1');
+        console.log(`DEBUG - Processing camera shifts for camCount=${camCount} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
         if (camCount === 1) {
           let camStart = targetTakeNumber;
           if (typeof existingEntry.data?.camera1_from === 'string') {
@@ -2902,7 +2904,9 @@ This would break the logging logic and create inconsistencies in the file number
                   camStart,
                   targetRange,
                   'existingEntry.cameraFile': existingEntry.data?.cameraFile,
-                  'editedLogId_ToExclude': logSheet.id
+                  'editedLogId_ToExclude': logSheet.id,
+                  'editedLogProjectLocalId': (logSheet as any)?.projectLocalId || 'N/A',
+                  'existingEntryProjectLocalId': (existingEntry as any)?.projectLocalId || 'N/A'
                 });
                 updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
               }
