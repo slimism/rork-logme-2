@@ -1929,13 +1929,13 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      // 7. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId)
+      // 7. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
       // After moveExistingLogBefore:
       // - The inserted log is now at projectLocalId = targetLocalId
       // - The target duplicate (originally at targetLocalId) is now at projectLocalId = targetLocalId + 1
       // - All logs in range [targetLocalId, tempProjectLocalId) have been incremented by 1
-      // We need to increment take numbers for logs with projectLocalId > targetLocalId AND < tempProjectLocalId
-      // This includes the target duplicate (now at targetLocalId + 1) and all subsequent logs in the range
+      // We need to increment take numbers for logs with projectLocalId > targetLocalId AND <= tempProjectLocalId
+      // This includes the target duplicate (now at targetLocalId + 1) and all subsequent logs up to and including tempProjectLocalId
       if (targetSceneNumber && targetShotNumber && targetTakeNumber) {
         // Get current state after moveExistingLogBefore
         const currentState = useProjectStore.getState();
@@ -1943,12 +1943,12 @@ This would break the logging logic and create inconsistencies in the file number
         
         console.log(`[handleSaveWithInsertBefore] Looking for logs to increment take numbers:`);
         console.log(`  - Scene: ${targetSceneNumber}, Shot: ${targetShotNumber}`);
-        console.log(`  - projectLocalId range: > ${targetLocalId} AND < ${tempProjectLocalId}`);
+        console.log(`  - projectLocalId range: > ${targetLocalId} AND <= ${tempProjectLocalId}`);
         console.log(`  - Excluding shifted log: ${logSheet.id}`);
         
         // Find logs that need take number increment:
         // - In the same scene and shot as target duplicate
-        // - projectLocalId > targetLocalId (inserted log's new position) AND < tempProjectLocalId
+        // - projectLocalId > targetLocalId (inserted log's new position) AND <= tempProjectLocalId
         // - Exclude the shifted log itself (logSheet.id)
         const logsToUpdate = projectLogSheets.filter(sheet => {
           if (sheet.id === logSheet.id) {
@@ -1968,8 +1968,8 @@ This would break the logging logic and create inconsistencies in the file number
           }
           
           // Check projectLocalId range (after move, inserted log is at targetLocalId)
-          // This includes the target duplicate (now at targetLocalId + 1) and all logs in range
-          const inRange = sheetLocalId > targetLocalId && sheetLocalId < tempProjectLocalId;
+          // This includes the target duplicate (now at targetLocalId + 1) and all logs in range up to and including tempProjectLocalId
+          const inRange = sheetLocalId > targetLocalId && sheetLocalId <= tempProjectLocalId;
           if (inRange) {
             console.log(`  - Including log ${sheet.id} (projectLocalId: ${sheetLocalId}, Take: ${data.takeNumber})`);
           } else {
@@ -1995,7 +1995,7 @@ This would break the logging logic and create inconsistencies in the file number
           }
         }
         
-        console.log(`✅ [handleSaveWithInsertBefore] Updated take numbers for ${logsToUpdate.length} logs in Scene=${targetSceneNumber}, Shot=${targetShotNumber}, projectLocalId range (${targetLocalId}, ${tempProjectLocalId})`);
+        console.log(`✅ [handleSaveWithInsertBefore] Updated take numbers for ${logsToUpdate.length} logs in Scene=${targetSceneNumber}, Shot=${targetShotNumber}, projectLocalId range (${targetLocalId}, ${tempProjectLocalId}]`);
       }
       
       // Emit ORDER AFTER snapshot
