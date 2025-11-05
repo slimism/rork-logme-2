@@ -2874,110 +2874,178 @@ This would break the logging logic and create inconsistencies in the file number
         console.log('  Edited log ID:', logSheet.id);
         console.log('  Existing entry ID:', existingEntry.id);
 
-        // TWO-PHASE SHIFTING for camera files
-        // Phase 1: Shift files that are newly consumed (before original range)
-        // Phase 2: Shift files after the original range
-        const targetLocalId = (existingEntry as any)?.projectLocalId as string | undefined;
-        
-        console.log('DEBUG - Processing camera shifts for camCount=' + camCount);
+        console.log('DEBUG - Processing camera shifts for camCount=1');
         if (camCount === 1) {
-          const fieldId = 'cameraFile';
-          if (!disabledFields.has(fieldId)) {
-            // Get original range from logSheet.data (the take being edited, before modifications)
-            const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
-                                 parseInt(logSheet.data?.[fieldId] as string) || 0;
-            const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
-                              (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
-
-            // Get new range from edited take
-            const newFrom = parseInt(rangeData[fieldId]?.from) || 
-                           parseInt(takeData[fieldId] as string) || 0;
-            const newTo = parseInt(rangeData[fieldId]?.to) || 
-                         (parseInt(takeData[fieldId] as string) || newFrom);
-
-            // PHASE 1: Shift files that are newly consumed (before original range)
-            if (newFrom < originalFrom) {
-              const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+          let camStart = targetTakeNumber;
+          if (typeof existingEntry.data?.camera1_from === 'string') {
+            const n = parseInt(existingEntry.data.camera1_from, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          } else if (typeof existingEntry.data?.cameraFile === 'string') {
+            const n = parseInt(existingEntry.data.cameraFile, 10);
+            if (!Number.isNaN(n)) camStart = n;
+          }
+          {
+            // Use centralized delta calculator instead of inline calculation
+            const cameraDeltaInput = {
+              takeData,
+              showRangeMode,
+              rangeData
+            };
+            const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
+            if (!disabledFields.has('cameraFile')) {
+              { 
+                const targetRange = getRangeFromData(existingEntry.data, 'cameraFile'); 
+                const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; 
+                console.log('====> Calling updateFileNumbers for cameraFile:', {
+                  start,
+                  camDelta,
+                  camStart,
+                  targetRange,
+                  'existingEntry.cameraFile': existingEntry.data?.cameraFile,
+                  'editedLogId_ToExclude': logSheet.id
+                });
+                updateFileNumbers(logSheet.projectId, 'cameraFile', start, camDelta, logSheet.id); 
+              }
               
-              console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
+              // Read current state of the log from store (after updateFileNumbers may have updated it)
+              const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+              const currentData = currentLogSheet?.data || existingEntry.data;
               
-              updateFileNumbers(
-                logSheet.projectId, 
-                fieldId, 
-                newFrom, 
-                phase1Delta, 
-                logSheet.id, 
-                targetLocalId,
-                originalFrom - 1  // maxNumber: limit to files before original range
-              );
-            }
-
-            // PHASE 2: Shift files after the original range
-            const phase2Delta = originalFrom - newFrom;
-            
-            if (phase2Delta !== 0) {
-              console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-              
-              updateFileNumbers(
-                logSheet.projectId, 
-                fieldId, 
-                originalTo + 1, 
-                phase2Delta, 
-                logSheet.id, 
-                targetLocalId
-                // No maxNumber: shift all files after original range
-              );
+              // If target has a range, adjust lower to end after inserted and extend upper by delta
+              const targetRange = getRangeFromData(currentData, 'cameraFile');
+              if (targetRange) {
+                const bounds = getInsertedBounds('cameraFile');
+                const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                const oldToNum = parseInt(targetRange.to, 10) || 0;
+                const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                const updated: Record<string, any> = {
+                  ...currentData,
+                  camera1_from: newFrom,
+                  camera1_to: newTo
+                };
+                const hadInline = typeof currentData?.cameraFile === 'string' && isRangeString(currentData.cameraFile);
+                if (hadInline) {
+                  updated.cameraFile = `${newFrom}-${newTo}`;
+                }
+                updateLogSheet(existingEntry.id, updated);
+                  } else if (!targetRange) {
+                    // Handle single camera value (not range)
+                    const targetSingleStr = currentData?.cameraFile as string | undefined;
+                if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+                  const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                  if (showRangeMode['cameraFile'] && rangeData['cameraFile']?.from && rangeData['cameraFile']?.to) {
+                    // New entry has range, target has single value
+                    const insFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
+                    const insTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
+                    const min = Math.min(insFrom, insTo);
+                    const max = Math.max(insFrom, insTo);
+                        if (targetSingleNum >= min && targetSingleNum <= max) {
+                      const updatedData: Record<string, any> = { 
+                        ...currentData, 
+                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
+                        takeNumber: String(targetTakeNumber + 1)
+                      };
+                      updateLogSheet(existingEntry.id, updatedData);
+                    }
+                  } else if (takeData.cameraFile) {
+                    // Both have single values
+                    const newSingle = parseInt(String(takeData.cameraFile), 10) || 0;
+                    if (newSingle === targetSingleNum) {
+                      const updatedData: Record<string, any> = { 
+                        ...currentData, 
+                        cameraFile: String(targetSingleNum + camDelta).padStart(4, '0'),
+                        takeNumber: String(targetTakeNumber + 1)
+                      };
+                      updateLogSheet(existingEntry.id, updatedData);
+                    }
+                  }
+                }
+              }
             }
           }
         } else {
           for (let i = 1; i <= camCount; i++) {
             const fieldId = `cameraFile${i}`;
             if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-              if (!disabledFields.has(fieldId)) {
-                // Get original range from logSheet.data (the take being edited, before modifications)
-                const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
-                                     parseInt(logSheet.data?.[fieldId] as string) || 0;
-                const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
-                                  (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
-
-                // Get new range from edited take
-                const newFrom = parseInt(rangeData[fieldId]?.from) || 
-                               parseInt(takeData[fieldId] as string) || 0;
-                const newTo = parseInt(rangeData[fieldId]?.to) || 
-                             (parseInt(takeData[fieldId] as string) || newFrom);
-
-                // PHASE 1: Shift files that are newly consumed (before original range)
-                if (newFrom < originalFrom) {
-                  const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
+              let camStart = targetTakeNumber;
+              const fromKey = `camera${i}_from` as const;
+              const fromVal = existingEntry.data?.[fromKey];
+              const val = existingEntry.data?.[fieldId];
+              if (typeof fromVal === 'string') {
+                const n = parseInt(fromVal, 10);
+                if (!Number.isNaN(n)) camStart = n;
+              } else if (typeof val === 'string') {
+                const n = parseInt(val, 10);
+                if (!Number.isNaN(n)) camStart = n;
+              }
+              {
+                // Use centralized delta calculator instead of inline calculation
+                const cameraDeltaInput = {
+                  takeData,
+                  showRangeMode,
+                  rangeData
+                };
+                const camDelta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
+                if (!disabledFields.has(fieldId)) {
+                  { const targetRange = getRangeFromData(existingEntry.data, fieldId); const start = targetRange ? ((parseInt(targetRange.to, 10) || 0) + 1) : camStart; updateFileNumbers(logSheet.projectId, fieldId, start, camDelta); }
                   
-                  console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
+                  // Read current state of the log from store (after updateFileNumbers may have updated it)
+                  const currentLogSheet = useProjectStore.getState().logSheets.find(sheet => sheet.id === existingEntry.id);
+                  const currentData = currentLogSheet?.data || existingEntry.data;
                   
-                  updateFileNumbers(
-                    logSheet.projectId, 
-                    fieldId, 
-                    newFrom, 
-                    phase1Delta, 
-                    logSheet.id, 
-                    targetLocalId,
-                    originalFrom - 1  // maxNumber: limit to files before original range
-                  );
-                }
-
-                // PHASE 2: Shift files after the original range
-                const phase2Delta = originalFrom - newFrom;
-                
-                if (phase2Delta !== 0) {
-                  console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-                  
-                  updateFileNumbers(
-                    logSheet.projectId, 
-                    fieldId, 
-                    originalTo + 1, 
-                    phase2Delta, 
-                    logSheet.id, 
-                    targetLocalId
-                    // No maxNumber: shift all files after original range
-                  );
+                  // If target has a range, adjust lower to end after inserted and extend upper by delta
+                  const targetRange = getRangeFromData(currentData, fieldId);
+                  if (targetRange) {
+                    const bounds = getInsertedBounds(fieldId);
+                    const insertedUpper = bounds?.max ?? (parseInt(targetRange.from, 10) || 0);
+                    const oldToNum = parseInt(targetRange.to, 10) || 0;
+                    const newFrom = String(insertedUpper + 1).padStart(4, '0');
+                    const newTo = String(oldToNum + camDelta).padStart(4, '0');
+                    const updated: Record<string, any> = {
+                      ...currentData,
+                      [`camera${i}_from`]: newFrom,
+                      [`camera${i}_to`]: newTo
+                    };
+                    const hadInline = typeof currentData?.[fieldId] === 'string' && isRangeString(currentData[fieldId]);
+                    if (hadInline) {
+                      updated[fieldId] = `${newFrom}-${newTo}`;
+                    }
+                    updated.takeNumber = String(targetTakeNumber + 1);
+                    updateLogSheet(existingEntry.id, updated);
+                  } else if (!targetRange) {
+                    // Handle single camera value (not range)
+                    const targetSingleStr = currentData?.[fieldId] as string | undefined;
+                    if (typeof targetSingleStr === 'string' && targetSingleStr.trim().length > 0) {
+                      const targetSingleNum = parseInt(targetSingleStr, 10) || 0;
+                      if (showRangeMode[fieldId] && rangeData[fieldId]?.from && rangeData[fieldId]?.to) {
+                        // New entry has range, target has single value
+                        const insFrom = parseInt(rangeData[fieldId].from, 10) || 0;
+                        const insTo = parseInt(rangeData[fieldId].to, 10) || 0;
+                        const min = Math.min(insFrom, insTo);
+                        const max = Math.max(insFrom, insTo);
+                        if (targetSingleNum >= min && targetSingleNum <= max) {
+                          const updatedData: Record<string, any> = { 
+                            ...currentData, 
+                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
+                            takeNumber: String(targetTakeNumber + 1)
+                          };
+                          updateLogSheet(existingEntry.id, updatedData);
+                        }
+                      } else if (takeData[fieldId]) {
+                        // Both have single values
+                        const newSingle = parseInt(String(takeData[fieldId]), 10) || 0;
+                        if (newSingle === targetSingleNum) {
+                          const updatedData: Record<string, any> = { 
+                            ...currentData, 
+                            [fieldId]: String(targetSingleNum + camDelta).padStart(4, '0'),
+                            takeNumber: String(targetTakeNumber + 1)
+                          };
+                          updateLogSheet(existingEntry.id, updatedData);
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -3236,29 +3304,13 @@ This would break the logging logic and create inconsistencies in the file number
     }
     
     // Update scene/shot/take to match the target position
-    // If target has scene/shot/take, use them; otherwise preserve original values from edited take
     const targetSceneNumber = existingEntry.data?.sceneNumber as string | undefined;
     const targetShotNumber = existingEntry.data?.shotNumber as string | undefined;
     const targetTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
 
-    // Only use target's scene/shot if they exist (don't overwrite with undefined for SFX/Ambience)
-    if (targetSceneNumber) {
-      newLogData.sceneNumber = targetSceneNumber;
-    } else {
-      // Preserve original scene number from edited take
-      newLogData.sceneNumber = logSheet.data?.sceneNumber;
-      console.log(`[handleSaveWithDuplicatePair] Target has no scene, preserving original: ${logSheet.data?.sceneNumber} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-    }
-    
-    if (targetShotNumber) {
-      newLogData.shotNumber = targetShotNumber;
-    } else {
-      // Preserve original shot number from edited take
-      newLogData.shotNumber = logSheet.data?.shotNumber;
-      console.log(`[handleSaveWithDuplicatePair] Target has no shot, preserving original: ${logSheet.data?.shotNumber} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-    }
-    
-    if (!Number.isNaN(targetTake) && targetTake > 0) {
+    newLogData.sceneNumber = targetSceneNumber;
+    newLogData.shotNumber = targetShotNumber;
+    if (!Number.isNaN(targetTake)) {
       newLogData.takeNumber = existingEntry.data?.takeNumber;
       const originalTakeNumber = parseInt(logSheet.data?.takeNumber || '0', 10);
       const maxTake = originalTakeNumber > targetTake ? originalTakeNumber - 1 : undefined;
@@ -3269,13 +3321,7 @@ This would break the logging logic and create inconsistencies in the file number
         originalTakeNumber,
         maxTakeNumber: maxTake
       });
-      // Only call updateTakeNumbers if target has scene/shot (not for SFX/Ambience)
-      if (targetSceneNumber && targetShotNumber) {
-        updateTakeNumbers(logSheet.projectId, targetSceneNumber, targetShotNumber, targetTake, 1, logSheet.id, maxTake);
-      }
-    } else {
-      // Preserve original take number from edited take if target doesn't have one
-      newLogData.takeNumber = logSheet.data?.takeNumber;
+      updateTakeNumbers(logSheet.projectId, targetSceneNumber || '', targetShotNumber || '', targetTake, 1, logSheet.id, maxTake);
     }
 
     // Collect all updates for the existing entry to avoid multiple updateLogSheet calls
@@ -3668,108 +3714,45 @@ This would break the logging logic and create inconsistencies in the file number
       updateFileNumbers(logSheet.projectId, 'soundFile', soundStart, insertedSoundDelta, logSheet.id, targetLocalId);
     }
     
-    // TWO-PHASE SHIFTING for camera files
-    // Phase 1: Shift files that are newly consumed (before original range)
-    // Phase 2: Shift files after the original range
     if (camCount === 1) {
-      const fieldId = 'cameraFile';
-      if (!disabledFields.has(fieldId)) {
-        // Get original range from logSheet.data (the take being edited)
-        const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
-                             parseInt(logSheet.data?.[fieldId] as string) || 0;
-        const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
-                          (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
+      const cameraDeltaInput = {
+        takeData,
+        showRangeMode,
+        rangeData
+      };
+      const insertedCamDelta = disabledFields.has('cameraFile')
+        ? 0
+        : calculateCameraDeltaForShifting(cameraDeltaInput, 'cameraFile');
 
-        // Get new range from edited take
-        const newFrom = parseInt(rangeData[fieldId]?.from) || 
-                       parseInt(takeData[fieldId] as string) || 0;
-        const newTo = parseInt(rangeData[fieldId]?.to) || 
-                     (parseInt(takeData[fieldId] as string) || newFrom);
-
-        // PHASE 1: Shift files that are newly consumed (before original range)
-        if (newFrom < originalFrom) {
-          const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
-          
-          console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-          
-          updateFileNumbers(
-            logSheet.projectId, 
-            fieldId, 
-            newFrom, 
-            phase1Delta, 
-            logSheet.id, 
-            targetLocalId,
-            originalFrom - 1  // maxNumber: limit to files before original range
-          );
-        }
-
-        // PHASE 2: Shift files after the original range
-        const phase2Delta = originalFrom - newFrom;
-        
-        if (phase2Delta !== 0) {
-          console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-          
-          updateFileNumbers(
-            logSheet.projectId, 
-            fieldId, 
-            originalTo + 1, 
-            phase2Delta, 
-            logSheet.id, 
-            targetLocalId
-            // No maxNumber: shift all files after original range
-          );
-        }
+      if (!disabledFields.has('cameraFile') && insertedCamDelta > 0) {
+        updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, insertedCamDelta, logSheet.id, targetLocalId);
       }
     } else {
       for (let i = 1; i <= camCount; i++) {
         const fieldId = `cameraFile${i}`;
         if (existingEntry.data?.[fieldId] || existingEntry.data?.[`camera${i}_from`]) {
-          if (!disabledFields.has(fieldId)) {
-            // Get original range from logSheet.data (the take being edited)
-            const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
-                                 parseInt(logSheet.data?.[fieldId] as string) || 0;
-            const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
-                              (parseInt(logSheet.data?.[fieldId] as string) || originalFrom);
-
-            // Get new range from edited take
-            const newFrom = parseInt(rangeData[fieldId]?.from) || 
-                           parseInt(takeData[fieldId] as string) || 0;
-            const newTo = parseInt(rangeData[fieldId]?.to) || 
-                         (parseInt(takeData[fieldId] as string) || newFrom);
-
-            // PHASE 1: Shift files that are newly consumed (before original range)
-            if (newFrom < originalFrom) {
-              const phase1Delta = Math.abs(newTo - newFrom) + 1; // Inclusive count
-              
-              console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-              
-              updateFileNumbers(
-                logSheet.projectId, 
-                fieldId, 
-                newFrom, 
-                phase1Delta, 
-                logSheet.id, 
-                targetLocalId,
-                originalFrom - 1  // maxNumber: limit to files before original range
-              );
+          const cameraDeltaInput = {
+            takeData,
+            showRangeMode,
+            rangeData
+          };
+          const insertedCamDelta = disabledFields.has(fieldId)
+            ? 0
+            : calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
+          
+          if (!disabledFields.has(fieldId) && insertedCamDelta > 0) {
+            let camStart = cameraFromNumber;
+            const fromKey = `camera${i}_from` as const;
+            const fromVal = existingEntry.data?.[fromKey];
+            const val = existingEntry.data?.[fieldId];
+            if (typeof fromVal === 'string') {
+              const n = parseInt(fromVal, 10);
+              if (!Number.isNaN(n)) camStart = n;
+            } else if (typeof val === 'string') {
+              const n = parseInt(val, 10);
+              if (!Number.isNaN(n)) camStart = n;
             }
-
-            // PHASE 2: Shift files after the original range
-            const phase2Delta = originalFrom - newFrom;
-            
-            if (phase2Delta !== 0) {
-              console.log(`[PHASE 2] Shifting ${fieldId} from ${originalTo + 1} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'})`);
-              
-              updateFileNumbers(
-                logSheet.projectId, 
-                fieldId, 
-                originalTo + 1, 
-                phase2Delta, 
-                logSheet.id, 
-                targetLocalId
-                // No maxNumber: shift all files after original range
-              );
-            }
+            updateFileNumbers(logSheet.projectId, fieldId, camStart, insertedCamDelta, logSheet.id, targetLocalId);
           }
         }
       }
