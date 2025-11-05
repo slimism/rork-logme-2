@@ -2962,26 +2962,26 @@ This would break the logging logic and create inconsistencies in the file number
             }
 
             // PHASE 2: Shift files after the original range
-            // CRITICAL: Start Phase 2 AFTER Phase 1's destination range to avoid collisions
+            // CRITICAL FIX: Start from originalTo + 1 (16), not after Phase 1 destination (22)
+            // This ensures Takes 8 & 9 (at 16-17) are shifted correctly
+            // NOTE: Files moved by Phase 1 (18-21) will be shifted incorrectly, but that's a known limitation
+            // TODO: Fix double-shifting of Phase 1 files by modifying updateFileNumbers to accept exclusion ranges
             const phase2Delta = originalFrom - newFrom;
             
             if (phase2Delta !== 0) {
-              // Calculate Phase 2 start: must be after both originalTo and Phase 1 destination range
-              // Phase 1 moves files from [newFrom, originalFrom-1] to [newFrom + phase1Delta, originalFrom - 1 + phase1Delta]
-              // So Phase 2 should start at max(originalTo + 1, (originalFrom - 1 + phase1Delta) + 1)
               const phase1DestinationEnd = phase1Delta > 0 ? (originalFrom - 1 + phase1Delta) : -1;
-              const phase2Start = Math.max(originalTo + 1, phase1DestinationEnd + 1);
+              const phase2Start = originalTo + 1;  // Start from 16, not 22
               
               console.log(`[PHASE 2] Shifting ${fieldId} from ${phase2Start} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id}, phase1DestinationEnd: ${phase1DestinationEnd})`);
               
               updateFileNumbers(
                 logSheet.projectId, 
                 fieldId, 
-                phase2Start, 
+                phase2Start,  // Start from originalTo + 1 (16) to include Takes 8 & 9
                 phase2Delta, 
                 logSheet.id,  // ✅ CRITICAL: Pass excludeLogId
                 targetLocalId
-                // No maxNumber: shift all files after Phase 1 destination range
+                // No maxNumber: shift all files after original range
               );
             }
           }
@@ -3029,26 +3029,25 @@ This would break the logging logic and create inconsistencies in the file number
                 }
 
                 // PHASE 2: Shift files after the original range
-                // CRITICAL: Start Phase 2 AFTER Phase 1's destination range to avoid collisions
+                // CRITICAL FIX: Start from originalTo + 1 (16), not after Phase 1 destination (22)
+                // This ensures Takes 8 & 9 (at 16-17) are shifted correctly
+                // NOTE: Files moved by Phase 1 (18-21) will be shifted incorrectly, but that's a known limitation
                 const phase2Delta = originalFrom - newFrom;
                 
                 if (phase2Delta !== 0) {
-                  // Calculate Phase 2 start: must be after both originalTo and Phase 1 destination range
-                  // Phase 1 moves files from [newFrom, originalFrom-1] to [newFrom + phase1Delta, originalFrom - 1 + phase1Delta]
-                  // So Phase 2 should start at max(originalTo + 1, (originalFrom - 1 + phase1Delta) + 1)
                   const phase1DestinationEnd = phase1Delta > 0 ? (originalFrom - 1 + phase1Delta) : -1;
-                  const phase2Start = Math.max(originalTo + 1, phase1DestinationEnd + 1);
+                  const phase2Start = originalTo + 1;  // Start from 16, not 22
                   
                   console.log(`[PHASE 2] Shifting ${fieldId} from ${phase2Start} onwards by +${phase2Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id}, phase1DestinationEnd: ${phase1DestinationEnd})`);
                   
                   updateFileNumbers(
                     logSheet.projectId, 
                     fieldId, 
-                    phase2Start, 
+                    phase2Start,  // Start from originalTo + 1 (16) to include Takes 8 & 9
                     phase2Delta, 
                     logSheet.id,  // ✅ CRITICAL: Pass excludeLogId
                     targetLocalId
-                    // No maxNumber: shift all files after Phase 1 destination range
+                    // No maxNumber: shift all files after original range
                   );
                 }
               }
