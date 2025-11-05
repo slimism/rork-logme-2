@@ -2805,14 +2805,30 @@ This would break the logging logic and create inconsistencies in the file number
             
             if (hasRange) {
               // Has range data - save it (works for both waste and non-waste)
-              finalData['camera1_from'] = pad4(rangeData['cameraFile'].from);
-              finalData['camera1_to'] = pad4(rangeData['cameraFile'].to);
+              // CRITICAL FIX: When inserting before a duplicate, recalculate 'to' based on range size
+              // Get original range from logSheet.data (before cleanup) to calculate range size
+              const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
+                                   parseInt(logSheet.data?.['cameraFile'] as string) || 0;
+              const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
+                                (parseInt(logSheet.data?.['cameraFile'] as string) || originalFrom);
+              const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+              
+              // Get new 'from' value (should be from rangeData or duplicate target)
+              const newFrom = parseInt(rangeData['cameraFile'].from) || 0;
+              // Calculate new 'to' based on range size: from + rangeSize - 1
+              const calculatedNewTo = newFrom + originalRangeSize - 1;
+              
+              finalData['camera1_from'] = pad4(String(newFrom));
+              finalData['camera1_to'] = pad4(String(calculatedNewTo));
               delete finalData.cameraFile;
               
-              console.log('DEBUG - Set camera range:', {
+              console.log('DEBUG - Set camera range (recalculated):', {
+                'originalRange': `${originalFrom}-${originalTo}`,
+                'originalRangeSize': originalRangeSize,
+                'newFrom': newFrom,
+                'calculatedNewTo': calculatedNewTo,
                 'finalData.camera1_from': finalData.camera1_from,
-                'finalData.camera1_to': finalData.camera1_to,
-                'finalData.cameraFile': finalData.cameraFile
+                'finalData.camera1_to': finalData.camera1_to
               });
             } else if (!isDisabled) {
               // Enabled field without range - keep single value mode, delete range fields
@@ -2833,9 +2849,31 @@ This would break the logging logic and create inconsistencies in the file number
               
               if (hasRange) {
                 // Has range data - save it (works for both waste and non-waste)
-                finalData[`camera${i}_from`] = pad4(rangeData[fid].from);
-                finalData[`camera${i}_to`] = pad4(rangeData[fid].to);
+                // CRITICAL FIX: When inserting before a duplicate, recalculate 'to' based on range size
+                // Get original range from logSheet.data (before cleanup) to calculate range size
+                const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
+                                     parseInt(logSheet.data?.[fid] as string) || 0;
+                const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
+                                  (parseInt(logSheet.data?.[fid] as string) || originalFrom);
+                const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+                
+                // Get new 'from' value (should be from rangeData or duplicate target)
+                const newFrom = parseInt(rangeData[fid].from) || 0;
+                // Calculate new 'to' based on range size: from + rangeSize - 1
+                const calculatedNewTo = newFrom + originalRangeSize - 1;
+                
+                finalData[`camera${i}_from`] = pad4(String(newFrom));
+                finalData[`camera${i}_to`] = pad4(String(calculatedNewTo));
                 delete finalData[fid];
+                
+                console.log(`DEBUG - Set camera${i} range (recalculated):`, {
+                  'originalRange': `${originalFrom}-${originalTo}`,
+                  'originalRangeSize': originalRangeSize,
+                  'newFrom': newFrom,
+                  'calculatedNewTo': calculatedNewTo,
+                  [`finalData.camera${i}_from`]: finalData[`camera${i}_from`],
+                  [`finalData.camera${i}_to`]: finalData[`camera${i}_to`]
+                });
               } else if (!isDisabled && isRecActive) {
                 // Enabled field without range - keep single value mode, delete range fields
                 delete finalData[`camera${i}_from`];
