@@ -29,7 +29,7 @@ interface ProjectState {
   updateLogSheetName: (id: string, name: string) => void;
   deleteLogSheet: (id: string) => void;
   updateTakeNumbers: (projectId: string, sceneNumber: string, shotNumber: string, fromTakeNumber: number, increment: number, excludeLogId?: string, maxTakeNumber?: number) => void;
-  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, tempProjectLocalId?: string) => void;
+  updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -572,7 +572,7 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string, tempProjectLocalId?: string) => {
+      updateFileNumbers: (projectId: string, fieldId: string, fromNumber: number, increment: number, excludeLogId?: string, targetLocalId?: string) => {
         logger.logFunctionEntry({
           functionName: 'updateFileNumbers',
           projectId,
@@ -580,8 +580,7 @@ export const useProjectStore = create<ProjectState>()(
           fromNumber,
           increment,
           excludeLogId,
-          targetLocalId,
-          tempProjectLocalId
+          targetLocalId
         });
         
         // IMPORTANT: Get the current state at the start of processing to ensure we see
@@ -802,43 +801,6 @@ export const useProjectStore = create<ProjectState>()(
             let tempSound: number | null = null; // Upper bound of sound file for next calculation
             let tempCamera: { [cameraNum: number]: number | null } = {}; // Upper bounds for each camera
             
-            // Pre-initialize tempCamera/tempSound from the log at tempProjectLocalId (if provided)
-            // This is used for logs with projectLocalId > tempProjectLocalId
-            // We need to do this BEFORE processing logs so we can use it when we encounter those logs
-            let tempSoundFromTempProjectLocalId: number | null = null;
-            let tempCameraFromTempProjectLocalId: { [cameraNum: number]: number | null } = {};
-            const tempProjectLocalIdNum = tempProjectLocalId ? (parseInt(tempProjectLocalId, 10) || 0) : null;
-            
-            if (tempProjectLocalIdNum !== null) {
-              const logAtTempProjectLocalId = sheets.find(s => {
-                const sLocalId = parseInt((s as any).projectLocalId as string || '0', 10) || 0;
-                return s.projectId === projectId && sLocalId === tempProjectLocalIdNum;
-              });
-              
-              if (logAtTempProjectLocalId) {
-                const logAtTempData = logAtTempProjectLocalId.data || {};
-                const project = activeState.projects.find(p => p.id === projectId);
-                const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-                
-                // Initialize tempSound from log at tempProjectLocalId
-                const soundFieldVal = getFieldValue(logAtTempData, 'soundFile');
-                if (soundFieldVal && soundFieldVal.value !== null) {
-                  tempSoundFromTempProjectLocalId = soundFieldVal.upper;
-                  console.log(`[INIT] PRE-INITIALIZED tempSoundFromTempProjectLocalId = ${tempSoundFromTempProjectLocalId} from log at projectLocalId=${tempProjectLocalIdNum} (Take ${logAtTempProjectLocalId.data?.takeNumber || 'unknown'})`);
-                }
-                
-                // Initialize tempCamera for all cameras from log at tempProjectLocalId
-                for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
-                  const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
-                  const camFieldVal = getFieldValue(logAtTempData, camFieldId);
-                  if (camFieldVal && camFieldVal.value !== null) {
-                    tempCameraFromTempProjectLocalId[camNum] = camFieldVal.upper;
-                    console.log(`[INIT] PRE-INITIALIZED tempCameraFromTempProjectLocalId[${camNum}] = ${tempCameraFromTempProjectLocalId[camNum]} from log at projectLocalId=${tempProjectLocalIdNum} (Take ${logAtTempProjectLocalId.data?.takeNumber || 'unknown'})`);
-                  }
-                }
-              }
-            }
-            
             // Initialize temp variables from the inserted log
             // The inserted log is the one that was inserted before the target duplicate
             // When a log is inserted before Take N with file number X, the inserted log becomes Take N with file number X
@@ -1035,27 +997,6 @@ export const useProjectStore = create<ProjectState>()(
               // Instead, we process it through the normal shifting logic
               // The inserted log's upper bounds are used to initialize temp variables before processing
               // Then the target duplicate is processed like any other take, and temp variables are updated correctly
-
-              // SPECIAL HANDLING: For logs with projectLocalId > tempProjectLocalId, use tempCamera/tempSound
-              // from the log at projectLocalId === tempProjectLocalId (the log that was at the original position of the moved log)
-              const logSheetLocalId = parseInt((logSheet as any).projectLocalId as string || '0', 10) || 0;
-              
-              if (tempProjectLocalIdNum !== null && logSheetLocalId > tempProjectLocalIdNum) {
-                // This log is after the original position of the moved log
-                // Use the pre-initialized values from the log at tempProjectLocalId
-                if (fieldId === 'soundFile' && tempSoundFromTempProjectLocalId !== null) {
-                  tempSound = tempSoundFromTempProjectLocalId;
-                  console.log(`[INIT] Using tempSoundFromTempProjectLocalId = ${tempSound} for log with projectLocalId=${logSheetLocalId} (Take ${takeNum})`);
-                  logger.logDebug(`For log with projectLocalId=${logSheetLocalId}, using tempSoundFromTempProjectLocalId=${tempSound}`);
-                } else if (fieldId.startsWith('cameraFile')) {
-                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                  if (tempCameraFromTempProjectLocalId[cameraNum] !== null && tempCameraFromTempProjectLocalId[cameraNum] !== undefined) {
-                    tempCamera[cameraNum] = tempCameraFromTempProjectLocalId[cameraNum]!;
-                    console.log(`[INIT] Using tempCameraFromTempProjectLocalId[${cameraNum}] = ${tempCamera[cameraNum]} for log with projectLocalId=${logSheetLocalId} (Take ${takeNum})`);
-                    logger.logDebug(`For log with projectLocalId=${logSheetLocalId}, using tempCameraFromTempProjectLocalId[${cameraNum}]=${tempCamera[cameraNum]}`);
-                  }
-                }
-              }
 
               // Check if field needs shifting
               if (currentFieldVal && currentFieldVal.value !== null) {
