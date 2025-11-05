@@ -1729,6 +1729,22 @@ This would break the logging logic and create inconsistencies in the file number
       finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
       finalTakeData = applyRangePersistence(finalTakeData);
       
+      // Get target duplicate's scene, shot, and take number
+      const targetSceneNumber = targetDuplicate.data?.sceneNumber as string | undefined;
+      const targetShotNumber = targetDuplicate.data?.shotNumber as string | undefined;
+      const targetTakeNumber = targetDuplicate.data?.takeNumber as string | undefined;
+      
+      // Update the shifted log's scene, shot, and take number to match the target duplicate
+      if (targetSceneNumber) {
+        finalTakeData.sceneNumber = targetSceneNumber;
+      }
+      if (targetShotNumber) {
+        finalTakeData.shotNumber = targetShotNumber;
+      }
+      if (targetTakeNumber) {
+        finalTakeData.takeNumber = targetTakeNumber;
+      }
+      
       const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
         ? shotDetails.filter(d => d !== 'MOS')
         : shotDetails;
@@ -1742,6 +1758,8 @@ This would break the logging logic and create inconsistencies in the file number
         insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
         cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
       };
+      
+      console.log(`✅ [handleSaveWithInsertBefore] Updated shifted log to match target duplicate: Scene=${targetSceneNumber}, Shot=${targetShotNumber}, Take=${targetTakeNumber}`);
       
       // 3. Save the edited log with its edited ranges (preserved above)
       await updateLogSheet(logSheet.id, updatedData);
@@ -1911,10 +1929,58 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
+      // 7. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId)
+      // Only increment take numbers for logs that are in the same scene/shot as the target duplicate
+      // AND have projectLocalId > targetLocalId AND < tempProjectLocalId
+      if (targetSceneNumber && targetShotNumber && targetTakeNumber) {
+        const targetTakeNum = parseInt(targetTakeNumber, 10);
+        if (!Number.isNaN(targetTakeNum)) {
+          // Get current state after moveExistingLogBefore
+          const currentState = useProjectStore.getState();
+          const projectLogSheets = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
+          
+          // Find logs that need take number increment:
+          // - In the same scene and shot as target duplicate
+          // - projectLocalId > targetLocalId AND < tempProjectLocalId
+          // - Exclude the shifted log itself (logSheet.id)
+          const logsToUpdate = projectLogSheets.filter(sheet => {
+            if (sheet.id === logSheet.id) return false; // Exclude the shifted log itself
+            
+            const data = sheet.data || {};
+            const sceneNum = data.sceneNumber as string | undefined;
+            const shotNum = data.shotNumber as string | undefined;
+            
+            // Must be in the same scene and shot
+            if (sceneNum !== targetSceneNumber || shotNum !== targetShotNumber) return false;
+            
+            // Check projectLocalId range
+            const sheetLocalId = parseInt((sheet as any).projectLocalId as string || '0', 10) || 0;
+            return sheetLocalId > targetLocalId && sheetLocalId < tempProjectLocalId;
+          });
+          
+          // Increment take numbers for matching logs
+          for (const sheet of logsToUpdate) {
+            const data = sheet.data || {};
+            const currentTakeNum = parseInt(data.takeNumber as string || '0', 10);
+            if (!Number.isNaN(currentTakeNum)) {
+              const newTakeNum = currentTakeNum + 1;
+              const updatedData = {
+                ...data,
+                takeNumber: String(newTakeNum)
+              };
+              await updateLogSheet(sheet.id, updatedData);
+              console.log(`✅ [handleSaveWithInsertBefore] Incremented take number for log ${sheet.id}: ${currentTakeNum} -> ${newTakeNum} (projectLocalId: ${(sheet as any).projectLocalId})`);
+            }
+          }
+          
+          console.log(`✅ [handleSaveWithInsertBefore] Updated take numbers for ${logsToUpdate.length} logs in Scene=${targetSceneNumber}, Shot=${targetShotNumber}, projectLocalId range (${targetLocalId}, ${tempProjectLocalId})`);
+        }
+      }
+      
       // Emit ORDER AFTER snapshot
-    emitOrderAfterSnapshot(logSheet.projectId);
-    
-    router.back();
+      emitOrderAfterSnapshot(logSheet.projectId);
+      
+      router.back();
     } catch (error) {
       console.error('❌ [handleSaveWithInsertBefore] Error:', error);
       Alert.alert('Error', 'Failed to insert log before duplicate. Please try again.');
