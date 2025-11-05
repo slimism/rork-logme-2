@@ -2805,28 +2805,33 @@ This would break the logging logic and create inconsistencies in the file number
             
             if (hasRange) {
               // Has range data - save it (works for both waste and non-waste)
-              // CRITICAL FIX: When inserting before a duplicate, recalculate 'to' based on range size
-              // Get original range from logSheet.data (before cleanup) to calculate range size
-              const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
-                                   parseInt(logSheet.data?.['cameraFile'] as string) || 0;
-              const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
-                                (parseInt(logSheet.data?.['cameraFile'] as string) || originalFrom);
-              const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
-              
               // Get new 'from' value (should be from rangeData or duplicate target)
               const newFrom = parseInt(rangeData['cameraFile'].from) || 0;
-              // Calculate new 'to' based on range size: from + rangeSize - 1
-              const calculatedNewTo = newFrom + originalRangeSize - 1;
+              // CRITICAL FIX: Use user-entered 'to' value if provided, otherwise recalculate based on original range size
+              const userEnteredTo = parseInt(rangeData['cameraFile'].to) || 0;
+              
+              let newTo: number;
+              if (userEnteredTo > 0 && userEnteredTo !== newFrom) {
+                // User explicitly entered a 'to' value - use it
+                newTo = userEnteredTo;
+              } else {
+                // No explicit 'to' value - recalculate based on original range size
+                const originalFrom = parseInt(logSheet.data?.['camera1_from'] as string) || 
+                                     parseInt(logSheet.data?.['cameraFile'] as string) || 0;
+                const originalTo = parseInt(logSheet.data?.['camera1_to'] as string) || 
+                                  (parseInt(logSheet.data?.['cameraFile'] as string) || originalFrom);
+                const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+                newTo = newFrom + originalRangeSize - 1;
+              }
               
               finalData['camera1_from'] = pad4(String(newFrom));
-              finalData['camera1_to'] = pad4(String(calculatedNewTo));
+              finalData['camera1_to'] = pad4(String(newTo));
               delete finalData.cameraFile;
               
-              console.log('DEBUG - Set camera range (recalculated):', {
-                'originalRange': `${originalFrom}-${originalTo}`,
-                'originalRangeSize': originalRangeSize,
+              console.log('DEBUG - Set camera range:', {
+                'userEnteredTo': userEnteredTo,
                 'newFrom': newFrom,
-                'calculatedNewTo': calculatedNewTo,
+                'newTo': newTo,
                 'finalData.camera1_from': finalData.camera1_from,
                 'finalData.camera1_to': finalData.camera1_to
               });
@@ -2849,28 +2854,33 @@ This would break the logging logic and create inconsistencies in the file number
               
               if (hasRange) {
                 // Has range data - save it (works for both waste and non-waste)
-                // CRITICAL FIX: When inserting before a duplicate, recalculate 'to' based on range size
-                // Get original range from logSheet.data (before cleanup) to calculate range size
-                const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
-                                     parseInt(logSheet.data?.[fid] as string) || 0;
-                const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
-                                  (parseInt(logSheet.data?.[fid] as string) || originalFrom);
-                const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
-                
                 // Get new 'from' value (should be from rangeData or duplicate target)
                 const newFrom = parseInt(rangeData[fid].from) || 0;
-                // Calculate new 'to' based on range size: from + rangeSize - 1
-                const calculatedNewTo = newFrom + originalRangeSize - 1;
+                // CRITICAL FIX: Use user-entered 'to' value if provided, otherwise recalculate based on original range size
+                const userEnteredTo = parseInt(rangeData[fid].to) || 0;
+                
+                let newTo: number;
+                if (userEnteredTo > 0 && userEnteredTo !== newFrom) {
+                  // User explicitly entered a 'to' value - use it
+                  newTo = userEnteredTo;
+                } else {
+                  // No explicit 'to' value - recalculate based on original range size
+                  const originalFrom = parseInt(logSheet.data?.[`camera${i}_from`] as string) || 
+                                       parseInt(logSheet.data?.[fid] as string) || 0;
+                  const originalTo = parseInt(logSheet.data?.[`camera${i}_to`] as string) || 
+                                    (parseInt(logSheet.data?.[fid] as string) || originalFrom);
+                  const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+                  newTo = newFrom + originalRangeSize - 1;
+                }
                 
                 finalData[`camera${i}_from`] = pad4(String(newFrom));
-                finalData[`camera${i}_to`] = pad4(String(calculatedNewTo));
+                finalData[`camera${i}_to`] = pad4(String(newTo));
                 delete finalData[fid];
                 
-                console.log(`DEBUG - Set camera${i} range (recalculated):`, {
-                  'originalRange': `${originalFrom}-${originalTo}`,
-                  'originalRangeSize': originalRangeSize,
+                console.log(`DEBUG - Set camera${i} range:`, {
+                  'userEnteredTo': userEnteredTo,
                   'newFrom': newFrom,
-                  'calculatedNewTo': calculatedNewTo,
+                  'newTo': newTo,
                   [`finalData.camera${i}_from`]: finalData[`camera${i}_from`],
                   [`finalData.camera${i}_to`]: finalData[`camera${i}_to`]
                 });
@@ -2932,24 +2942,31 @@ This would break the logging logic and create inconsistencies in the file number
             // Get new range from edited take
             const newFrom = parseInt(rangeData[fieldId]?.from) || 
                            parseInt(takeData[fieldId] as string) || 0;
-            // CRITICAL FIX: Calculate the recalculated 'to' value based on original range size
-            // This ensures we use the correct range size (7 files) not the old 'to' value (0015)
-            const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
-            const calculatedNewTo = newFrom + originalRangeSize - 1; // Recalculate based on range size
+            // CRITICAL FIX: Use user-entered 'to' value if provided, otherwise recalculate based on original range size
+            const userEnteredTo = parseInt(rangeData[fieldId]?.to) || 0;
+            let newTo: number;
+            if (userEnteredTo > 0 && userEnteredTo !== newFrom) {
+              // User explicitly entered a 'to' value - use it
+              newTo = userEnteredTo;
+            } else {
+              // No explicit 'to' value - recalculate based on original range size
+              const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+              newTo = newFrom + originalRangeSize - 1;
+            }
 
             console.log(`🔍 [TWO-PHASE] Camera shift for ${fieldId}:`, {
               projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
               editedLogId: logSheet.id,
               originalRange: `${originalFrom}-${originalTo}`,
-              originalRangeSize: originalRangeSize,
-              newRange: `${newFrom}-${calculatedNewTo}`,
+              userEnteredTo: userEnteredTo,
+              newRange: `${newFrom}-${newTo}`,
               excludeLogId: logSheet.id
             });
 
             // PHASE 1: Shift files that are newly consumed (before original range)
             let phase1Delta = 0;
             if (newFrom < originalFrom) {
-              phase1Delta = Math.abs(calculatedNewTo - newFrom) + 1; // Use recalculated 'to' value
+              phase1Delta = Math.abs(newTo - newFrom) + 1; // Use actual new 'to' value
               
               console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id})`);
               
@@ -3002,24 +3019,31 @@ This would break the logging logic and create inconsistencies in the file number
                 // Get new range from edited take
                 const newFrom = parseInt(rangeData[fieldId]?.from) || 
                                parseInt(takeData[fieldId] as string) || 0;
-                // CRITICAL FIX: Calculate the recalculated 'to' value based on original range size
-                // This ensures we use the correct range size (7 files) not the old 'to' value (0015)
-                const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
-                const calculatedNewTo = newFrom + originalRangeSize - 1; // Recalculate based on range size
+                // CRITICAL FIX: Use user-entered 'to' value if provided, otherwise recalculate based on original range size
+                const userEnteredTo = parseInt(rangeData[fieldId]?.to) || 0;
+                let newTo: number;
+                if (userEnteredTo > 0 && userEnteredTo !== newFrom) {
+                  // User explicitly entered a 'to' value - use it
+                  newTo = userEnteredTo;
+                } else {
+                  // No explicit 'to' value - recalculate based on original range size
+                  const originalRangeSize = Math.abs(originalTo - originalFrom) + 1; // Inclusive count
+                  newTo = newFrom + originalRangeSize - 1;
+                }
 
                 console.log(`🔍 [TWO-PHASE] Camera shift for ${fieldId}:`, {
                   projectLocalId: (logSheet as any)?.projectLocalId || 'N/A',
                   editedLogId: logSheet.id,
                   originalRange: `${originalFrom}-${originalTo}`,
-                  originalRangeSize: originalRangeSize,
-                  newRange: `${newFrom}-${calculatedNewTo}`,
+                  userEnteredTo: userEnteredTo,
+                  newRange: `${newFrom}-${newTo}`,
                   excludeLogId: logSheet.id
                 });
 
                 // PHASE 1: Shift files that are newly consumed (before original range)
                 let phase1Delta = 0;
                 if (newFrom < originalFrom) {
-                  phase1Delta = Math.abs(calculatedNewTo - newFrom) + 1; // Use recalculated 'to' value
+                  phase1Delta = Math.abs(newTo - newFrom) + 1; // Use actual new 'to' value
                   
                   console.log(`[PHASE 1] Shifting ${fieldId} from ${newFrom} to ${originalFrom - 1} by +${phase1Delta} (projectLocalId: ${(logSheet as any)?.projectLocalId || 'N/A'}, excludeLogId: ${logSheet.id})`);
                   
