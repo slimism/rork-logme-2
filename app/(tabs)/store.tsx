@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  TextInput,
 } from 'react-native';
-import { Calendar, Hourglass, Infinity } from 'lucide-react-native';
+import { Calendar, Hourglass, Infinity, Tag } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
+import { useVoucherStore } from '@/store/voucherStore';
 import { iapService, IAPProduct } from '@/services/iapService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/store/themeStore';
@@ -24,9 +26,12 @@ interface TokenPackage extends IAPProduct {
 export default function Store() {
   const { tokens, addTokens, getRemainingTrialLogs } = useTokenStore();
   const { darkMode } = useThemeStore();
+  const { redeemVoucher, canUseDiscount } = useVoucherStore();
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [products, setProducts] = useState<TokenPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [voucherCode, setVoucherCode] = useState('');
+  const [showVoucher, setShowVoucher] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -90,7 +95,10 @@ export default function Store() {
     }
   };
 
-  const handleTestPurchase = (tokenCount: number) => {
+  const handleTestPurchase = (tokenCount: number, originalPrice?: number) => {
+    const hasDiscount = canUseDiscount() && originalPrice;
+    const discountedPrice = hasDiscount ? originalPrice! * 0.8 : originalPrice;
+    
     Alert.alert(
       'Test Purchase',
       `Add ${tokenCount} token${tokenCount > 1 ? 's' : ''} for testing? (No payment required)`,
@@ -108,6 +116,23 @@ export default function Store() {
         }
       ]
     );
+  };
+
+  const handleRedeemVoucher = () => {
+    if (!voucherCode.trim()) {
+      Alert.alert('Error', 'Please enter a voucher code');
+      return;
+    }
+
+    const result = redeemVoucher(voucherCode);
+    
+    if (result.success) {
+      Alert.alert('Success!', result.message);
+      setVoucherCode('');
+      setShowVoucher(false);
+    } else {
+      Alert.alert('Error', result.message);
+    }
   };
 
   const handleRestorePurchases = async () => {
@@ -200,46 +225,94 @@ export default function Store() {
           </View>
         </View>
 
+        {/* Purchase Vouchers Button */}
+        <View style={styles.sectionContainer}>
+          <TouchableOpacity 
+            style={[styles.voucherButton, darkMode && styles.voucherButtonDark]}
+            onPress={() => setShowVoucher(!showVoucher)}
+          >
+            <Tag size={20} color={colors.primary} style={styles.voucherIcon} />
+            <Text style={[styles.voucherButtonText, darkMode && styles.voucherButtonTextDark]}>
+              {showVoucher ? 'Hide Voucher Code' : 'Have a Voucher Code?'}
+            </Text>
+          </TouchableOpacity>
+          
+          {showVoucher && (
+            <View style={[styles.voucherInputContainer, darkMode && styles.voucherInputContainerDark]}>
+              <TextInput
+                style={[styles.voucherInput, darkMode && styles.voucherInputDark]}
+                placeholder="Enter voucher code"
+                placeholderTextColor={darkMode ? '#888' : '#aaa'}
+                value={voucherCode}
+                onChangeText={setVoucherCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <TouchableOpacity 
+                style={[styles.redeemButton, darkMode && styles.redeemButtonDark]}
+                onPress={handleRedeemVoucher}
+              >
+                <Text style={styles.redeemButtonText}>Redeem</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         {/* Purchase Credits */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Purchase Tokens</Text>
           
           <TouchableOpacity 
             style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
-            onPress={() => handleTestPurchase(1)}
+            onPress={() => handleTestPurchase(1, 4.99)}
           >
             <View style={styles.purchaseInfo}>
               <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>1 Token</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Unlock one project</Text>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.price}>$4.99</Text>
+              {!canUseDiscount() && (
+                <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$4.99</Text>
+              )}
+              <Text style={styles.price}>
+                {canUseDiscount() ? '$3.99' : '$4.99'}
+              </Text>
             </View>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
-            onPress={() => handleTestPurchase(4)}
+            onPress={() => handleTestPurchase(4, 14.99)}
           >
             <View style={styles.purchaseInfo}>
               <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>4 Tokens</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Best value</Text>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.price}>$14.99</Text>
+              {!canUseDiscount() && (
+                <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$14.99</Text>
+              )}
+              <Text style={styles.price}>
+                {canUseDiscount() ? '$11.99' : '$14.99'}
+              </Text>
             </View>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.purchaseOption, darkMode && styles.purchaseOptionDark]}
-            onPress={() => handleTestPurchase(10)}
+            onPress={() => handleTestPurchase(10, 29.99)}
           >
             <View style={styles.purchaseInfo}>
               <Text style={[styles.purchaseTitle, darkMode && styles.purchaseTitleDark]}>10 Tokens</Text>
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>For the pros</Text>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.price}>$29.99</Text>
+              {!canUseDiscount() && (
+                <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$29.99</Text>
+              )}
+              <Text style={styles.price}>
+                {canUseDiscount() ? '$23.99' : '$29.99'}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -448,5 +521,79 @@ const styles = StyleSheet.create({
   },
   footerTextDark: {
     color: '#cccccc',
+  },
+  voucherButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  voucherButtonDark: {
+    backgroundColor: '#2a2a2a',
+    borderColor: colors.primary,
+  },
+  voucherIcon: {
+    marginRight: 8,
+  },
+  voucherButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  voucherButtonTextDark: {
+    color: colors.primary,
+  },
+  voucherInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  voucherInputContainerDark: {
+    backgroundColor: 'transparent',
+  },
+  voucherInput: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  voucherInputDark: {
+    backgroundColor: '#2a2a2a',
+    color: '#ffffff',
+    borderColor: '#444',
+  },
+  redeemButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redeemButtonDark: {
+    backgroundColor: colors.primary,
+  },
+  redeemButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  originalPrice: {
+    fontSize: 13,
+    color: colors.subtext,
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
+  },
+  originalPriceDark: {
+    color: '#888',
   },
 });
