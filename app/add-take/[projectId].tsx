@@ -1645,22 +1645,34 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
+    // Get targetLocalId (projectLocalId of the existing entry) BEFORE insertion
+    // This is needed for sequential shifting logic and for insertNewLogBefore
+    const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
+    
     // Create the log FIRST before shifting file numbers, so we can pass its ID to updateFileNumbers
     const logSheet = (() => {
       try {
-        // When inserting before an existing entry, create at target ID and shift IDs
-        if (duplicateInfo && position === 'before' && existingEntry?.id) {
+        // When inserting before an existing entry, create at target projectLocalId and shift IDs
+        // Pass targetLocalId (projectLocalId) to insertNewLogBefore so it assigns the correct ID
+        if (duplicateInfo && position === 'before' && targetLocalId > 0) {
           const inserted = insertNewLogBefore(
             projectId,
-            String(existingEntry.id),
+            String(targetLocalId), // Use projectLocalId, not id
             `Take ${stats.totalTakes + 1}`,
             'take',
             '',
             () => ({ ...newLogData })
           );
-          if (inserted) return inserted;
+          if (inserted) {
+            // Emit snapshot immediately after insertion to show new projectLocalId assignments
+            console.log(`✅ [addLogWithDuplicateHandling] Log inserted at projectLocalId=${targetLocalId}, emitting snapshot`);
+            emitOrderAfterSnapshot(projectId);
+            return inserted;
+          }
         }
-      } catch {}
+      } catch (error) {
+        console.error('❌ [addLogWithDuplicateHandling] Error in insertNewLogBefore:', error);
+      }
       // Fallback: normal append
       return addLogSheet(
         `Take ${stats.totalTakes + 1}`,
@@ -1669,10 +1681,6 @@ This would break the logging logic and create inconsistencies in the file number
         projectId
       );
     })();
-
-    // Get targetLocalId (projectLocalId of the existing entry) BEFORE insertion
-    // This is needed for sequential shifting logic
-    const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
     
     // Increment take numbers for Insert Before when the target is in the same Scene & Shot
     const tScene = existingEntry.data?.sceneNumber as string | undefined;
