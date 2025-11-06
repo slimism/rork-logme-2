@@ -57,17 +57,14 @@ export default function ProjectScreen() {
     setProjectLogSheets(sheets);
   }, [id, projects, logSheets]);
 
-  const HeaderLeft = () => (
-    <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-      <ArrowLeft size={24} color={darkMode ? '#f2f2f2' : colors.text} />
-    </TouchableOpacity>
-  );
-
-  const HeaderRight = () => {
+  const HeaderLeft = () => {
     const showConsumeToken = id && isTrialProject(id) && !isProjectUnlocked(id);
     
     return (
-      <View style={styles.headerRightContainer}>
+      <View style={styles.headerLeftContainer}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+          <ArrowLeft size={24} color={darkMode ? '#f2f2f2' : colors.text} />
+        </TouchableOpacity>
         {showConsumeToken && (
           <TouchableOpacity 
             onPress={handleConsumeToken} 
@@ -76,6 +73,13 @@ export default function ProjectScreen() {
             <Text style={styles.consumeTokenText}>Unlock</Text>
           </TouchableOpacity>
         )}
+      </View>
+    );
+  };
+
+  const HeaderRight = () => {
+    return (
+      <View style={styles.headerRightContainer}>
         <TouchableOpacity onPress={handleExportLogs} style={styles.exportButton} disabled={isExportingLogs}>
           <FileText size={20} color={isExportingLogs ? colors.subtext : colors.primary} />
         </TouchableOpacity>
@@ -747,6 +751,11 @@ const styles = StyleSheet.create({
     padding: 8,
     marginHorizontal: 8,
   },
+  headerLeftContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
   headerRightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1272,7 +1281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    marginRight: 8,
+    marginLeft: 4,
   },
   consumeTokenButtonDark: {
     backgroundColor: colors.primary,
