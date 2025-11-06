@@ -805,7 +805,7 @@ export default function AddTakeScreen() {
 
   // General conflict detector: returns conflict info when current file (single or range)
   // overlaps an existing ranged take. It classifies overlap as 'lower' | 'upper' | 'within'.
-  // Only 'upper' and 'within' should block; 'lower' proceeds to Insert Before.
+  // For Add flow, ANY overlap should block (insert-before is only allowed in Edit).
   const findGeneralRangeConflict = () => {
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
 
@@ -966,9 +966,9 @@ export default function AddTakeScreen() {
       return;
     }
 
-    // Block only when overlap with an existing range is at upper or within; allow lower for Insert Before
+    // Block when overlap with an existing range is detected (no insert-before in Add flow)
     const generalRangeConflict = findGeneralRangeConflict();
-    if (generalRangeConflict && (generalRangeConflict.conflictType === 'upper' || generalRangeConflict.conflictType === 'within')) {
+    if (generalRangeConflict) {
       const e = generalRangeConflict.existingEntry;
       const classification = e.data?.classification;
       let loc: string;
@@ -1101,13 +1101,9 @@ export default function AddTakeScreen() {
         }
         Alert.alert(
           'Duplicate Detected',
-          `Camera and Sound files are duplicates found in ${location}. Do you want to insert before?`,
+          `Camera and Sound files are duplicates in ${location}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicatePair(existingEntry, soundDup.number, cameraDup!.fieldId, cameraDup!.number),
-            },
+            { text: 'OK', style: 'default' }
           ]
         );
         return;
@@ -1153,13 +1149,9 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+            `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
             [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Insert Before',
-                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-              },
+              { text: 'OK', style: 'default' }
             ]
           );
           return;
@@ -1178,13 +1170,9 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+            `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
             [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Insert Before',
-                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-              },
+              { text: 'OK', style: 'default' }
             ]
           );
           return;
@@ -1242,19 +1230,17 @@ This would break the logging logic and create inconsistencies in the file number
         // Special message for Ambience/SFX
         Alert.alert(
           `${classification} Duplicate Detected`,
-          `Sound file is a duplicate at ${loc}.\n\nThis will be added as ${classification}. The sound file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
+          `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+            { text: 'OK', style: 'default' }
           ]
         );
       } else {
         Alert.alert(
           'Duplicate Detected',
-          `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
+          `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Insert Before (Sound Only)', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
+            { text: 'OK', style: 'default' }
           ]
         );
       }
@@ -1271,19 +1257,17 @@ This would break the logging logic and create inconsistencies in the file number
         // Special message for Ambience/SFX
         Alert.alert(
           `${classification} Duplicate Detected`,
-          `Camera file is a duplicate at ${loc}.\n\nThis will be added as ${classification}. The camera file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
+          `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+            { text: 'OK', style: 'default' }
           ]
         );
       } else {
         Alert.alert(
           'Duplicate Detected',
-          `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
+          `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Insert Before (Camera Only)', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
+            { text: 'OK', style: 'default' }
           ]
         );
       }
@@ -1354,13 +1338,9 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+        `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
         [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-          },
+          { text: 'OK', style: 'default' }
         ]
       );
       return;
@@ -1387,13 +1367,9 @@ This would break the logging logic and create inconsistencies in the file number
         }
         Alert.alert(
           'Duplicate Detected',
-          `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+          `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-            },
+            { text: 'OK', style: 'default' }
           ]
         );
         return;
@@ -1413,13 +1389,9 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+        `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
         [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-          },
+          { text: 'OK', style: 'default' }
         ]
       );
       return;
