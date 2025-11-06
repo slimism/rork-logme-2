@@ -128,7 +128,7 @@ export const useProjectStore = create<ProjectState>()(
             .filter(s => s.projectId === projectId)
             .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
             .map(s => ({
-              id: s.projectLocalId || s.id,
+              id: s.projectLocalId,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
@@ -158,7 +158,7 @@ export const useProjectStore = create<ProjectState>()(
         const beforeOrder = [...projectLogs]
           .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
           .map(s => ({
-            id: s.projectLocalId || s.id,
+            id: s.projectLocalId,
             scene: (s.data as any)?.sceneNumber,
             shot: (s.data as any)?.shotNumber,
             take: (s.data as any)?.takeNumber,
@@ -205,7 +205,7 @@ export const useProjectStore = create<ProjectState>()(
             .filter(s => s.projectId === projectId)
             .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
             .map(s => ({
-              id: s.projectLocalId || s.id,
+              id: s.projectLocalId,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
@@ -369,7 +369,7 @@ export const useProjectStore = create<ProjectState>()(
             .filter(s => s.projectId === projectId)
             .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
             .map(s => ({
-              id: s.projectLocalId || s.id,
+              id: s.projectLocalId,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
@@ -438,7 +438,7 @@ export const useProjectStore = create<ProjectState>()(
               .filter(s => s.projectId === updated.projectId)
               .sort((a, b) => (parseInt(a.projectLocalId as string, 10) || 0) - (parseInt(b.projectLocalId as string, 10) || 0))
               .map(s => ({
-                id: s.projectLocalId || s.id,
+                id: s.projectLocalId,
                 scene: (s.data as any)?.sceneNumber,
                 shot: (s.data as any)?.shotNumber,
                 take: (s.data as any)?.takeNumber,
@@ -1679,7 +1679,7 @@ export const useProjectStore = create<ProjectState>()(
             .filter(s => s.projectId === projectId)
             .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
             .map(s => ({
-              id: s.projectLocalId || s.id,
+              id: s.projectLocalId,
               scene: (s.data as any)?.sceneNumber,
               shot: (s.data as any)?.shotNumber,
               take: (s.data as any)?.takeNumber,
