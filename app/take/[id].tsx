@@ -1137,10 +1137,15 @@ export default function EditTakeScreen() {
       }
     }
     
-    // Check Sound File (mandatory unless disabled)
-    if (!disabledFields.has('soundFile') && !takeData.soundFile?.trim()) {
-      errors.add('soundFile');
-      missingFields.push('Sound File');
+    // Check Sound File (mandatory unless disabled). Consider range mode as valid input
+    if (!disabledFields.has('soundFile')) {
+      const hasSoundValue = showRangeMode['soundFile']
+        ? ((rangeData['soundFile']?.from?.trim() ?? '') !== '' && (rangeData['soundFile']?.to?.trim() ?? '') !== '')
+        : ((takeData.soundFile?.trim() ?? '') !== '');
+      if (!hasSoundValue) {
+        errors.add('soundFile');
+        missingFields.push('Sound File');
+      }
     }
 
     // Check Camera Files (mandatory unless disabled)
