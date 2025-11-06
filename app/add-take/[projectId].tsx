@@ -2794,6 +2794,16 @@ This would break the logging logic and create inconsistencies in the file number
       updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
     }
 
+    // Establish target context and create the inserted log upfront so we can pass its id
+    const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10) || 0;
+    let logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+    const insertedLogId = logSheet?.id;
+
     // Shift subsequent sound and camera files for ALL relevant cameras, not just one
     // Only shift if the target duplicate has that file (not blank)
     const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || 
@@ -3056,12 +3066,7 @@ This would break the logging logic and create inconsistencies in the file number
       updateLogSheet(existingEntry.id, existingEntryUpdates);
     }
 
-    const logSheet = addLogSheet(
-      `Take ${stats.totalTakes + 1}`,
-      'take',
-      '',
-      projectId
-    );
+    // Reuse the pre-created logSheet above
 
     let finalTakeData = { ...newLogData };
     if (camCount > 1) {
