@@ -271,7 +271,7 @@ export default function Store() {
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Unlock one project</Text>
             </View>
             <View style={styles.priceContainer}>
-              {!canUseDiscount() && (
+              {canUseDiscount() && (
                 <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$4.99</Text>
               )}
               <Text style={styles.price}>
@@ -289,7 +289,7 @@ export default function Store() {
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>Best value</Text>
             </View>
             <View style={styles.priceContainer}>
-              {!canUseDiscount() && (
+              {canUseDiscount() && (
                 <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$14.99</Text>
               )}
               <Text style={styles.price}>
@@ -307,7 +307,7 @@ export default function Store() {
               <Text style={[styles.purchaseSubtitle, darkMode && styles.purchaseSubtitleDark]}>For the pros</Text>
             </View>
             <View style={styles.priceContainer}>
-              {!canUseDiscount() && (
+              {canUseDiscount() && (
                 <Text style={[styles.originalPrice, darkMode && styles.originalPriceDark]}>$29.99</Text>
               )}
               <Text style={styles.price}>

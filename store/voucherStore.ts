@@ -139,7 +139,7 @@ export const useVoucherStore = create<VoucherState>()(
 
       canUseDiscount: () => {
         const state = get();
-        return !state.discountUsed;
+        return state.discountUsed;
       },
     }),
     {
