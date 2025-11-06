@@ -365,7 +365,7 @@ export default function ProjectsScreen() {
 const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.cardSecondary,
+    backgroundColor: colors.background,
   },
   headerSafeArea: {
     backgroundColor: colors.card,
@@ -572,7 +572,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     width: 80,
     height: 80,
     borderRadius: 8,
-    backgroundColor: '#2c3e50',
+    backgroundColor: colors.disabled,
     alignItems: 'center',
     justifyContent: 'center',
   },
