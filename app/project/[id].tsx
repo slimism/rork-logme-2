@@ -371,7 +371,7 @@ export default function ProjectScreen() {
               <Text style={[styles.takeTitle, darkMode && styles.takeTitleDark]}>
                 {titleText}
               </Text>
-              {take.data?.isGoodTake && !isAmbienceSfx && (
+              {take.data?.isGoodTake && (
                 <View style={styles.goodTakeIndicator}>
                   <Check size={12} color="#10B981" strokeWidth={3} />
                 </View>
