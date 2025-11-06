@@ -935,6 +935,397 @@ export default function AddTakeScreen() {
     return true;
   };
 
+  // Helper function to emit ORDER AFTER snapshot after save operations
+  const emitOrderAfterSnapshot = (projectId: string) => {
+    try {
+      const state = useProjectStore.getState();
+      const orderAfter = state.logSheets
+        .filter(s => s.projectId === projectId)
+        .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
+        .map(s => ({
+          id: s.projectLocalId || s.id,
+          scene: (s.data as any)?.sceneNumber,
+          shot: (s.data as any)?.shotNumber,
+          take: (s.data as any)?.takeNumber,
+          camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
+            ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
+            : ((s.data as any)?.cameraFile || undefined),
+          sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
+            ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
+            : ((s.data as any)?.soundFile || undefined),
+          classification: (s.data as any)?.classification || undefined,
+          ...(() => { const d:any=(s.data as any)||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
+        }));
+      console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
+    } catch (error) {
+      console.error('Error emitting ORDER AFTER snapshot:', error);
+    }
+  };
+
+  const handleAddTakeWithInsertBefore = async (targetDuplicate: any) => {
+    console.log('========== ADD WITH INSERT BEFORE INITIATED ==========');
+    if (!project) return;
+    
+    try {
+      // Check if user can add more logs
+      const canAdd = canAddLog(projectId);
+      if (!canAdd) {
+        Alert.alert(
+          'Out of Free Logs',
+          'You have used all your free trial logs. Purchase a token to get unlimited logs for this project.',
+          [
+            { text: 'OK', style: 'default' },
+            {
+              text: 'Buy Tokens',
+              onPress: () => router.push('/store'),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Validate mandatory fields first
+      if (!validateMandatoryFields()) {
+        return;
+      }
+
+      // Only use trial if this is the trial project and not unlocked
+      const isTrialProject = tokenStore.isTrialProject(projectId);
+      const isUnlocked = tokenStore.isProjectUnlocked(projectId);
+      if (isTrialProject && !isUnlocked) {
+        tokenStore.useTrial();
+      }
+
+      // 1. Create the new log (this assigns it a projectLocalId)
+      const logSheet = addLogSheet(
+        `Take ${stats.totalTakes + 1}`,
+        'take',
+        '',
+        projectId
+      );
+
+      // Get the newly created log's projectLocalId (tempProjectLocalId)
+      const tempProjectLocalId = parseInt(String((logSheet as any)?.projectLocalId || '0'), 10);
+      const targetLocalId = parseInt(String((targetDuplicate as any)?.projectLocalId || '0'), 10);
+      
+      if (Number.isNaN(tempProjectLocalId) || Number.isNaN(targetLocalId)) {
+        Alert.alert('Error', 'Could not determine log positions. Please try again.');
+        return;
+      }
+      
+      if (tempProjectLocalId === targetLocalId) {
+        Alert.alert('Error', 'Cannot insert log before itself.');
+        return;
+      }
+      
+      console.log(`[handleAddTakeWithInsertBefore] tempProjectLocalId: ${tempProjectLocalId}, targetLocalId: ${targetLocalId}`);
+      
+      // 2. Prepare the log data (preserve edited ranges)
+      let finalTakeData = { ...takeData } as Record<string, any>;
+      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+      
+      if (cameraConfiguration > 1) {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          const isRecActive = cameraRecState[fieldId] ?? true;
+          if (!isRecActive) {
+            delete finalTakeData[fieldId];
+          }
+        }
+      }
+      
+      const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+      const applyRangePersistence = (data: Record<string, any>) => {
+        const out: Record<string, any> = { ...data };
+        const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+          const inRange = showRangeMode[fieldId] === true;
+          const r = rangeData[fieldId];
+          
+          // First, clear any existing range or single values
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          
+          // For disabled fields (waste), still save range data if it exists
+          if (!enabled) {
+            if (inRange && r && r.from && r.to) {
+              if (fieldId === 'soundFile') {
+                out['sound_from'] = pad4(r.from);
+                out['sound_to'] = pad4(r.to);
+              } else if (idx != null) {
+                out[`camera${idx}_from`] = pad4(r.from);
+                out[`camera${idx}_to`] = pad4(r.to);
+              }
+            }
+            return;
+          }
+          
+          // Field is enabled - apply normal logic
+          if (inRange && r && r.from && r.to) {
+            // Range mode - set _from and _to fields
+            if (fieldId === 'soundFile') {
+              out['sound_from'] = pad4(r.from);
+              out['sound_to'] = pad4(r.to);
+            } else if (idx != null) {
+              out[`camera${idx}_from`] = pad4(r.from);
+              out[`camera${idx}_to`] = pad4(r.to);
+            }
+          } else if (!inRange) {
+            // Single value mode
+            if (fieldId === 'soundFile' && data.soundFile) {
+              out.soundFile = data.soundFile;
+            } else if (idx != null) {
+              const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+              if (data[base]) {
+                out[base] = data[base];
+              }
+            }
+          }
+        };
+        
+        const soundEnabled = !disabledFields.has('soundFile');
+        handleField('soundFile', soundEnabled);
+        
+        if (cameraConfiguration === 1) {
+          const camEnabled = !disabledFields.has('cameraFile');
+          handleField('cameraFile', camEnabled, 1);
+        } else {
+          for (let i = 1; i <= cameraConfiguration; i++) {
+            const fieldId = `cameraFile${i}`;
+            const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+            handleField(fieldId, camEnabled, i);
+          }
+        }
+        return out;
+      };
+      
+      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+      finalTakeData = applyRangePersistence(finalTakeData);
+      
+      // Get target duplicate's scene, shot, and take number
+      const targetSceneNumber = targetDuplicate.data?.sceneNumber as string | undefined;
+      const targetShotNumber = targetDuplicate.data?.shotNumber as string | undefined;
+      const targetTakeNumber = targetDuplicate.data?.takeNumber as string | undefined;
+      
+      // Update the new log's scene, shot, and take number to match the target duplicate
+      if (targetSceneNumber) {
+        finalTakeData.sceneNumber = targetSceneNumber;
+      }
+      if (targetShotNumber) {
+        finalTakeData.shotNumber = targetShotNumber;
+      }
+      if (targetTakeNumber) {
+        finalTakeData.takeNumber = targetTakeNumber;
+      }
+      
+      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
+        ? shotDetails.filter(d => d !== 'MOS')
+        : shotDetails;
+      
+      const updatedData = {
+        ...finalTakeData,
+        classification: classification || '',
+        shotDetails: filteredShotDetails.length > 0 ? filteredShotDetails : [],
+        isGoodTake: isGoodTake,
+        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+        cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
+      };
+      
+      console.log(`✅ [handleAddTakeWithInsertBefore] Updated new log to match target duplicate: Scene=${targetSceneNumber}, Shot=${targetShotNumber}, Take=${targetTakeNumber}`);
+      
+      // 3. Save the new log with its data
+      await updateLogSheet(logSheet.id, updatedData);
+      console.log(`✅ [handleAddTakeWithInsertBefore] Saved new log with data`);
+      
+      // 4. Move the log before the target duplicate (update projectLocalId)
+      moveExistingLogBefore(logSheet.projectId, String(tempProjectLocalId), String(targetLocalId));
+      console.log(`✅ [handleAddTakeWithInsertBefore] Moved log: projectLocalId ${tempProjectLocalId} -> ${targetLocalId}`);
+      
+      // 5. Shift file numbers using sequential shifting logic (tempCamera/tempSound)
+      // Get the inserted log's file numbers from the saved data to determine fromNumber and increment
+      const insertedLogData = updatedData;
+      
+      // Helper to get file number lower bound (for fromNumber calculation)
+      const getFileNumberLower = (data: any, fieldId: string): number | null => {
+        if (fieldId === 'soundFile') {
+          if (data.sound_from && data.sound_to) {
+            return Math.min(parseInt(data.sound_from, 10) || 0, parseInt(data.sound_to, 10) || 0);
+          }
+          if (data.soundFile) {
+            const val = String(data.soundFile);
+            if (val.includes('-')) {
+              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
+              return Math.min(from, to);
+            }
+            return parseInt(val, 10) || null;
+          }
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const fromKey = `camera${cameraNum}_from`;
+          const toKey = `camera${cameraNum}_to`;
+          if (data[fromKey] && data[toKey]) {
+            return Math.min(parseInt(data[fromKey], 10) || 0, parseInt(data[toKey], 10) || 0);
+          }
+          if (data[fieldId]) {
+            const val = String(data[fieldId]);
+            if (val.includes('-')) {
+              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
+              return Math.min(from, to);
+            }
+            return parseInt(val, 10) || null;
+          }
+        }
+        return null;
+      };
+      
+      // Helper to calculate delta (increment) for a field
+      const calculateDelta = (data: any, fieldId: string): number => {
+        if (fieldId === 'soundFile') {
+          if (data.sound_from && data.sound_to) {
+            const from = parseInt(data.sound_from, 10) || 0;
+            const to = parseInt(data.sound_to, 10) || 0;
+            return Math.abs(to - from) + 1;
+          }
+          return 1; // Single value
+        } else if (fieldId.startsWith('cameraFile')) {
+          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
+          const fromKey = `camera${cameraNum}_from`;
+          const toKey = `camera${cameraNum}_to`;
+          if (data[fromKey] && data[toKey]) {
+            const from = parseInt(data[fromKey], 10) || 0;
+            const to = parseInt(data[toKey], 10) || 0;
+            return Math.abs(to - from) + 1;
+          }
+          return 1; // Single value
+        }
+        return 1;
+      };
+      
+      // Shift sound file numbers if present
+      if (!disabledFields.has('soundFile')) {
+        const soundFromNumber = getFileNumberLower(insertedLogData, 'soundFile');
+        if (soundFromNumber !== null) {
+          const soundDelta = calculateDelta(insertedLogData, 'soundFile');
+          console.log(`[handleAddTakeWithInsertBefore] Shifting sound files: fromNumber=${soundFromNumber}, delta=${soundDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+          updateFileNumbers(logSheet.projectId, 'soundFile', soundFromNumber, soundDelta, logSheet.id, String(targetLocalId));
+          console.log(`✅ [handleAddTakeWithInsertBefore] Shifted sound file numbers`);
+        }
+      }
+      
+      // Shift camera file numbers if present
+      if (cameraConfiguration === 1) {
+        if (!disabledFields.has('cameraFile')) {
+          const cameraFromNumber = getFileNumberLower(insertedLogData, 'cameraFile');
+          if (cameraFromNumber !== null) {
+            const cameraDelta = calculateDelta(insertedLogData, 'cameraFile');
+            console.log(`[handleAddTakeWithInsertBefore] Shifting camera files: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+            updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
+            console.log(`✅ [handleAddTakeWithInsertBefore] Shifted camera file numbers`);
+          }
+        }
+      } else {
+        // Multi-camera setup
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
+            const cameraFromNumber = getFileNumberLower(insertedLogData, fieldId);
+            if (cameraFromNumber !== null) {
+              const cameraDelta = calculateDelta(insertedLogData, fieldId);
+              console.log(`[handleAddTakeWithInsertBefore] Shifting ${fieldId}: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
+              updateFileNumbers(logSheet.projectId, fieldId, cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
+              console.log(`✅ [handleAddTakeWithInsertBefore] Shifted ${fieldId} file numbers`);
+            }
+          }
+        }
+      }
+      
+      // 6. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
+      // After moveExistingLogBefore:
+      // - The inserted log is now at projectLocalId = targetLocalId
+      // - The target duplicate (originally at targetLocalId) is now at projectLocalId = targetLocalId + 1
+      // - All logs in range [targetLocalId, tempProjectLocalId) have been incremented by 1
+      // We need to increment take numbers for logs with projectLocalId > targetLocalId AND <= tempProjectLocalId
+      // This includes the target duplicate (now at targetLocalId + 1) and all subsequent logs up to and including tempProjectLocalId
+      if (targetSceneNumber && targetShotNumber && targetTakeNumber) {
+        // Get current state after moveExistingLogBefore
+        const currentState = useProjectStore.getState();
+        const projectLogSheets = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
+        
+        console.log(`[handleAddTakeWithInsertBefore] Looking for logs to increment take numbers:`);
+        console.log(`  - Scene: ${targetSceneNumber}, Shot: ${targetShotNumber}`);
+        console.log(`  - projectLocalId range: > ${targetLocalId} AND <= ${tempProjectLocalId}`);
+        console.log(`  - Excluding shifted log: ${logSheet.id}`);
+        
+        // Find logs that need take number increment:
+        // - In the same scene and shot as target duplicate
+        // - projectLocalId > targetLocalId (inserted log's new position) AND <= tempProjectLocalId
+        // - Exclude the shifted log itself (logSheet.id)
+        const logsToUpdate = projectLogSheets.filter(sheet => {
+          if (sheet.id === logSheet.id) {
+            console.log(`  - Skipping shifted log ${sheet.id} (projectLocalId: ${(sheet as any).projectLocalId})`);
+            return false; // Exclude the shifted log itself
+          }
+          
+          const data = sheet.data || {};
+          const sceneNum = data.sceneNumber as string | undefined;
+          const shotNum = data.shotNumber as string | undefined;
+          const sheetLocalId = parseInt((sheet as any).projectLocalId as string || '0', 10) || 0;
+          
+          // Must be in the same scene and shot
+          if (sceneNum !== targetSceneNumber || shotNum !== targetShotNumber) {
+            console.log(`  - Skipping log ${sheet.id} (projectLocalId: ${sheetLocalId}) - different scene/shot: Scene=${sceneNum}, Shot=${shotNum}`);
+            return false;
+          }
+          
+          // Check projectLocalId range (after move, inserted log is at targetLocalId)
+          // This includes the target duplicate (now at targetLocalId + 1) and all logs in range up to and including tempProjectLocalId
+          const inRange = sheetLocalId > targetLocalId && sheetLocalId <= tempProjectLocalId;
+          if (inRange) {
+            console.log(`  - Including log ${sheet.id} (projectLocalId: ${sheetLocalId}, Take: ${data.takeNumber})`);
+          } else {
+            console.log(`  - Skipping log ${sheet.id} (projectLocalId: ${sheetLocalId}) - outside range`);
+          }
+          return inRange;
+        });
+        
+        // Increment take numbers for matching logs
+        for (const sheet of logsToUpdate) {
+          const data = sheet.data || {};
+          const currentTakeNum = parseInt(data.takeNumber as string || '0', 10);
+          if (!Number.isNaN(currentTakeNum)) {
+            const newTakeNum = currentTakeNum + 1;
+            const updatedData = {
+              ...data,
+              takeNumber: String(newTakeNum)
+            };
+            await updateLogSheet(sheet.id, updatedData);
+            console.log(`✅ [handleAddTakeWithInsertBefore] Incremented take number for log ${sheet.id}: ${currentTakeNum} -> ${newTakeNum} (projectLocalId: ${(sheet as any).projectLocalId})`);
+          } else {
+            console.log(`⚠️ [handleAddTakeWithInsertBefore] Skipping log ${sheet.id} - invalid take number: ${data.takeNumber}`);
+          }
+        }
+        
+        console.log(`✅ [handleAddTakeWithInsertBefore] Updated take numbers for ${logsToUpdate.length} logs in Scene=${targetSceneNumber}, Shot=${targetShotNumber}, projectLocalId range (${targetLocalId}, ${tempProjectLocalId}]`);
+      }
+      
+      // Emit ORDER AFTER snapshot
+      emitOrderAfterSnapshot(logSheet.projectId);
+      
+      router.back();
+    } catch (error) {
+      console.error('❌ [handleAddTakeWithInsertBefore] Error:', error);
+      Alert.alert('Error', 'Failed to insert log before duplicate. Please try again.');
+    }
+  };
+
   const handleAddTake = (skipDuplicateCheck = false, overrideTakeNumber?: string) => {
     // Check if user can add more logs
     console.log('[handleAddTake] Checking if can add log for project:', projectId);
@@ -1448,397 +1839,6 @@ This would break the logging logic and create inconsistencies in the file number
     
     // No duplicate, add normally (pass override if provided)
     addNewTake(overrideTakeNumber);
-  };
-
-  // Helper function to emit ORDER AFTER snapshot after save operations
-  const emitOrderAfterSnapshot = (projectId: string) => {
-    try {
-      const state = useProjectStore.getState();
-      const orderAfter = state.logSheets
-        .filter(s => s.projectId === projectId)
-        .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
-        .map(s => ({
-          id: s.projectLocalId || s.id,
-          scene: (s.data as any)?.sceneNumber,
-          shot: (s.data as any)?.shotNumber,
-          take: (s.data as any)?.takeNumber,
-          camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
-            ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
-            : ((s.data as any)?.cameraFile || undefined),
-          sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
-            ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
-            : ((s.data as any)?.soundFile || undefined),
-          classification: (s.data as any)?.classification || undefined,
-          ...(() => { const d:any=(s.data as any)||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
-        }));
-      console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
-    } catch (error) {
-      console.error('Error emitting ORDER AFTER snapshot:', error);
-    }
-  };
-
-  const handleAddTakeWithInsertBefore = async (targetDuplicate: any) => {
-    console.log('========== ADD WITH INSERT BEFORE INITIATED ==========');
-    if (!project) return;
-    
-    try {
-      // Check if user can add more logs
-      const canAdd = canAddLog(projectId);
-      if (!canAdd) {
-        Alert.alert(
-          'Out of Free Logs',
-          'You have used all your free trial logs. Purchase a token to get unlimited logs for this project.',
-          [
-            { text: 'OK', style: 'default' },
-            {
-              text: 'Buy Tokens',
-              onPress: () => router.push('/store'),
-            },
-          ]
-        );
-        return;
-      }
-
-      // Validate mandatory fields first
-      if (!validateMandatoryFields()) {
-        return;
-      }
-
-      // Only use trial if this is the trial project and not unlocked
-      const isTrialProject = tokenStore.isTrialProject(projectId);
-      const isUnlocked = tokenStore.isProjectUnlocked(projectId);
-      if (isTrialProject && !isUnlocked) {
-        tokenStore.useTrial();
-      }
-
-      // 1. Create the new log (this assigns it a projectLocalId)
-      const logSheet = addLogSheet(
-        `Take ${stats.totalTakes + 1}`,
-        'take',
-        '',
-        projectId
-      );
-
-      // Get the newly created log's projectLocalId (tempProjectLocalId)
-      const tempProjectLocalId = parseInt(String((logSheet as any)?.projectLocalId || '0'), 10);
-      const targetLocalId = parseInt(String((targetDuplicate as any)?.projectLocalId || '0'), 10);
-      
-      if (Number.isNaN(tempProjectLocalId) || Number.isNaN(targetLocalId)) {
-        Alert.alert('Error', 'Could not determine log positions. Please try again.');
-        return;
-      }
-      
-      if (tempProjectLocalId === targetLocalId) {
-        Alert.alert('Error', 'Cannot insert log before itself.');
-        return;
-      }
-      
-      console.log(`[handleAddTakeWithInsertBefore] tempProjectLocalId: ${tempProjectLocalId}, targetLocalId: ${targetLocalId}`);
-      
-      // 2. Prepare the log data (preserve edited ranges)
-      let finalTakeData = { ...takeData } as Record<string, any>;
-      const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-      
-      if (cameraConfiguration > 1) {
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          const fieldId = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fieldId] ?? true;
-          if (!isRecActive) {
-            delete finalTakeData[fieldId];
-          }
-        }
-      }
-      
-      const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
-      const applyRangePersistence = (data: Record<string, any>) => {
-        const out: Record<string, any> = { ...data };
-        const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
-          const inRange = showRangeMode[fieldId] === true;
-          const r = rangeData[fieldId];
-          
-          // First, clear any existing range or single values
-          if (fieldId === 'soundFile') {
-            delete out.soundFile;
-            delete out['sound_from'];
-            delete out['sound_to'];
-          } else if (idx != null) {
-            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
-            delete out[base];
-            delete out[`camera${idx}_from`];
-            delete out[`camera${idx}_to`];
-          }
-          
-          // For disabled fields (waste), still save range data if it exists
-          if (!enabled) {
-            if (inRange && r && r.from && r.to) {
-              if (fieldId === 'soundFile') {
-                out['sound_from'] = pad4(r.from);
-                out['sound_to'] = pad4(r.to);
-              } else if (idx != null) {
-                out[`camera${idx}_from`] = pad4(r.from);
-                out[`camera${idx}_to`] = pad4(r.to);
-              }
-            }
-            return;
-          }
-          
-          // Field is enabled - apply normal logic
-          if (inRange && r && r.from && r.to) {
-            // Range mode - set _from and _to fields
-            if (fieldId === 'soundFile') {
-              out['sound_from'] = pad4(r.from);
-              out['sound_to'] = pad4(r.to);
-            } else if (idx != null) {
-              out[`camera${idx}_from`] = pad4(r.from);
-              out[`camera${idx}_to`] = pad4(r.to);
-            }
-          } else if (!inRange) {
-            // Single value mode
-            if (fieldId === 'soundFile' && data.soundFile) {
-              out.soundFile = data.soundFile;
-            } else if (idx != null) {
-              const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
-              if (data[base]) {
-                out[base] = data[base];
-              }
-            }
-          }
-        };
-        
-        const soundEnabled = !disabledFields.has('soundFile');
-        handleField('soundFile', soundEnabled);
-        
-        if (cameraConfiguration === 1) {
-          const camEnabled = !disabledFields.has('cameraFile');
-          handleField('cameraFile', camEnabled, 1);
-        } else {
-          for (let i = 1; i <= cameraConfiguration; i++) {
-            const fieldId = `cameraFile${i}`;
-            const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
-            handleField(fieldId, camEnabled, i);
-          }
-        }
-        return out;
-      };
-      
-      finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-      finalTakeData = applyRangePersistence(finalTakeData);
-      
-      // Get target duplicate's scene, shot, and take number
-      const targetSceneNumber = targetDuplicate.data?.sceneNumber as string | undefined;
-      const targetShotNumber = targetDuplicate.data?.shotNumber as string | undefined;
-      const targetTakeNumber = targetDuplicate.data?.takeNumber as string | undefined;
-      
-      // Update the new log's scene, shot, and take number to match the target duplicate
-      if (targetSceneNumber) {
-        finalTakeData.sceneNumber = targetSceneNumber;
-      }
-      if (targetShotNumber) {
-        finalTakeData.shotNumber = targetShotNumber;
-      }
-      if (targetTakeNumber) {
-        finalTakeData.takeNumber = targetTakeNumber;
-      }
-      
-      const filteredShotDetails = (classification === 'Ambience' || classification === 'SFX')
-        ? shotDetails.filter(d => d !== 'MOS')
-        : shotDetails;
-      
-      const updatedData = {
-        ...finalTakeData,
-        classification: classification || '',
-        shotDetails: filteredShotDetails.length > 0 ? filteredShotDetails : [],
-        isGoodTake: isGoodTake,
-        wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-        insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-        cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
-      };
-      
-      console.log(`✅ [handleAddTakeWithInsertBefore] Updated new log to match target duplicate: Scene=${targetSceneNumber}, Shot=${targetShotNumber}, Take=${targetTakeNumber}`);
-      
-      // 3. Save the new log with its data
-      await updateLogSheet(logSheet.id, updatedData);
-      console.log(`✅ [handleAddTakeWithInsertBefore] Saved new log with data`);
-      
-      // 4. Move the log before the target duplicate (update projectLocalId)
-      moveExistingLogBefore(logSheet.projectId, String(tempProjectLocalId), String(targetLocalId));
-      console.log(`✅ [handleAddTakeWithInsertBefore] Moved log: projectLocalId ${tempProjectLocalId} -> ${targetLocalId}`);
-      
-      // 5. Shift file numbers using sequential shifting logic (tempCamera/tempSound)
-      // Get the inserted log's file numbers from the saved data to determine fromNumber and increment
-      const insertedLogData = updatedData;
-      
-      // Helper to get file number lower bound (for fromNumber calculation)
-      const getFileNumberLower = (data: any, fieldId: string): number | null => {
-        if (fieldId === 'soundFile') {
-          if (data.sound_from && data.sound_to) {
-            return Math.min(parseInt(data.sound_from, 10) || 0, parseInt(data.sound_to, 10) || 0);
-          }
-          if (data.soundFile) {
-            const val = String(data.soundFile);
-            if (val.includes('-')) {
-              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
-              return Math.min(from, to);
-            }
-            return parseInt(val, 10) || null;
-          }
-        } else if (fieldId.startsWith('cameraFile')) {
-          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-          const fromKey = `camera${cameraNum}_from`;
-          const toKey = `camera${cameraNum}_to`;
-          if (data[fromKey] && data[toKey]) {
-            return Math.min(parseInt(data[fromKey], 10) || 0, parseInt(data[toKey], 10) || 0);
-          }
-          if (data[fieldId]) {
-            const val = String(data[fieldId]);
-            if (val.includes('-')) {
-              const [from, to] = val.split('-').map(x => parseInt(x.trim(), 10) || 0);
-              return Math.min(from, to);
-            }
-            return parseInt(val, 10) || null;
-          }
-        }
-        return null;
-      };
-      
-      // Helper to calculate delta (increment) for a field
-      const calculateDelta = (data: any, fieldId: string): number => {
-        if (fieldId === 'soundFile') {
-          if (data.sound_from && data.sound_to) {
-            const from = parseInt(data.sound_from, 10) || 0;
-            const to = parseInt(data.sound_to, 10) || 0;
-            return Math.abs(to - from) + 1;
-          }
-          return 1; // Single value
-        } else if (fieldId.startsWith('cameraFile')) {
-          const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-          const fromKey = `camera${cameraNum}_from`;
-          const toKey = `camera${cameraNum}_to`;
-          if (data[fromKey] && data[toKey]) {
-            const from = parseInt(data[fromKey], 10) || 0;
-            const to = parseInt(data[toKey], 10) || 0;
-            return Math.abs(to - from) + 1;
-          }
-          return 1; // Single value
-        }
-        return 1;
-      };
-      
-      // Shift sound file numbers if present
-      if (!disabledFields.has('soundFile')) {
-        const soundFromNumber = getFileNumberLower(insertedLogData, 'soundFile');
-        if (soundFromNumber !== null) {
-          const soundDelta = calculateDelta(insertedLogData, 'soundFile');
-          console.log(`[handleAddTakeWithInsertBefore] Shifting sound files: fromNumber=${soundFromNumber}, delta=${soundDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
-          updateFileNumbers(logSheet.projectId, 'soundFile', soundFromNumber, soundDelta, logSheet.id, String(targetLocalId));
-          console.log(`✅ [handleAddTakeWithInsertBefore] Shifted sound file numbers`);
-        }
-      }
-      
-      // Shift camera file numbers if present
-      if (cameraConfiguration === 1) {
-        if (!disabledFields.has('cameraFile')) {
-          const cameraFromNumber = getFileNumberLower(insertedLogData, 'cameraFile');
-          if (cameraFromNumber !== null) {
-            const cameraDelta = calculateDelta(insertedLogData, 'cameraFile');
-            console.log(`[handleAddTakeWithInsertBefore] Shifting camera files: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
-            updateFileNumbers(logSheet.projectId, 'cameraFile', cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
-            console.log(`✅ [handleAddTakeWithInsertBefore] Shifted camera file numbers`);
-          }
-        }
-      } else {
-        // Multi-camera setup
-        for (let i = 1; i <= cameraConfiguration; i++) {
-          const fieldId = `cameraFile${i}`;
-          if (!disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true)) {
-            const cameraFromNumber = getFileNumberLower(insertedLogData, fieldId);
-            if (cameraFromNumber !== null) {
-              const cameraDelta = calculateDelta(insertedLogData, fieldId);
-              console.log(`[handleAddTakeWithInsertBefore] Shifting ${fieldId}: fromNumber=${cameraFromNumber}, delta=${cameraDelta}, excludeLogId=${logSheet.id}, targetLocalId=${targetLocalId}`);
-              updateFileNumbers(logSheet.projectId, fieldId, cameraFromNumber, cameraDelta, logSheet.id, String(targetLocalId));
-              console.log(`✅ [handleAddTakeWithInsertBefore] Shifted ${fieldId} file numbers`);
-            }
-          }
-        }
-      }
-      
-      // 6. Update take numbers for logs in the same shot with projectLocalId in range (targetLocalId, tempProjectLocalId]
-      // After moveExistingLogBefore:
-      // - The inserted log is now at projectLocalId = targetLocalId
-      // - The target duplicate (originally at targetLocalId) is now at projectLocalId = targetLocalId + 1
-      // - All logs in range [targetLocalId, tempProjectLocalId) have been incremented by 1
-      // We need to increment take numbers for logs with projectLocalId > targetLocalId AND <= tempProjectLocalId
-      // This includes the target duplicate (now at targetLocalId + 1) and all subsequent logs up to and including tempProjectLocalId
-      if (targetSceneNumber && targetShotNumber && targetTakeNumber) {
-        // Get current state after moveExistingLogBefore
-        const currentState = useProjectStore.getState();
-        const projectLogSheets = currentState.logSheets.filter(s => s.projectId === logSheet.projectId);
-        
-        console.log(`[handleAddTakeWithInsertBefore] Looking for logs to increment take numbers:`);
-        console.log(`  - Scene: ${targetSceneNumber}, Shot: ${targetShotNumber}`);
-        console.log(`  - projectLocalId range: > ${targetLocalId} AND <= ${tempProjectLocalId}`);
-        console.log(`  - Excluding shifted log: ${logSheet.id}`);
-        
-        // Find logs that need take number increment:
-        // - In the same scene and shot as target duplicate
-        // - projectLocalId > targetLocalId (inserted log's new position) AND <= tempProjectLocalId
-        // - Exclude the shifted log itself (logSheet.id)
-        const logsToUpdate = projectLogSheets.filter(sheet => {
-          if (sheet.id === logSheet.id) {
-            console.log(`  - Skipping shifted log ${sheet.id} (projectLocalId: ${(sheet as any).projectLocalId})`);
-            return false; // Exclude the shifted log itself
-          }
-          
-          const data = sheet.data || {};
-          const sceneNum = data.sceneNumber as string | undefined;
-          const shotNum = data.shotNumber as string | undefined;
-          const sheetLocalId = parseInt((sheet as any).projectLocalId as string || '0', 10) || 0;
-          
-          // Must be in the same scene and shot
-          if (sceneNum !== targetSceneNumber || shotNum !== targetShotNumber) {
-            console.log(`  - Skipping log ${sheet.id} (projectLocalId: ${sheetLocalId}) - different scene/shot: Scene=${sceneNum}, Shot=${shotNum}`);
-            return false;
-          }
-          
-          // Check projectLocalId range (after move, inserted log is at targetLocalId)
-          // This includes the target duplicate (now at targetLocalId + 1) and all logs in range up to and including tempProjectLocalId
-          const inRange = sheetLocalId > targetLocalId && sheetLocalId <= tempProjectLocalId;
-          if (inRange) {
-            console.log(`  - Including log ${sheet.id} (projectLocalId: ${sheetLocalId}, Take: ${data.takeNumber})`);
-          } else {
-            console.log(`  - Skipping log ${sheet.id} (projectLocalId: ${sheetLocalId}) - outside range`);
-          }
-          return inRange;
-        });
-        
-        // Increment take numbers for matching logs
-        for (const sheet of logsToUpdate) {
-          const data = sheet.data || {};
-          const currentTakeNum = parseInt(data.takeNumber as string || '0', 10);
-          if (!Number.isNaN(currentTakeNum)) {
-            const newTakeNum = currentTakeNum + 1;
-            const updatedData = {
-              ...data,
-              takeNumber: String(newTakeNum)
-            };
-            await updateLogSheet(sheet.id, updatedData);
-            console.log(`✅ [handleAddTakeWithInsertBefore] Incremented take number for log ${sheet.id}: ${currentTakeNum} -> ${newTakeNum} (projectLocalId: ${(sheet as any).projectLocalId})`);
-          } else {
-            console.log(`⚠️ [handleAddTakeWithInsertBefore] Skipping log ${sheet.id} - invalid take number: ${data.takeNumber}`);
-          }
-        }
-        
-        console.log(`✅ [handleAddTakeWithInsertBefore] Updated take numbers for ${logsToUpdate.length} logs in Scene=${targetSceneNumber}, Shot=${targetShotNumber}, projectLocalId range (${targetLocalId}, ${tempProjectLocalId}]`);
-      }
-      
-      // Emit ORDER AFTER snapshot
-      emitOrderAfterSnapshot(logSheet.projectId);
-      
-      router.back();
-    } catch (error) {
-      console.error('❌ [handleAddTakeWithInsertBefore] Error:', error);
-      Alert.alert('Error', 'Failed to insert log before duplicate. Please try again.');
-    }
   };
 
   const addNewTake = (overrideTakeNumber?: string) => {
