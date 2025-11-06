@@ -90,9 +90,12 @@ export const useProjectStore = create<ProjectState>()(
         console.log(`[insertNewLogBefore] targetLogId=${targetLogId}, targetNumeric=${targetNumeric}, targetLog found=${!!targetLog}, targetLog.projectLocalId=${targetLog?.projectLocalId}, targetLocal=${targetLocal}`);
 
         set((prev) => {
+          // First, increment all logs with projectLocalId >= targetLocal (including the target duplicate)
+          // This shifts all logs at and after the target position to make room for the new log
           const updated: LogSheet[] = prev.logSheets.map(s => {
             if (s.projectId !== projectId) return s;
             const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
+            // Increment all logs at or after the target position (including the target duplicate)
             if (nLocal >= targetLocal) {
               const newLocal = (nLocal + 1).toString();
               console.log(`[insertNewLogBefore] Incrementing log projectLocalId: ${nLocal} -> ${newLocal} (take: ${s.data?.takeNumber})`);
@@ -100,7 +103,7 @@ export const useProjectStore = create<ProjectState>()(
             }
             return s;
           });
-          // Place new log with the target id
+          // Place new log with the target's projectLocalId (same behavior as moveExistingLogBefore)
           const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
           console.log(`[insertNewLogBefore] Inserting new log with projectLocalId=${targetLocal.toString()}, take=${inserted.data?.takeNumber}`);
           updated.push(inserted);
