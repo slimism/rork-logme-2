@@ -1541,10 +1541,25 @@ This would break the logging logic and create inconsistencies in the file number
         const e = target;
         const classification = e.data?.classification;
         const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+        
+        // Check if this is a range conflict (upper or within)
+        const fileConflict = findFirstDuplicateFile();
+        if (fileConflict?.isRangeConflict && (fileConflict.conflictType === 'upper' || fileConflict.conflictType === 'within')) {
+          Alert.alert(
+            'Part of Ranged Take',
+            `Sound file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+        
         Alert.alert(
           'Duplicate Detected',
-          `Sound file is a duplicate at ${loc}. Please adjust the file numbers to avoid conflicts.`,
-          [{ text: 'OK', style: 'default' }]
+          `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Insert Before', onPress: () => handleSaveWithInsertBefore(e) }
+          ]
         );
         return;
       }
@@ -1561,10 +1576,25 @@ This would break the logging logic and create inconsistencies in the file number
         const e = target;
         const classification = e.data?.classification;
         const loc = classification === 'SFX' ? 'SFX' : (classification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
+        
+        // Check if this is a range conflict (upper or within)
+        const fileConflict = findFirstDuplicateFile();
+        if (fileConflict?.isRangeConflict && (fileConflict.conflictType === 'upper' || fileConflict.conflictType === 'within')) {
+          Alert.alert(
+            'Part of Ranged Take',
+            `Camera file is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+        
         Alert.alert(
           'Duplicate Detected',
-          `Camera file is a duplicate at ${loc}. Please adjust the file numbers to avoid conflicts.`,
-          [{ text: 'OK', style: 'default' }]
+          `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Insert Before', onPress: () => handleSaveWithInsertBefore(e) }
+          ]
         );
         return;
       }
