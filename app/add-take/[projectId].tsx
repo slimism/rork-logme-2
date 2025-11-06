@@ -1701,10 +1701,27 @@ This would break the logging logic and create inconsistencies in the file number
         // When inserting before an existing entry, create at target ID and shift IDs
         if (duplicateInfo && position === 'before' && existingEntry?.id) {
           // Use projectLocalId like in the edit screen
-          const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
-          const targetId = !Number.isNaN(targetLocalId) && targetLocalId > 0 
-            ? String(targetLocalId) 
-            : String(existingEntry.id);
+          // First, try to get the actual log from the store to ensure we have the correct projectLocalId
+          const state = useProjectStore.getState();
+          const actualTargetLog = state.logSheets.find(s => s.id === existingEntry.id && s.projectId === projectId);
+          const targetLocalId = actualTargetLog 
+            ? parseInt(String((actualTargetLog as any)?.projectLocalId || '0'), 10)
+            : parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
+          
+          if (Number.isNaN(targetLocalId) || targetLocalId <= 0) {
+            console.error(`[addLogWithDuplicateHandling] Cannot determine targetLocalId for existingEntry.id=${existingEntry.id}`);
+            // Fallback to normal append
+            return addLogSheet(
+              `Take ${stats.totalTakes + 1}`,
+              'take',
+              '',
+              projectId
+            );
+          }
+          
+          const targetId = String(targetLocalId);
+          
+          console.log(`[addLogWithDuplicateHandling] Inserting before - existingEntry.id=${existingEntry.id}, actualTargetLog.projectLocalId=${(actualTargetLog as any)?.projectLocalId}, targetLocalId=${targetLocalId}, targetId=${targetId}`);
           
           const inserted = insertNewLogBefore(
             projectId,

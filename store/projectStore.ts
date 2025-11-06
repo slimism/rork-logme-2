@@ -46,11 +46,11 @@ export const useProjectStore = create<ProjectState>()(
 
         const state = get();
         const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
-        // Snapshot before
+        // Snapshot before - use projectLocalId for id field to match ORDER AFTER format
         const beforeOrder = [...projectLogs]
-          .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+          .sort((a, b) => (parseInt(a.projectLocalId as string || '0', 10) || 0) - (parseInt(b.projectLocalId as string || '0', 10) || 0))
           .map(s => ({
-            id: s.id,
+            id: s.projectLocalId || s.id,
             scene: (s.data as any)?.sceneNumber,
             shot: (s.data as any)?.shotNumber,
             take: (s.data as any)?.takeNumber,
@@ -86,6 +86,8 @@ export const useProjectStore = create<ProjectState>()(
         const targetLog = projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
                           projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
         const targetLocal = targetLog ? (parseInt(targetLog.projectLocalId as string, 10) || targetNumeric) : targetNumeric;
+        
+        console.log(`[insertNewLogBefore] targetLogId=${targetLogId}, targetNumeric=${targetNumeric}, targetLog found=${!!targetLog}, targetLog.projectLocalId=${targetLog?.projectLocalId}, targetLocal=${targetLocal}`);
 
         set((prev) => {
           const updated: LogSheet[] = prev.logSheets.map(s => {
@@ -93,12 +95,14 @@ export const useProjectStore = create<ProjectState>()(
             const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
             if (nLocal >= targetLocal) {
               const newLocal = (nLocal + 1).toString();
+              console.log(`[insertNewLogBefore] Incrementing log projectLocalId: ${nLocal} -> ${newLocal} (take: ${s.data?.takeNumber})`);
               return { ...s, projectLocalId: newLocal, updatedAt: new Date().toISOString() };
             }
             return s;
           });
           // Place new log with the target id
           const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
+          console.log(`[insertNewLogBefore] Inserting new log with projectLocalId=${targetLocal.toString()}, take=${inserted.data?.takeNumber}`);
           updated.push(inserted);
           // ACTION: log inserted-before event
           try {
