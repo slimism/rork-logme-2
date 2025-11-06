@@ -7,9 +7,10 @@ import { useTokenStore } from '@/store/subscriptionStore';
 
 
 import { EmptyState } from '@/components/EmptyState';
-import { colors } from '@/constants/colors';
+import { useColors } from '@/constants/colors';
 
 export default function ProjectsScreen() {
+  const colors = useColors();
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +21,7 @@ export default function ProjectsScreen() {
 
 
   const remainingTrialLogs = getRemainingTrialLogs();
+  const styles = createStyles(colors);
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -341,13 +343,13 @@ export default function ProjectsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -458,7 +460,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.searchBackground,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -476,28 +478,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.cardSecondary,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: colors.border,
   },
   trialTextContainer: {
     flex: 1,
   },
   trialTitle: {
     fontSize: 14,
-    color: '#495057',
+    color: colors.text,
     fontWeight: '500',
     marginBottom: 2,
   },
   trialSubtitle: {
     fontSize: 12,
-    color: '#6c757d',
+    color: colors.subtext,
   },
   buyCreditsButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
@@ -512,7 +514,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   projectCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
@@ -548,7 +550,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
-    backgroundColor: '#2c3e50',
+    backgroundColor: colors.disabled,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -611,11 +613,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.modalBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
@@ -635,7 +637,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#fff5f5',
+    backgroundColor: colors.cardSecondary,
     borderRadius: 12,
     marginBottom: 16,
     gap: 12,
@@ -648,7 +650,7 @@ const styles = StyleSheet.create({
   cancelOption: {
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.cardSecondary,
     borderRadius: 12,
     alignItems: 'center',
   },
