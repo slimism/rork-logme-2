@@ -41,16 +41,29 @@ export const useProjectStore = create<ProjectState>()(
       nextLogId: 1,
       projectLocalCounters: {},
       insertNewLogBefore: (projectId: string, targetLogId: string, name: string, type: string, folderId: string, buildData?: () => any) => {
-        const targetNumeric = parseInt(targetLogId, 10);
-        if (Number.isNaN(targetNumeric)) return null;
-
         const state = get();
         const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
+        
+        // Resolve target log: try by string id first (for UUIDs), then by numeric projectLocalId, then by numeric id
+        const targetLog = projectLogs.find(s => s.id === targetLogId) ||
+                          projectLogs.find(s => (s as any).projectLocalId === targetLogId) ||
+                          (() => {
+                            const targetNumeric = parseInt(targetLogId, 10);
+                            if (Number.isNaN(targetNumeric)) return undefined;
+                            return projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
+                                   projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
+                          })();
+        
+        if (!targetLog) return null;
+        
+        const targetLocal = parseInt((targetLog as any).projectLocalId as string, 10);
+        if (Number.isNaN(targetLocal)) return null;
+
         // Snapshot before
         const beforeOrder = [...projectLogs]
-          .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
+          .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
           .map(s => ({
-            id: s.id,
+            id: s.projectLocalId,
             scene: (s.data as any)?.sceneNumber,
             shot: (s.data as any)?.shotNumber,
             take: (s.data as any)?.takeNumber,
@@ -80,12 +93,6 @@ export const useProjectStore = create<ProjectState>()(
           updatedAt: new Date().toISOString(),
           data: buildData ? buildData() : {},
         };
-
-        // Prepare shifted logs: increment ids of logs with id >= targetNumeric, descending to avoid collisions
-        // Resolve target by projectLocalId first, fallback to id
-        const targetLog = projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
-                          projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
-        const targetLocal = targetLog ? (parseInt(targetLog.projectLocalId as string, 10) || targetNumeric) : targetNumeric;
 
         set((prev) => {
           const updated: LogSheet[] = prev.logSheets.map(s => {
