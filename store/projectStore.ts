@@ -46,11 +46,11 @@ export const useProjectStore = create<ProjectState>()(
 
         const state = get();
         const projectLogs = state.logSheets.filter(s => s.projectId === projectId);
-        // Snapshot before - use projectLocalId for id field to match ORDER AFTER format
+        // Snapshot before
         const beforeOrder = [...projectLogs]
-          .sort((a, b) => (parseInt(a.projectLocalId as string || '0', 10) || 0) - (parseInt(b.projectLocalId as string || '0', 10) || 0))
+          .sort((a, b) => (parseInt(a.id as string, 10) || 0) - (parseInt(b.id as string, 10) || 0))
           .map(s => ({
-            id: s.projectLocalId || s.id,
+            id: s.id,
             scene: (s.data as any)?.sceneNumber,
             shot: (s.data as any)?.shotNumber,
             take: (s.data as any)?.takeNumber,
@@ -86,26 +86,19 @@ export const useProjectStore = create<ProjectState>()(
         const targetLog = projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
                           projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
         const targetLocal = targetLog ? (parseInt(targetLog.projectLocalId as string, 10) || targetNumeric) : targetNumeric;
-        
-        console.log(`[insertNewLogBefore] targetLogId=${targetLogId}, targetNumeric=${targetNumeric}, targetLog found=${!!targetLog}, targetLog.projectLocalId=${targetLog?.projectLocalId}, targetLocal=${targetLocal}`);
 
         set((prev) => {
-          // First, increment all logs with projectLocalId >= targetLocal (including the target duplicate)
-          // This shifts all logs at and after the target position to make room for the new log
           const updated: LogSheet[] = prev.logSheets.map(s => {
             if (s.projectId !== projectId) return s;
             const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
-            // Increment all logs at or after the target position (including the target duplicate)
             if (nLocal >= targetLocal) {
               const newLocal = (nLocal + 1).toString();
-              console.log(`[insertNewLogBefore] Incrementing log projectLocalId: ${nLocal} -> ${newLocal} (take: ${s.data?.takeNumber})`);
               return { ...s, projectLocalId: newLocal, updatedAt: new Date().toISOString() };
             }
             return s;
           });
-          // Place new log with the target's projectLocalId (same behavior as moveExistingLogBefore)
+          // Place new log with the target id
           const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
-          console.log(`[insertNewLogBefore] Inserting new log with projectLocalId=${targetLocal.toString()}, take=${inserted.data?.takeNumber}`);
           updated.push(inserted);
           // ACTION: log inserted-before event
           try {
@@ -657,13 +650,12 @@ export const useProjectStore = create<ProjectState>()(
           // Use resolvedTargetLocalId throughout the sequential logic
           const effectiveTargetLocalId = resolvedTargetLocalId;
 
-          // SPECIAL HANDLING FOR SOUND AND CAMERA FILES: When inserting a log before another log,
+          // SPECIAL HANDLING FOR SOUND FILES: When editing a log to insert before another log,
           // process ALL logs by projectLocalId (not by scene/shot groups) for sequential shifting
           // This automatically handles SFX, Ambience, and regular logs uniformly
           const updatedSheetsMap = new Map<string, LogSheet>();
           
-          // Apply projectLocalId-based sequential shifting for both sound and camera files when targetLocalId is provided
-          if (effectiveTargetLocalId && (fieldId === 'soundFile' || fieldId.startsWith('cameraFile'))) {
+          if (fieldId === 'soundFile' && effectiveTargetLocalId) {
             const targetLocalIdNum = parseInt(effectiveTargetLocalId, 10) || 0;
             
             // Get all project logs sorted by projectLocalId
@@ -675,10 +667,9 @@ export const useProjectStore = create<ProjectState>()(
               }))
               .sort((a, b) => a.localId - b.localId);
             
-            // Find the inserted log (excludeLogId) to initialize tempSound/tempCamera from its upper bounds
+            // Find the inserted log (excludeLogId) to initialize tempSound from its upper bound
             let insertedLog: LogSheet | null = null;
             let tempSound: number | null = null;
-            let tempCamera: { [cameraNum: number]: number | null } = {};
             
             if (excludeLogId) {
               insertedLog = allProjectLogs.find(item => item.sheet.id === excludeLogId)?.sheet || null;
@@ -693,58 +684,21 @@ export const useProjectStore = create<ProjectState>()(
               insertedLog = matching?.sheet || null;
             }
             
-            // Initialize tempSound and tempCamera from inserted log's upper bounds
+            // Initialize tempSound from inserted log's upper bound
             if (insertedLog) {
-              const insertedData = insertedLog.data || {};
-              
-              // Initialize tempSound if processing sound files
-              if (fieldId === 'soundFile') {
-                const insertedFieldVal = getFieldValue(insertedData, fieldId);
-                if (insertedFieldVal && insertedFieldVal.value !== null) {
-                  tempSound = insertedFieldVal.upper;
-                  console.log(`[INIT] tempSound initialized from inserted log: ${tempSound} (from inserted log soundFile: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
-                  logger.logDebug(`Initialized tempSound from inserted log: ${tempSound}`);
-                }
-              }
-              
-              // Initialize tempCamera if processing camera files
-              if (fieldId.startsWith('cameraFile')) {
-                const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                const insertedFieldVal = getFieldValue(insertedData, fieldId);
-                if (insertedFieldVal && insertedFieldVal.value !== null) {
-                  tempCamera[cameraNum] = insertedFieldVal.upper;
-                  console.log(`[INIT] tempCamera[${cameraNum}] initialized from inserted log: ${tempCamera[cameraNum]} (from inserted log ${fieldId}: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
-                  logger.logDebug(`Initialized tempCamera[${cameraNum}] from inserted log: ${tempCamera[cameraNum]}`);
-                }
-                
-                // Also initialize all camera fields from inserted log for consistency
-                const project = activeState.projects.find(p => p.id === projectId);
-                const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
-                for (let camNum = 1; camNum <= cameraConfiguration; camNum++) {
-                  const camFieldId = camNum === 1 ? 'cameraFile' : `cameraFile${camNum}`;
-                  const camFieldVal = getFieldValue(insertedData, camFieldId);
-                  if (camFieldVal && camFieldVal.value !== null) {
-                    tempCamera[camNum] = camFieldVal.upper;
-                    console.log(`[INIT] tempCamera[${camNum}] initialized from inserted log: ${tempCamera[camNum]} (from inserted log ${camFieldId}: ${camFieldVal.lower}/${camFieldVal.upper})`);
-                    logger.logDebug(`Initialized tempCamera[${camNum}] from inserted log: ${tempCamera[camNum]}`);
-                  }
-                }
+              const insertedFieldVal = getFieldValue(insertedLog.data || {}, fieldId);
+              if (insertedFieldVal && insertedFieldVal.value !== null) {
+                tempSound = insertedFieldVal.upper;
+                console.log(`[SOUND INIT] tempSound initialized from inserted log: ${tempSound} (from inserted log soundFile: ${insertedFieldVal.lower}/${insertedFieldVal.upper})`);
+                logger.logDebug(`Initialized tempSound from inserted log: ${tempSound}`);
               }
             }
             
-            // Fallback: if inserted log not found or has blank field, use fromNumber
-            if (fieldId === 'soundFile' && tempSound === null) {
+            // Fallback: if inserted log not found or has blank sound, use fromNumber
+            if (tempSound === null) {
               tempSound = fromNumber;
-              console.log(`[INIT] tempSound initialized from fromNumber fallback: ${tempSound}`);
+              console.log(`[SOUND INIT] tempSound initialized from fromNumber fallback: ${tempSound}`);
               logger.logDebug(`tempSound initialized from fromNumber fallback: ${tempSound}`);
-            }
-            if (fieldId.startsWith('cameraFile')) {
-              const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-              if (tempCamera[cameraNum] === null || tempCamera[cameraNum] === undefined) {
-                tempCamera[cameraNum] = fromNumber;
-                console.log(`[INIT] tempCamera[${cameraNum}] initialized from fromNumber fallback: ${tempCamera[cameraNum]}`);
-                logger.logDebug(`tempCamera[${cameraNum}] initialized from fromNumber fallback: ${tempCamera[cameraNum]}`);
-              }
             }
             
             // Process all logs with projectLocalId > targetLocalId sequentially
@@ -761,142 +715,85 @@ export const useProjectStore = create<ProjectState>()(
                 continue;
               }
               
-              // Get existing sheet data if already updated, otherwise use current data
-              const existingSheet = updatedSheetsMap.get(sheet.id);
-              const currentData = existingSheet?.data || sheet.data || {};
-              const newData: Record<string, any> = { ...currentData };
-              
-              // Get field value from current data (which may have been updated in previous iterations)
-              const currentFieldVal = getFieldValue(currentData, fieldId);
+              const data = sheet.data || {};
+              const currentFieldVal = getFieldValue(data, fieldId);
+              const newData: Record<string, any> = { ...data };
               let updated = false;
               
               if (!currentFieldVal || currentFieldVal.value === null) {
-                // Waste (blank field): delta = 0, temp variable stays unchanged
-                const fieldLabel = fieldId === 'soundFile' ? 'sound' : `camera${fieldId === 'cameraFile' ? '1' : fieldId.replace('cameraFile', '')}`;
-                console.log(`[${fieldId.toUpperCase()} SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): BLANK ${fieldLabel}, temp variable remains unchanged (delta = 0)`);
-                logger.logDebug(`${fieldId} blank (Waste) - temp variable remains unchanged`);
-                // temp variable stays the same, no update needed
+                // Waste (blank sound): delta = 0, tempSound stays unchanged
+                console.log(`[SOUND SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): BLANK sound, tempSound remains ${tempSound} (delta = 0)`);
+                logger.logDebug(`Sound file blank (Waste) - tempSound remains ${tempSound}`);
+                // tempSound stays the same, no update needed
               } else {
                 // Calculate delta based on the current entry's original range span
-                let delta: number;
-                if (fieldId === 'soundFile') {
-                  const soundDeltaInput: DeltaCalculationInput = { logSheetData: currentData } as any;
-                  delta = calculateSoundDeltaForShifting(soundDeltaInput);
-                } else if (fieldId.startsWith('cameraFile')) {
-                  const cameraDeltaInput: DeltaCalculationInput = { logSheetData: currentData } as any;
-                  delta = calculateCameraDeltaForShifting(cameraDeltaInput, fieldId);
-                } else {
-                  delta = currentFieldVal.isRange 
-                    ? (currentFieldVal.upper - currentFieldVal.lower)
-                    : 1;
-                }
+                const soundDeltaInput: DeltaCalculationInput = { logSheetData: data } as any;
+                const delta = calculateSoundDeltaForShifting(soundDeltaInput);
                 
-                // Get the appropriate temp variable
-                let tempValue: number | null = null;
-                if (fieldId === 'soundFile') {
-                  tempValue = tempSound;
-                } else if (fieldId.startsWith('cameraFile')) {
-                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                  tempValue = tempCamera[cameraNum] ?? null;
-                }
-                
-                if (tempValue === null) {
-                  console.log(`[WARNING] ${fieldId} temp variable is null for log ${sheet.id} (projectLocalId: ${localId}) - skipping shift`);
-                  logger.logWarning(`${fieldId} temp variable is null - skipping shift`);
-                  updatedSheetsMap.set(sheet.id, existingSheet || sheet);
-                  continue;
-                }
-                
-                let newLower: number;
-                let newUpper: number;
+                let soundNewLower: number;
+                let soundNewUpper: number;
                 
                 if (currentFieldVal.isRange) {
-                  // Range: newLower = tempValue + 1, newUpper = newLower + delta
-                  newLower = tempValue + 1;
-                  newUpper = newLower + delta;
+                  // Range: newLower = tempSound + 1, newUpper = newLower + delta
+                  soundNewLower = tempSound! + 1;
+                  soundNewUpper = soundNewLower + delta;
                 } else {
-                  // Single value: newLower = tempValue + delta, newUpper = newLower
-                  newLower = tempValue + delta;
-                  newUpper = newLower;
+                  // Single value: newLower = tempSound + delta, newUpper = newLower
+                  soundNewLower = tempSound! + delta;
+                  soundNewUpper = soundNewLower;
                 }
                 
-                const calcFormula = currentFieldVal.isRange
-                  ? `Range: newLower = tempValue(${tempValue}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
-                  : `Single: newLower = tempValue(${tempValue}) + delta(${delta}) = ${newLower}, newUpper = ${newLower}`;
+                const soundCalcFormula = currentFieldVal.isRange
+                  ? `Range: newLower = tempSound(${tempSound}) + 1 = ${soundNewLower}, newUpper = ${soundNewLower} + ${delta} = ${soundNewUpper}`
+                  : `Single: newLower = tempSound(${tempSound}) + delta(${delta}) = ${soundNewLower}, newUpper = ${soundNewLower}`;
                 
-                const fieldLabel = fieldId === 'soundFile' ? 'sound' : `camera${fieldId === 'cameraFile' ? '1' : fieldId.replace('cameraFile', '')}`;
-                console.log(`[${fieldId.toUpperCase()} SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): tempValue=${tempValue}, delta=${delta}, current=${currentFieldVal.lower}/${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${calcFormula}", result: ${newLower}/${newUpper}`);
+                console.log(`[SOUND SHIFT] Log ${sheet.id} (projectLocalId: ${localId}): tempSound=${tempSound}, delta=${delta}, current=${currentFieldVal.lower}/${currentFieldVal.upper}, isRange=${currentFieldVal.isRange}, formula="${soundCalcFormula}", result: ${soundNewLower}/${soundNewUpper}`);
                 
                 logger.logCalculation(
-                  `${fieldId} Sequential Shift (projectLocalId)`,
-                  `Shifting ${fieldId} for log ${sheet.id} (projectLocalId: ${localId})`,
+                  'Sound File Sequential Shift (projectLocalId)',
+                  `Shifting sound file for log ${sheet.id} (projectLocalId: ${localId})`,
                   {
-                    tempValue,
+                    tempSound,
                     delta,
                     currentLower: currentFieldVal.lower,
                     currentUpper: currentFieldVal.upper,
                     isRange: currentFieldVal.isRange
                   },
-                  calcFormula,
-                  { newLower, newUpper }
+                  soundCalcFormula,
+                  { newLower: soundNewLower, newUpper: soundNewUpper }
                 );
                 
-                // Update the data based on field type
-                if (fieldId === 'soundFile') {
-                  if (currentFieldVal.isRange) {
-                    newData['sound_from'] = String(newLower).padStart(4, '0');
-                    newData['sound_to'] = String(newUpper).padStart(4, '0');
-                    if (typeof currentData.soundFile === 'string' && currentData.soundFile.includes('-')) {
-                      newData.soundFile = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                    }
-                  } else {
-                    newData.soundFile = String(newLower).padStart(4, '0');
-                    delete newData['sound_from'];
-                    delete newData['sound_to'];
+                // Update the data
+                if (currentFieldVal.isRange) {
+                  newData['sound_from'] = String(soundNewLower).padStart(4, '0');
+                  newData['sound_to'] = String(soundNewUpper).padStart(4, '0');
+                  if (typeof data.soundFile === 'string' && data.soundFile.includes('-')) {
+                    newData.soundFile = `${String(soundNewLower).padStart(4, '0')}-${String(soundNewUpper).padStart(4, '0')}`;
                   }
-                  
-                  // Update tempSound for next iteration
-                  const previousTempSound = tempSound;
-                  tempSound = currentFieldVal.isRange ? newUpper : newLower;
-                  console.log(`[SOUND UPDATE] tempSound: ${previousTempSound} -> ${tempSound} (after processing Log ${sheet.id}, projectLocalId: ${localId})`);
-                  logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing log ${sheet.id}`);
-                } else if (fieldId.startsWith('cameraFile')) {
-                  const cameraNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-                  const fromKey = `camera${cameraNum}_from`;
-                  const toKey = `camera${cameraNum}_to`;
-                  const fileKey = cameraNum === 1 ? 'cameraFile' : `cameraFile${cameraNum}`;
-                  
-                  if (currentFieldVal.isRange) {
-                    newData[fromKey] = String(newLower).padStart(4, '0');
-                    newData[toKey] = String(newUpper).padStart(4, '0');
-                    if (typeof currentData[fileKey] === 'string' && currentData[fileKey].includes('-')) {
-                      newData[fileKey] = `${String(newLower).padStart(4, '0')}-${String(newUpper).padStart(4, '0')}`;
-                    }
-                  } else {
-                    newData[fileKey] = String(newLower).padStart(4, '0');
-                    delete newData[fromKey];
-                    delete newData[toKey];
-                  }
-                  
-                  // Update tempCamera for next iteration
-                  const previousTempCamera = tempCamera[cameraNum];
-                  tempCamera[cameraNum] = currentFieldVal.isRange ? newUpper : newLower;
-                  console.log(`[CAMERA UPDATE] tempCamera[${cameraNum}]: ${previousTempCamera} -> ${tempCamera[cameraNum]} (after processing Log ${sheet.id}, projectLocalId: ${localId})`);
-                  logger.logDebug(`Updated tempCamera[${cameraNum}] from ${previousTempCamera} to ${tempCamera[cameraNum]} after processing log ${sheet.id}`);
+                } else {
+                  newData.soundFile = String(soundNewLower).padStart(4, '0');
+                  delete newData['sound_from'];
+                  delete newData['sound_to'];
                 }
+                
+                // Update tempSound for next iteration
+                const previousTempSound = tempSound;
+                tempSound = currentFieldVal.isRange ? soundNewUpper : soundNewLower;
+                console.log(`[SOUND UPDATE] tempSound: ${previousTempSound} -> ${tempSound} (after processing Log ${sheet.id}, projectLocalId: ${localId})`);
+                logger.logDebug(`Updated tempSound from ${previousTempSound} to ${tempSound} after processing log ${sheet.id}`);
                 
                 updated = true;
               }
               
               if (updated) {
-                logger.logSave('updateFileNumbers', sheet.id, newData, currentData);
+                logger.logSave('updateFileNumbers', sheet.id, newData, data);
                 updatedSheetsMap.set(sheet.id, { ...sheet, data: newData, updatedAt: new Date().toISOString() });
               } else {
-                updatedSheetsMap.set(sheet.id, existingSheet || sheet);
+                updatedSheetsMap.set(sheet.id, sheet);
               }
             }
             
-            // For sound and camera files with targetLocalId, we've handled all processing above
+            // For sound files with targetLocalId, we've handled all processing above
             // Skip the scene/shot grouping logic below
             // Convert map back to array and return
             const updatedSheets = activeState.logSheets.map(logSheet => {
