@@ -1676,14 +1676,13 @@ This would break the logging logic and create inconsistencies in the file number
         }
         
         // Calculate increment based on new log's range size
-        // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
         let soundIncrement = 1;
-        // const newLogRange = rangeData['soundFile'];
-        // if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
-        //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-        //   const newTo = parseInt(newLogRange.to, 10) || 0;
-        //   soundIncrement = Math.abs(newTo - newFrom) + 1;
-        // }
+        const newLogRange = rangeData['soundFile'];
+        if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+          const newFrom = parseInt(newLogRange.from, 10) || 0;
+          const newTo = parseInt(newLogRange.to, 10) || 0;
+          soundIncrement = Math.abs(newTo - newFrom) + 1;
+        }
         
         updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement, insertedLogId);
 
@@ -1692,9 +1691,7 @@ This would break the logging logic and create inconsistencies in the file number
           const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
           const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
           const insertedMax = Math.max(insertedFrom, insertedTo);
-          // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-          // const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-          const deltaLocal = 1;
+          const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
 
           const oldToNum = parseInt(targetRange.to, 10) || 0;
           const newFromNum = insertedMax + 1;
@@ -1748,14 +1745,13 @@ This would break the logging logic and create inconsistencies in the file number
             }
             if (camStart != null) {
               // Calculate increment based on new log's range size
-              // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
               let camIncrement = 1;
-              // const newLogRange = rangeData['cameraFile'];
-              // if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
-              //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-              //   const newTo = parseInt(newLogRange.to, 10) || 0;
-              //   camIncrement = Math.abs(newTo - newFrom) + 1;
-              // }
+              const newLogRange = rangeData['cameraFile'];
+              if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+                const newFrom = parseInt(newLogRange.from, 10) || 0;
+                const newTo = parseInt(newLogRange.to, 10) || 0;
+                camIncrement = Math.abs(newTo - newFrom) + 1;
+              }
               updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement, insertedLogId);
 
                 // Also shift sound if applicable (new entry provides sound)
@@ -1770,9 +1766,7 @@ This would break the logging logic and create inconsistencies in the file number
                     const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
                     const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
                     soundStartLocal = Math.min(newFromS, newToS);
-                    // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
-                    // soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
-                    soundIncrementLocal = 1;
+                    soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
                   } else if (hasInsertedSoundSingle) {
                     const n = parseInt(String(takeData.soundFile), 10) || 0;
                     soundStartLocal = n;
@@ -1811,9 +1805,7 @@ This would break the logging logic and create inconsistencies in the file number
                 const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
                 const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
                 const insertedMax = Math.max(insertedFrom, insertedTo);
-                // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-                // const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-                const deltaLocal = 1;
+                const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
 
                 const oldToNum = parseInt(targetRangeCam.to, 10) || 0;
                 const newFromNum = insertedMax + 1;
@@ -1885,14 +1877,13 @@ This would break the logging logic and create inconsistencies in the file number
               }
               if (camStart != null) {
                 // Calculate increment based on new log's range size
-                // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
                 let camIncrement = 1;
-                // const newLogRange = rangeData[fieldId];
-                // if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
-                //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-                //   const newTo = parseInt(newLogRange.to, 10) || 0;
-                //   camIncrement = Math.abs(newTo - newFrom) + 1;
-                // }
+                const newLogRange = rangeData[fieldId];
+                if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+                  const newFrom = parseInt(newLogRange.from, 10) || 0;
+                  const newTo = parseInt(newLogRange.to, 10) || 0;
+                  camIncrement = Math.abs(newTo - newFrom) + 1;
+                }
                 updateFileNumbers(projectId, fieldId, camStart, camIncrement, insertedLogId);
 
                 // Read current state of the log from store (after updateFileNumbers may have updated it)
@@ -1905,9 +1896,7 @@ This would break the logging logic and create inconsistencies in the file number
                   const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
                   const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
                   const insertedMax = Math.max(insertedFrom, insertedTo);
-                  // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-                  // const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-                  const deltaLocal = 1;
+                  const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
 
                   const oldToNum = parseInt(targetRangeCam.to, 10) || 0;
                   const newFromNum = insertedMax + 1;
@@ -1982,14 +1971,13 @@ This would break the logging logic and create inconsistencies in the file number
           }
           
           // Calculate increment based on new log's range size
-          // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
           let camIncrement = 1;
-          // const newLogRange = rangeData['cameraFile'];
-          // if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
-          //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-          //   const newTo = parseInt(newLogRange.to, 10) || 0;
-          //   camIncrement = Math.abs(newTo - newFrom) + 1;
-          // }
+          const newLogRange = rangeData['cameraFile'];
+          if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+            const newFrom = parseInt(newLogRange.from, 10) || 0;
+            const newTo = parseInt(newLogRange.to, 10) || 0;
+            camIncrement = Math.abs(newTo - newFrom) + 1;
+          }
           
           updateFileNumbers(projectId, 'cameraFile', camStart, camIncrement, insertedLogId);
 
@@ -2004,9 +1992,7 @@ This would break the logging logic and create inconsistencies in the file number
               const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
               const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
               insertedMax = Math.max(insertedFrom, insertedTo);
-              // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-              // deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-              deltaLocal = 1;
+              deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
             } else {
               // New entry has single value
               insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
@@ -2069,9 +2055,7 @@ This would break the logging logic and create inconsistencies in the file number
               const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
               const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
               soundStartLocal = Math.min(newFromS, newToS);
-              // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
-              // soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
-              soundIncrementLocal = 1;
+              soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
             } else if (hasInsertedSoundSingle) {
               const n = parseInt(String(takeData.soundFile), 10) || 0;
               soundStartLocal = n;
@@ -2132,14 +2116,13 @@ This would break the logging logic and create inconsistencies in the file number
             }
             
             // Calculate increment based on new log's range size
-            // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
             let camIncrement = 1;
-            // const newLogRange = rangeData[fieldId];
-            // if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
-            //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-            //   const newTo = parseInt(newLogRange.to, 10) || 0;
-            //   camIncrement = Math.abs(newTo - newFrom) + 1;
-            // }
+            const newLogRange = rangeData[fieldId];
+            if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+              const newFrom = parseInt(newLogRange.from, 10) || 0;
+              const newTo = parseInt(newLogRange.to, 10) || 0;
+              camIncrement = Math.abs(newTo - newFrom) + 1;
+            }
             
             updateFileNumbers(projectId, fieldId, camStart, camIncrement, insertedLogId);
 
@@ -2159,9 +2142,7 @@ This would break the logging logic and create inconsistencies in the file number
                 const insertedFrom = parseInt(rangeData[fieldId].from, 10) || 0;
                 const insertedTo = parseInt(rangeData[fieldId].to, 10) || 0;
                 insertedMax = Math.max(insertedFrom, insertedTo);
-                // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-                // deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-                deltaLocal = 1;
+                deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
               } else {
                 // New entry has single value
                 insertedMax = parseInt(String(takeData[fieldId]), 10) || 0;
@@ -2230,9 +2211,7 @@ This would break the logging logic and create inconsistencies in the file number
             const newFromS = parseInt(rangeData['soundFile'].from, 10) || 0;
             const newToS = parseInt(rangeData['soundFile'].to, 10) || 0;
             soundStartLocal = Math.min(newFromS, newToS);
-            // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
-            // soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
-            soundIncrementLocal = 1;
+            soundIncrementLocal = Math.abs(newToS - newFromS) + 1;
           } else if (hasInsertedSoundSingle) {
             const n = parseInt(String(takeData.soundFile), 10) || 0;
             soundStartLocal = n;
@@ -2287,14 +2266,13 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) soundStart = n;
           }
           if (soundStart != null) {
-            // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always increment = 1)
             let soundIncrement = 1;
-            // const newLogRange = rangeData['soundFile'];
-            // if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
-            //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-            //   const newTo = parseInt(newLogRange.to, 10) || 0;
-            //   soundIncrement = Math.abs(newTo - newFrom) + 1;
-            // }
+            const newLogRange = rangeData['soundFile'];
+            if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+              const newFrom = parseInt(newLogRange.from, 10) || 0;
+              const newTo = parseInt(newLogRange.to, 10) || 0;
+              soundIncrement = Math.abs(newTo - newFrom) + 1;
+            }
             updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement, insertedLogId);
             const targetRangeLocal = getRangeFromData(existingEntry.data, 'soundFile');
             if (!targetRangeLocal) {
@@ -2469,14 +2447,13 @@ This would break the logging logic and create inconsistencies in the file number
         if (!Number.isNaN(n)) soundStart = n;
       }
       
-      // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
       const soundDelta = (() => {
-        // const r = rangeData['soundFile'];
-        // if (showRangeMode['soundFile'] && r?.from && r?.to) {
-        //   const a = parseInt(r.from, 10) || 0;
-        //   const b = parseInt(r.to, 10) || 0;
-        //   return Math.abs(b - a) + 1;
-        // }
+        const r = rangeData['soundFile'];
+        if (showRangeMode['soundFile'] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
         if (!takeData.soundFile || !takeData.soundFile.trim()) {
           return 0;
         }
@@ -2545,14 +2522,13 @@ This would break the logging logic and create inconsistencies in the file number
         }
       }
       
-      // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
       const camDelta = (() => {
-        // const r = rangeData[targetFieldId];
-        // if (showRangeMode[targetFieldId] && r?.from && r?.to) {
-        //   const a = parseInt(r.from, 10) || 0;
-        //   const b = parseInt(r.to, 10) || 0;
-        //   return Math.abs(b - a) + 1;
-        // }
+        const r = rangeData[targetFieldId];
+        if (showRangeMode[targetFieldId] && r?.from && r?.to) {
+          const a = parseInt(r.from, 10) || 0;
+          const b = parseInt(r.to, 10) || 0;
+          return Math.abs(b - a) + 1;
+        }
         const inputCameraField = targetFieldId === 'cameraFile' ? takeData.cameraFile : takeData[targetFieldId];
         if (!inputCameraField || !inputCameraField.trim()) {
           return 0;
@@ -2842,17 +2818,13 @@ This would break the logging logic and create inconsistencies in the file number
 
       // Compute delta based on inserted range size
       let soundDelta = 1;
-      // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-      // const newLogRange = rangeData['soundFile'];
-      // if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
-      //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-      //   const newTo = parseInt(newLogRange.to, 10) || 0;
-      //   soundDelta = Math.abs(newTo - newFrom) + 1;
-      // } else if (!takeData.soundFile || !String(takeData.soundFile).trim()) {
-      if (!takeData.soundFile || !String(takeData.soundFile).trim()) {
+      const newLogRange = rangeData['soundFile'];
+      if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
+        const newFrom = parseInt(newLogRange.from, 10) || 0;
+        const newTo = parseInt(newLogRange.to, 10) || 0;
+        soundDelta = Math.abs(newTo - newFrom) + 1;
+      } else if (!takeData.soundFile || !String(takeData.soundFile).trim()) {
         soundDelta = 0;
-      } else {
-        soundDelta = 1;
       }
 
       updateFileNumbers(projectId, 'soundFile', soundStart, soundDelta);
@@ -2872,9 +2844,7 @@ This would break the logging logic and create inconsistencies in the file number
           const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
           const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
           insertedMax = Math.max(insertedFrom, insertedTo);
-          // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-          // deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-          deltaLocal = 1;
+          deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
         } else {
           // New entry has single value
           insertedMax = parseInt(String(takeData.soundFile), 10) || 0;
@@ -2923,17 +2893,13 @@ This would break the logging logic and create inconsistencies in the file number
         }
 
         let camDelta = 1;
-        // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-        // const newLogRange = rangeData['cameraFile'];
-        // if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
-        //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-        //   const newTo = parseInt(newLogRange.to, 10) || 0;
-        //   camDelta = Math.abs(newTo - newFrom) + 1;
-        // } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
-        if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
+        const newLogRange = rangeData['cameraFile'];
+        if (showRangeMode['cameraFile'] && newLogRange?.from && newLogRange?.to) {
+          const newFrom = parseInt(newLogRange.from, 10) || 0;
+          const newTo = parseInt(newLogRange.to, 10) || 0;
+          camDelta = Math.abs(newTo - newFrom) + 1;
+        } else if (!takeData.cameraFile || !String(takeData.cameraFile).trim()) {
           camDelta = 0;
-        } else {
-          camDelta = 1;
         }
         updateFileNumbers(projectId, 'cameraFile', camStart, camDelta);
 
@@ -2952,9 +2918,7 @@ This would break the logging logic and create inconsistencies in the file number
             const insertedFrom = parseInt(rangeData['cameraFile'].from, 10) || 0;
             const insertedTo = parseInt(rangeData['cameraFile'].to, 10) || 0;
             insertedMax = Math.max(insertedFrom, insertedTo);
-            // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-            // deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-            deltaLocal = 1;
+            deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
           } else {
             // New entry has single value
             insertedMax = parseInt(String(takeData.cameraFile), 10) || 0;
@@ -3038,30 +3002,23 @@ This would break the logging logic and create inconsistencies in the file number
             if (!Number.isNaN(n)) camStart = n;
           }
           let cameraDelta = 1;
-          // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-          // const newLogRange = rangeData[fieldId];
-          // if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
-          //   const newFrom = parseInt(newLogRange.from, 10) || 0;
-          //   const newTo = parseInt(newLogRange.to, 10) || 0;
-          //   cameraDelta = Math.abs(newTo - newFrom) + 1;
-          // } else if (!takeData[fieldId] || !String(takeData[fieldId]).trim()) {
-          if (!takeData[fieldId] || !String(takeData[fieldId]).trim()) {
+          const newLogRange = rangeData[fieldId];
+          if (showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
+            const newFrom = parseInt(newLogRange.from, 10) || 0;
+            const newTo = parseInt(newLogRange.to, 10) || 0;
+            cameraDelta = Math.abs(newTo - newFrom) + 1;
+          } else if (!takeData[fieldId] || !String(takeData[fieldId]).trim()) {
             cameraDelta = 0;
-          } else {
-            cameraDelta = 1;
           }
           updateFileNumbers(projectId, fieldId, camStart, cameraDelta);
 
           // Update the range for this camera if it exists
           const targetRange = (fromVal && toVal) ? { from: fromVal, to: toVal } : null;
-          const newLogRange = rangeData[fieldId];
           if (targetRange && showRangeMode[fieldId] && newLogRange?.from && newLogRange?.to) {
             const insertedFrom = parseInt(newLogRange.from, 10) || 0;
             const insertedTo = parseInt(newLogRange.to, 10) || 0;
             const insertedMax = Math.max(insertedFrom, insertedTo);
-            // INCREMENTAL LOGIC COMMENTED OUT - Using sequential logic only (always delta = 1)
-            // const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
-            const deltaLocal = 1;
+            const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
 
             const oldToNum = parseInt(targetRange.to, 10) || 0;
             const newFromNum = insertedMax + 1;
