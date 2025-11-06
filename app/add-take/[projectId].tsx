@@ -1647,7 +1647,43 @@ This would break the logging logic and create inconsistencies in the file number
 
     // Get targetLocalId (projectLocalId of the existing entry) BEFORE insertion
     // This is needed for sequential shifting logic and for insertNewLogBefore
-    const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
+    let targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
+    
+    // If projectLocalId is not set, we need to determine it from the log's position
+    // Sort logs by projectLocalId (or id as fallback) to find the target's position
+    if (targetLocalId <= 0 || !(existingEntry as any)?.projectLocalId) {
+      const projectLogSheets = logSheets.filter(s => s.projectId === projectId);
+      const sortedLogs = [...projectLogSheets].sort((a, b) => {
+        const aLocal = parseInt(String(a.projectLocalId || a.id || '0'), 10) || 0;
+        const bLocal = parseInt(String(b.projectLocalId || b.id || '0'), 10) || 0;
+        return aLocal - bLocal;
+      });
+      
+      // Find the index of the existingEntry in the sorted list
+      const targetIndex = sortedLogs.findIndex(s => s.id === existingEntry.id);
+      if (targetIndex >= 0) {
+        // Use (index + 1) as the projectLocalId since IDs are 1-based
+        targetLocalId = targetIndex + 1;
+        console.log(`[addLogWithDuplicateHandling] existingEntry.projectLocalId not set, determined from position: targetIndex=${targetIndex}, targetLocalId=${targetLocalId}`);
+        
+        // Assign the projectLocalId to the existingEntry by updating the store directly
+        if (!(existingEntry as any)?.projectLocalId) {
+          const state = useProjectStore.getState();
+          useProjectStore.setState({
+            logSheets: state.logSheets.map(s => 
+              s.id === existingEntry.id 
+                ? { ...s, projectLocalId: targetLocalId.toString(), updatedAt: new Date().toISOString() }
+                : s
+            )
+          });
+          console.log(`[addLogWithDuplicateHandling] Assigned projectLocalId=${targetLocalId} to existingEntry.id=${existingEntry.id}`);
+          // Update the existingEntry reference to reflect the change
+          (existingEntry as any).projectLocalId = targetLocalId.toString();
+        }
+      } else {
+        console.error(`[addLogWithDuplicateHandling] Could not find existingEntry in sorted logs, id=${existingEntry.id}`);
+      }
+    }
     
     console.log(`[addLogWithDuplicateHandling] Target duplicate info: id=${existingEntry?.id}, projectLocalId=${(existingEntry as any)?.projectLocalId}, resolved targetLocalId=${targetLocalId}`);
     
