@@ -2402,8 +2402,9 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
-    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
-    const applyRangePersistence = (data: Record<string, any>) => {
+    // Use pad4 already defined earlier in this function (at line ~1623)
+    // Reuse the same applyRangePersistence logic for consistency
+    const applyRangePersistenceForFinal = (data: Record<string, any>) => {
       const out: Record<string, any> = { ...data };
       const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
         const r = rangeData[fieldId];
@@ -2460,7 +2461,7 @@ This would break the logging logic and create inconsistencies in the file number
     };
 
     finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-    finalTakeData = applyRangePersistence(finalTakeData);
+    finalTakeData = applyRangePersistenceForFinal(finalTakeData);
 
     logSheet.data = {
       ...finalTakeData,
