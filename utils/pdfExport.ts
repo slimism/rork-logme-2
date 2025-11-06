@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Project, LogSheet } from '@/types';
 
@@ -144,9 +143,12 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
 // Mobile PDF generation using HTML to PDF
 const generatePDFMobile = async (htmlContent: string, filename: string): Promise<boolean> => {
   try {
+    // Import legacy FileSystem API to avoid deprecation warnings
+    const FileSystemLegacy = require('expo-file-system/legacy');
+    
     // For mobile, we'll create an HTML file and let the user share it
     // In a real implementation, you'd use react-native-html-to-pdf or similar
-    const htmlUri = `${FileSystem.documentDirectory}${filename}.html`;
+    const htmlUri = `${FileSystemLegacy.documentDirectory}${filename}.html`;
     
     const fullHtml = `
       <!DOCTYPE html>
@@ -260,7 +262,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
       </html>
     `;
     
-    await FileSystem.writeAsStringAsync(htmlUri, fullHtml);
+    await FileSystemLegacy.writeAsStringAsync(htmlUri, fullHtml);
     
     // Share the HTML file
     if (await Sharing.isAvailableAsync()) {
