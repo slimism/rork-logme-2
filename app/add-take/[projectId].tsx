@@ -2002,9 +2002,9 @@ This would break the logging logic and create inconsistencies in the file number
             }
             updateFileNumbers(projectId, 'soundFile', soundStartLocal, soundIncrementLocal, insertedLogId);
           } catch {}
-          }
         }
-      } else {
+      }
+    } else {
         for (let i = 1; i <= camCount; i++) {
           const fieldId = `cameraFile${i}`;
           // Check if target duplicate has this camera file (not blank)
