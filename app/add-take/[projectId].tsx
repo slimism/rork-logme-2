@@ -1101,14 +1101,8 @@ export default function AddTakeScreen() {
         }
         Alert.alert(
           'Duplicate Detected',
-          `Camera and Sound files are duplicates found in ${location}. Do you want to insert before?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicatePair(existingEntry, soundDup.number, cameraDup!.fieldId, cameraDup!.number),
-            },
-          ]
+          `Camera and Sound files are duplicates found in ${location}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+          [{ text: 'OK', style: 'default' }]
         );
         return;
       } else {
@@ -1153,14 +1147,8 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Insert Before',
-                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-              },
-            ]
+            `Camera file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+            [{ text: 'OK', style: 'default' }]
           );
           return;
         }
@@ -1178,14 +1166,8 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Insert Before',
-                onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-              },
-            ]
+            `Sound file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+            [{ text: 'OK', style: 'default' }]
           );
           return;
         }
@@ -1238,26 +1220,11 @@ This would break the logging logic and create inconsistencies in the file number
       const targetClassification = e.data?.classification;
       const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
       
-      if (isCurrentAmbienceOrSFX) {
-        // Special message for Ambience/SFX
-        Alert.alert(
-          `${classification} Duplicate Detected`,
-          `Sound file is a duplicate at ${loc}.\n\nThis will be added as ${classification}. The sound file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Duplicate Detected',
-          `Sound file is a duplicate at ${loc}. Camera field is blank. Do you want to insert before and shift only sound files?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Insert Before (Sound Only)', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }) }
-          ]
-        );
-      }
+      Alert.alert(
+        'Duplicate Detected',
+        `Sound file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
 
@@ -1267,26 +1234,11 @@ This would break the logging logic and create inconsistencies in the file number
       const targetClassification = e.data?.classification;
       const loc = targetClassification === 'SFX' ? 'SFX' : (targetClassification === 'Ambience' ? 'Ambience' : `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`);
       
-      if (isCurrentAmbienceOrSFX) {
-        // Special message for Ambience/SFX
-        Alert.alert(
-          `${classification} Duplicate Detected`,
-          `Camera file is a duplicate at ${loc}.\n\nThis will be added as ${classification}. The camera file numbers will be shifted, but Scene/Shot/Take ${loc} will remain unchanged.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Add', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Duplicate Detected',
-          `Camera file is a duplicate at ${loc}. Sound field is blank. Do you want to insert before and shift only camera files?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Insert Before (Camera Only)', onPress: () => addLogWithSelectiveDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }) }
-          ]
-        );
-      }
+      Alert.alert(
+        'Duplicate Detected',
+        `Camera file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
 
@@ -1328,14 +1280,8 @@ This would break the logging logic and create inconsistencies in the file number
         }
         Alert.alert(
           'Duplicate Detected',
-          `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-            },
-          ]
+          `Sound file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+          [{ text: 'OK', style: 'default' }]
         );
         return;
       }
@@ -1354,14 +1300,8 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-          },
-        ]
+        `Sound file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+        [{ text: 'OK', style: 'default' }]
       );
       return;
     }
@@ -1387,14 +1327,8 @@ This would break the logging logic and create inconsistencies in the file number
         }
         Alert.alert(
           'Duplicate Detected',
-          `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-            },
-          ]
+          `Camera file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+          [{ text: 'OK', style: 'default' }]
         );
         return;
       }
@@ -1413,14 +1347,8 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Insert Before',
-            onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: cameraDup.fieldId, existingEntry: e, number: cameraDup.number }),
-          },
-        ]
+        `Camera file is a duplicate at ${loc}. The log cannot be added with the current configuration to maintain the logging history and order. Please adjust your file numbers to avoid conflicts.`,
+        [{ text: 'OK', style: 'default' }]
       );
       return;
     }
@@ -1472,104 +1400,675 @@ This would break the logging logic and create inconsistencies in the file number
     // No duplicate, add normally (pass override if provided)
     addNewTake(overrideTakeNumber);
   };
-  
-  const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+
+  const addNewTake = (overrideTakeNumber?: string) => {
     // Only use trial if this is the trial project and not unlocked
     const isTrialProject = tokenStore.isTrialProject(projectId);
     const isUnlocked = tokenStore.isProjectUnlocked(projectId);
     if (isTrialProject && !isUnlocked) {
       tokenStore.useTrial();
     }
-
-    const camCount = project?.settings?.cameraConfiguration || 1;
-    const existingEntry = duplicateInfo.existingEntry;
-
-    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-
-    const conflictsWithOtherTakes = (): boolean => {
-      const conflicts: string[] = [];
-      const excludeId = existingEntry?.id as string | undefined;
-
-      const checkRangeOverlap = (minA: number, maxA: number, minB: number, maxB: number) => !(maxA < minB || minA > maxB);
-
-      const checkField = (fieldId: string, label: string, currentVal?: string, currentRange?: { from: string; to: string } | null) => {
-        if (disabledFields.has(fieldId)) return;
-        const isRange = !!(showRangeMode[fieldId] && currentRange?.from && currentRange?.to);
-        const currentNum = currentVal ? (parseInt(currentVal, 10) || 0) : 0;
-        const curFrom = currentRange?.from ? (parseInt(currentRange.from, 10) || 0) : currentNum;
-        const curTo = currentRange?.to ? (parseInt(currentRange.to, 10) || 0) : currentNum;
-        const curMin = Math.min(curFrom, curTo);
-        const curMax = Math.max(curFrom, curTo);
-
-        for (const sheet of projectLogSheets) {
-          if (!sheet.data || (excludeId && sheet.id === excludeId)) continue;
-          const getExistingRange = (): { from?: string; to?: string } => {
-            if (fieldId === 'soundFile') {
-              return { from: sheet.data['sound_from'], to: sheet.data['sound_to'] };
-            }
-            if (fieldId.startsWith('cameraFile')) {
-              const camNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-              return { from: sheet.data[`camera${camNum}_from`], to: sheet.data[`camera${camNum}_to`] };
-            }
-            return {};
-          };
-
-          const existingRange = getExistingRange();
-          const exFrom = existingRange.from ? (parseInt(existingRange.from, 10) || 0) : undefined;
-          const exTo = existingRange.to ? (parseInt(existingRange.to, 10) || 0) : undefined;
-
-          if (exFrom != null && exTo != null) {
-            const exMin = Math.min(exFrom, exTo);
-            const exMax = Math.max(exFrom, exTo);
-            if (checkRangeOverlap(curMin, curMax, exMin, exMax)) {
-              conflicts.push(label);
-              break;
-            }
+    
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+    
+    // Prepare final take data with REC state considerations
+    let finalTakeData = { ...takeData };
+    
+    // Apply override take number if provided
+    if (overrideTakeNumber) {
+      finalTakeData.takeNumber = overrideTakeNumber;
+    }
+    
+    // For multiple cameras, only include file data for cameras with active REC
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration > 1) {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        
+        if (!isRecActive) {
+          // If REC is not active, don't record this camera file
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
+    // Update the log sheet with take data including new fields
+    // Final sanitation to enforce business rules and range persistence
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        if (!enabled) {
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
           }
-
-          const existingVal = sheet.data[fieldId] as string | undefined;
-          if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
-            const exNum = parseInt(existingVal, 10) || 0;
-            if (exNum >= curMin && exNum <= curMax) {
-              conflicts.push(label);
-              break;
-            }
+          return;
+        }
+        if (inRange && r && r.from && r.to) {
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+            delete out.soundFile;
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+          }
+        } else {
+          if (fieldId === 'soundFile') {
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
           }
         }
       };
 
-      if (takeData.soundFile && !disabledFields.has('soundFile')) {
-        checkField('soundFile', 'Sound File', takeData.soundFile as string, rangeData['soundFile'] || null);
-      }
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
 
-      if (camCount === 1) {
-        if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
-          checkField('cameraFile', 'Camera File', takeData.cameraFile as string, rangeData['cameraFile'] || null);
-        }
+      if (cameraConfiguration === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
       } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+
+    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+    finalTakeData = applyRangePersistence(finalTakeData);
+
+    logSheet.data = {
+      ...finalTakeData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
+    };
+
+    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+
+    router.back();
+  };
+
+  const addNewTake = (overrideTakeNumber?: string) => {
+    // Only use trial if this is the trial project and not unlocked
+    const isTrialProject = tokenStore.isTrialProject(projectId);
+    const isUnlocked = tokenStore.isProjectUnlocked(projectId);
+    if (isTrialProject && !isUnlocked) {
+      tokenStore.useTrial();
+    }
+    
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+    
+    // Prepare final take data with REC state considerations
+    let finalTakeData = { ...takeData };
+    
+    // Apply override take number if provided
+    if (overrideTakeNumber) {
+      finalTakeData.takeNumber = overrideTakeNumber;
+    }
+    
+    // For multiple cameras, only include file data for cameras with active REC
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration > 1) {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        
+        if (!isRecActive) {
+          // If REC is not active, don't record this camera file
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
+    // Update the log sheet with take data including new fields
+    // Final sanitation to enforce business rules and range persistence
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        if (!enabled) {
+          if (fieldId === 'soundFile') {
+            delete out.soundFile;
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+          return;
+        }
+        if (inRange && r && r.from && r.to) {
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+            delete out.soundFile;
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            delete out[base];
+          }
+        } else {
+          if (fieldId === 'soundFile') {
+            delete out['sound_from'];
+            delete out['sound_to'];
+          } else if (idx != null) {
+            delete out[`camera${idx}_from`];
+            delete out[`camera${idx}_to`];
+          }
+        }
+      };
+
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+
+      if (cameraConfiguration === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+
+    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+    finalTakeData = applyRangePersistence(finalTakeData);
+
+    logSheet.data = {
+      ...finalTakeData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
+    };
+
+    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+
+    router.back();
+  };
+
+  const getKeyboardType = (fieldId: string) => {
+    if (fieldId.includes('Number') || fieldId.includes('File') || fieldId.includes('from') || fieldId.includes('to')) {
+      return 'numeric';
+    }
+    return 'default';
+  };
+
+  const getNextFieldId = (currentFieldId: string, allFieldIds: string[]) => {
+    const currentIndex = allFieldIds.indexOf(currentFieldId);
+    if (currentIndex < allFieldIds.length - 1) {
+      return allFieldIds[currentIndex + 1];
+    }
+    return null;
+  };
+
+  const focusNextField = (currentFieldId: string, allFieldIds: string[]) => {
+    const nextFieldId = getNextFieldId(currentFieldId, allFieldIds);
+    if (nextFieldId && inputRefs.current[nextFieldId]) {
+      inputRefs.current[nextFieldId]?.focus();
+    }
+  };
+
+  const getPlaceholderText = (fieldId: string, fieldLabel: string) => {
+    // For camera and audio files, show "0001" as placeholder
+    if (fieldId === 'soundFile' || fieldId.startsWith('cameraFile')) {
+      return '0001';
+    }
+    return fieldLabel;
+  };
+
+  const toggleRangeMode = (fieldId: string) => {
+    // Determine if this is a camera field or sound
+    const isCameraField = fieldId === 'cameraFile' || /^cameraFile\d+$/.test(fieldId);
+    if (isCameraField && (project?.settings?.cameraConfiguration || 1) > 1) {
+      // Multi camera setup: synchronize all camera range modes.
+      const camCount = project?.settings?.cameraConfiguration || 1;
+      const currentAnyRange = Object.keys(showRangeMode)
+        .filter(f => f === 'cameraFile' || /^cameraFile\d+$/.test(f))
+        .some(f => showRangeMode[f]);
+      // Toggling ON if not all in range, or OFF if all are in range.
+      const willEnableRange = !currentAnyRange || !showRangeMode[fieldId];
+      setShowRangeMode(prev => {
+        const newShow = { ...prev };
         for (let i = 1; i <= camCount; i++) {
-          const fid = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fid] ?? true;
-          if (isRecActive && takeData[fid]) {
-            checkField(fid, `Camera File ${i}`, takeData[fid] as string, rangeData[fid] || null);
+          newShow[`cameraFile${i}`] = willEnableRange;
+        }
+        // Also fallback for cameraFile (for legacy or single cam mode)
+        newShow["cameraFile"] = willEnableRange;
+        return newShow;
+      });
+      // For rangeData, also apply the same style of entering/exiting as before but for all camera files
+      if (willEnableRange) {
+        setRangeData(prev => {
+          const next = { ...prev };
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}`;
+            next[key] = { from: takeData[key] || '', to: prev[key]?.to || '' };
+          }
+          // cameraFile legacy (single cam)
+          if (camCount === 1) {
+            next["cameraFile"] = { from: takeData["cameraFile"] || '', to: prev["cameraFile"]?.to || '' };
+          }
+          return next;
+        });
+      } else {
+        // range -> single for all
+        setRangeData(prev => {
+          const next = { ...prev };
+          for (let i = 1; i <= camCount; i++) {
+            const key = `cameraFile${i}`;
+            if (next[key]) {
+              updateTakeData(key, next[key].from);
+              delete next[key];
+            }
+          }
+          // legacy
+          if (camCount === 1 && next["cameraFile"]) {
+            updateTakeData("cameraFile", next["cameraFile"].from);
+            delete next["cameraFile"];
+          }
+          return next;
+        });
+      }
+    } else {
+      // For soundFile or single cam: legacy logic
+      const isCurrentlyInRangeMode = showRangeMode[fieldId];
+      setShowRangeMode(prev => ({
+        ...prev,
+        [fieldId]: !isCurrentlyInRangeMode
+      }));
+      if (!isCurrentlyInRangeMode) {
+        const currentValue = takeData[fieldId] || '';
+        setRangeData(prev => ({
+          ...prev,
+          [fieldId]: {
+            from: currentValue,
+            to: prev[fieldId]?.to || ''
+          }
+        }));
+      } else {
+        const range = rangeData[fieldId];
+        if (range) {
+          updateTakeData(fieldId, range.from);
+          setRangeData(prev => {
+            const newRangeData = { ...prev };
+            delete newRangeData[fieldId];
+            return newRangeData;
+          });
+        }
+      }
+    }
+  };
+
+  const updateRangeData = (fieldId: string, type: 'from' | 'to', value: string) => {
+    // Only allow numeric input, don't pad during typing
+    const numericValue = value.replace(/[^0-9]/g, '');
+    
+    setRangeData(prev => ({
+      ...prev,
+      [fieldId]: {
+        ...prev[fieldId],
+        [type]: numericValue
+      }
+    }));
+    
+    // Update the main takeData with the range string for display
+    const currentRange = rangeData[fieldId] || { from: '', to: '' };
+    const updatedRange = { ...currentRange, [type]: numericValue };
+    
+    if (updatedRange.from && updatedRange.to) {
+      updateTakeData(fieldId, `${updatedRange.from}-${updatedRange.to}`);
+    } else if (updatedRange.from) {
+      updateTakeData(fieldId, updatedRange.from);
+    }
+  };
+
+  const formatFileNumber = (value: string) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/[^0-9]/g, '');
+    return numericValue;
+  };
+
+  const formatFileNumberOnBlur = (value: string) => {
+    // Pad to 4 digits on blur
+    const numericValue = value.replace(/[^0-9]/g, '');
+    return numericValue ? String(parseInt(numericValue)).padStart(4, '0') : '';
+  };
+
+  const handleClassificationChange = (type: ClassificationType) => {
+    const newClassification = classification === type ? null : type;
+    setClassification(newClassification);
+    
+    // Calculate new disabled fields based on the new classification
+    const prevDisabled = new Set(disabledFields);
+    const nextDisabled = new Set<string>();
+    
+    // Keep existing MOS disabled fields if MOS is still active (but not for Ambience/SFX)
+    if (shotDetails.includes('MOS') && newClassification !== 'Ambience' && newClassification !== 'SFX') {
+      nextDisabled.add('soundFile');
+    }
+    
+    // Clear MOS when switching to Ambience or SFX
+    if (newClassification === 'Ambience' || newClassification === 'SFX') {
+      setShotDetails(prev => prev.filter(s => s !== 'MOS'));
+      // Sound will be enabled for Ambience/SFX, so don't add to nextDisabled
+    }
+    
+    if (newClassification === 'Waste') {
+      setShowWasteModal(true);
+      // Don't set disabled fields yet, wait for waste modal confirmation
+      return;
+    } else if (classification === 'Waste' && newClassification === null) {
+      // Toggling Waste OFF - preserve current values, don't auto-fill
+      
+      // Re-enable Camera Files (check if they were disabled by Waste)
+      if (!wasteOptions.camera) {
+        // Camera was NOT selected for waste, so it was disabled - re-enable
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (prevDisabled.has('cameraFile')) {
+            nextDisabled.delete('cameraFile');
+          }
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (prevDisabled.has(fieldId)) {
+              nextDisabled.delete(fieldId);
+            }
           }
         }
       }
-
-      if (conflicts.length > 0) {
-        Alert.alert(
-          'Duplicate Detected',
-          'The camera file and/or sound file are already a part of another take. Please adjust the values.',
-          [{ text: 'Cancel', style: 'cancel' }]
-        );
-        return true;
+      
+      // Re-enable Sound File (check if it was disabled by Waste)
+      if (!wasteOptions.sound && prevDisabled.has('soundFile')) {
+        // Sound was NOT selected for waste, so it was disabled - re-enable
+        nextDisabled.delete('soundFile');
       }
-      return false;
-    };
+      
+      // Reset waste options and clear temporary storage
+      setWasteOptions({ camera: false, sound: false });
+      wasteTemporaryStorageRef.current = {};
+      setDisabledFields(nextDisabled);
+      return;
+    } else if (newClassification === 'SFX') {
+      // Save current values before disabling fields
+      savedFieldValuesRef.current = {
+        sceneNumber: takeData.sceneNumber,
+        shotNumber: takeData.shotNumber,
+        takeNumber: takeData.takeNumber,
+        soundFile: takeData.soundFile,
+        cameraFile: takeData.cameraFile,
+      };
+      
+      // Save camera files for multi-camera setup
+      if (project?.settings?.cameraConfiguration && project.settings.cameraConfiguration > 1) {
+        for (let i = 1; i <= project.settings.cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          savedFieldValuesRef.current[fieldId] = takeData[fieldId];
+        }
+      }
+      
+      // For SFX: disable camera files and scene/shot/take fields
+      if (project?.settings?.cameraConfiguration === 1) {
+        nextDisabled.add('cameraFile');
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          nextDisabled.add(`cameraFile${i}`);
+        }
+      }
+      
+      // Disable scene, shot and take fields
+      nextDisabled.add('sceneNumber');
+      nextDisabled.add('shotNumber');
+      nextDisabled.add('takeNumber');
+      
+      // Ensure soundFile is NOT disabled for SFX (only camera files are disabled)
+      nextDisabled.delete('soundFile');
+      
+      setDisabledFields(nextDisabled);
+      
+      // Auto-prefill Sound when transitioning from disabled to enabled
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
+      
+      // Don't clear scene/shot/take fields - they will be hidden but values preserved
+      setTakeData(prev => {
+        const updated = { ...prev };
+        // Only clear camera files that are newly disabled
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) updated[fieldId] = '';
+          }
+        }
+        return updated;
+      });
+      
+      // Clear range data only for newly disabled fields
+      setRangeData(prev => {
+        const updated = { ...prev };
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) delete updated['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) delete updated[fieldId];
+          }
+        }
+        return updated;
+      });
+    } else if (newClassification === 'Ambience') {
+      // Save current values before disabling fields
+      savedFieldValuesRef.current = {
+        sceneNumber: takeData.sceneNumber,
+        shotNumber: takeData.shotNumber,
+        takeNumber: takeData.takeNumber,
+        soundFile: takeData.soundFile,
+        cameraFile: takeData.cameraFile,
+      };
+      
+      // Save camera files for multi-camera setup
+      if (project?.settings?.cameraConfiguration && project.settings.cameraConfiguration > 1) {
+        for (let i = 1; i <= project.settings.cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          savedFieldValuesRef.current[fieldId] = takeData[fieldId];
+        }
+      }
+      
+      // For Ambience: disable camera files and scene/shot/take fields
+      if (project?.settings?.cameraConfiguration === 1) {
+        nextDisabled.add('cameraFile');
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          nextDisabled.add(`cameraFile${i}`);
+        }
+      }
+      
+      // Disable scene, shot and take fields
+      nextDisabled.add('sceneNumber');
+      nextDisabled.add('shotNumber');
+      nextDisabled.add('takeNumber');
+      
+      // Ensure soundFile is NOT disabled for Ambience (only camera files are disabled)
+      nextDisabled.delete('soundFile');
+      
+      setDisabledFields(nextDisabled);
+      
+      // Auto-prefill Sound when transitioning from disabled to enabled
+      const soundWasDisabled = prevDisabled.has('soundFile');
+      const soundNowEnabled = !nextDisabled.has('soundFile');
+      
+      if (soundWasDisabled && soundNowEnabled) {
+        // Compute next sound file number
+        const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+        const nextNumbers = computeNextFileNumbers(projectLogSheets, project);
+        const nextSoundNum = nextNumbers['soundFile'];
+        const formattedSound = String(nextSoundNum).padStart(4, '0');
+        
+        setTakeData(prev => {
+          const updated = { ...prev };
+          // Auto-prefill sound based on range mode
+          if (showRangeMode['soundFile']) {
+            // Range mode: set 'from' only, don't overwrite existing 'to'
+            setRangeData(prevRange => ({
+              ...prevRange,
+              soundFile: {
+                from: formattedSound,
+                to: prevRange['soundFile']?.to || ''
+              }
+            }));
+          } else {
+            // Single mode: set sound file
+            updated.soundFile = formattedSound;
+          }
+          return updated;
+        });
+      }
+      
+      // Don't clear scene/shot/take fields - they will be hidden but values preserved
+      setTakeData(prev => {
+        const updated = { ...prev };
+        // Only clear camera files that are newly disabled
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) updated.cameraFile = '';
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) updated[fieldId] = '';
+          }
+        }
+        return updated;
+      });
+      
+      // Clear range data only for newly disabled fields
+      setRangeData(prev => {
+        const updated = { ...prev };
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (!prevDisabled.has('cameraFile') && nextDisabled.has('cameraFile')) delete updated['cameraFile'];
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (!prevDisabled.has(fieldId) && nextDisabled.has(fieldId)) delete updated[fieldId];
+          }
+        }
+        return updated;
+      });
+    } else {
+      // For other classifications (Normal, Insert, etc.), restore saved values if switching from SFX/Ambience
+      if (classification === 'SFX' || classification === 'Ambience') {
+        // Restore saved scene/shot/take values
+        if (savedFieldValuesRef.current.sceneNumber) {
+          updateTakeData('sceneNumber', savedFieldValuesRef.current.sceneNumber);
+        }
+        if (savedFieldValuesRef.current.shotNumber) {
+          updateTakeData('shotNumber', savedFieldValuesRef.current.shotNumber);
+        }
+        if (savedFieldValuesRef.current.takeNumber) {
+          updateTakeData('takeNumber', savedFieldValuesRef.current.takeNumber);
+        }
+        
+        // Restore camera files if they were saved
+        if (project?.settings?.cameraConfiguration === 1) {
+          if (savedFieldValuesRef.current.cameraFile) {
+            updateTakeData('cameraFile', savedFieldValuesRef.current.cameraFile);
+          }
+        } else {
+          for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+            const fieldId = `cameraFile${i}`;
+            if (savedFieldValuesRef.current[fieldId]) {
+              updateTakeData(fieldId, savedFieldValuesRef.current[fieldId]);
+            }
+          }
+        }
+      }
+      
+      // Re-enable all fields that were disabled by SFX/Ambience
+      if (project?.settings?.cameraConfiguration === 1) {
+        nextDisabled.delete('cameraFile');
+      } else {
+        for (let i = 1; i <= (project?.settings?.cameraConfiguration || 1); i++) {
+          nextDisabled.delete(`cameraFile${i}`);
+        }
+      }
+      nextDisabled.delete('sceneNumber');
+      nextDisabled.delete('shotNumber');
+      nextDisabled.delete('takeNumber');
+    }
+    
+    setDisabledFields(nextDisabled);
+  };
 
-    if (duplicateInfo.type === 'take') {
-      const hasConflicts = conflictsWithOtherTakes();
-      if (hasConflicts) return;
+  const handleWasteConfirm = () => {
     }
 
     let newLogData = { ...takeData };
