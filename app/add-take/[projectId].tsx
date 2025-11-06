@@ -1649,12 +1649,15 @@ This would break the logging logic and create inconsistencies in the file number
     // This is needed for sequential shifting logic and for insertNewLogBefore
     const targetLocalId = parseInt(String((existingEntry as any)?.projectLocalId || '0'), 10);
     
+    console.log(`[addLogWithDuplicateHandling] Target duplicate info: id=${existingEntry?.id}, projectLocalId=${(existingEntry as any)?.projectLocalId}, resolved targetLocalId=${targetLocalId}`);
+    
     // Create the log FIRST before shifting file numbers, so we can pass its ID to updateFileNumbers
     const logSheet = (() => {
       try {
         // When inserting before an existing entry, create at target projectLocalId and shift IDs
         // Pass targetLocalId (projectLocalId) to insertNewLogBefore so it assigns the correct ID
         if (duplicateInfo && position === 'before' && targetLocalId > 0) {
+          console.log(`[addLogWithDuplicateHandling] Calling insertNewLogBefore with targetLocalId=${targetLocalId}`);
           const inserted = insertNewLogBefore(
             projectId,
             String(targetLocalId), // Use projectLocalId, not id
@@ -1664,16 +1667,40 @@ This would break the logging logic and create inconsistencies in the file number
             () => ({ ...newLogData })
           );
           if (inserted) {
-            // Emit snapshot immediately after insertion to show new projectLocalId assignments
-            console.log(`✅ [addLogWithDuplicateHandling] Log inserted at projectLocalId=${targetLocalId}, emitting snapshot`);
-            emitOrderAfterSnapshot(projectId);
-            return inserted;
+            const insertedLocalId = parseInt(String((inserted as any)?.projectLocalId || '0'), 10);
+            console.log(`✅ [addLogWithDuplicateHandling] Log inserted successfully: insertedLocalId=${insertedLocalId}, expected=${targetLocalId}`);
+            
+            // Verify the log was actually inserted with correct projectLocalId by checking the store
+            const stateAfterInsert = useProjectStore.getState();
+            const actualInsertedLog = stateAfterInsert.logSheets.find(s => s.id === inserted.id);
+            if (actualInsertedLog) {
+              const actualLocalId = parseInt(String((actualInsertedLog as any)?.projectLocalId || '0'), 10);
+              console.log(`✅ [addLogWithDuplicateHandling] Verified in store: actualInsertedLog.projectLocalId=${actualLocalId}`);
+              if (actualLocalId !== targetLocalId) {
+                console.error(`❌ [addLogWithDuplicateHandling] ERROR: Store has projectLocalId=${actualLocalId}, but expected=${targetLocalId}`);
+              }
+              // Use the log from store to ensure we have the latest state
+              emitOrderAfterSnapshot(projectId);
+              return actualInsertedLog;
+            } else {
+              console.warn(`⚠️ [addLogWithDuplicateHandling] Inserted log not found in store, using returned value`);
+              // Emit snapshot immediately after insertion to show new projectLocalId assignments
+              emitOrderAfterSnapshot(projectId);
+              return inserted;
+            }
+          } else {
+            console.error(`❌ [addLogWithDuplicateHandling] insertNewLogBefore returned null for targetLocalId=${targetLocalId}`);
+          }
+        } else {
+          if (!targetLocalId || targetLocalId <= 0) {
+            console.error(`❌ [addLogWithDuplicateHandling] Invalid targetLocalId=${targetLocalId}, cannot insert before`);
           }
         }
       } catch (error) {
         console.error('❌ [addLogWithDuplicateHandling] Error in insertNewLogBefore:', error);
       }
       // Fallback: normal append
+      console.log(`[addLogWithDuplicateHandling] Falling back to normal append (addLogSheet)`);
       return addLogSheet(
         `Take ${stats.totalTakes + 1}`,
         'take',
