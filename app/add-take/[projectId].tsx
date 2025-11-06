@@ -1541,9 +1541,10 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
+            `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
             [
-              { text: 'OK', style: 'default' }
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before', onPress: () => handleAddTakeWithInsertBefore(ce) }
             ]
           );
           return;
@@ -1562,9 +1563,10 @@ export default function AddTakeScreen() {
           }
           Alert.alert(
             'Duplicate Detected',
-            `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
+            `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
             [
-              { text: 'OK', style: 'default' }
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Insert Before', onPress: () => handleAddTakeWithInsertBefore(e) }
             ]
           );
           return;
@@ -1731,9 +1733,10 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
+        `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
         [
-          { text: 'OK', style: 'default' }
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Insert Before', onPress: () => handleAddTakeWithInsertBefore(e) }
         ]
       );
       return;
@@ -1783,9 +1786,10 @@ This would break the logging logic and create inconsistencies in the file number
       }
       Alert.alert(
         'Duplicate Detected',
-        `Camera file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
+        `Camera file is a duplicate at ${loc}. Do you want to insert before?`,
         [
-          { text: 'OK', style: 'default' }
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Insert Before', onPress: () => handleAddTakeWithInsertBefore(e) }
         ]
       );
       return;
