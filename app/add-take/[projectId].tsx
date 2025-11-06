@@ -1444,224 +1444,529 @@ This would break the logging logic and create inconsistencies in the file number
     // No duplicate, add normally (pass override if provided)
     addNewTake(overrideTakeNumber);
   };
-  
-  const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
+
+  const addNewTake = (overrideTakeNumber?: string) => {
     // Only use trial if this is the trial project and not unlocked
     const isTrialProject = tokenStore.isTrialProject(projectId);
     const isUnlocked = tokenStore.isProjectUnlocked(projectId);
     if (isTrialProject && !isUnlocked) {
       tokenStore.useTrial();
     }
-
-    const camCount = project?.settings?.cameraConfiguration || 1;
-    const existingEntry = duplicateInfo.existingEntry;
-
-    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-
-    const conflictsWithOtherTakes = (): boolean => {
-      const conflicts: string[] = [];
-      const excludeId = existingEntry?.id as string | undefined;
-
-      const checkRangeOverlap = (minA: number, maxA: number, minB: number, maxB: number) => !(maxA < minB || minA > maxB);
-
-      const checkField = (fieldId: string, label: string, currentVal?: string, currentRange?: { from: string; to: string } | null) => {
-        if (disabledFields.has(fieldId)) return;
-        const isRange = !!(showRangeMode[fieldId] && currentRange?.from && currentRange?.to);
-        const currentNum = currentVal ? (parseInt(currentVal, 10) || 0) : 0;
-        const curFrom = currentRange?.from ? (parseInt(currentRange.from, 10) || 0) : currentNum;
-        const curTo = currentRange?.to ? (parseInt(currentRange.to, 10) || 0) : currentNum;
-        const curMin = Math.min(curFrom, curTo);
-        const curMax = Math.max(curFrom, curTo);
-
-        for (const sheet of projectLogSheets) {
-          if (!sheet.data || (excludeId && sheet.id === excludeId)) continue;
-          const getExistingRange = (): { from?: string; to?: string } => {
+    
+    const logSheet = addLogSheet(
+      `Take ${stats.totalTakes + 1}`,
+      'take',
+      '',
+      projectId
+    );
+    
+    // Prepare final take data with REC state considerations
+    let finalTakeData = { ...takeData };
+    
+    // Apply override take number if provided
+    if (overrideTakeNumber) {
+      finalTakeData.takeNumber = overrideTakeNumber;
+    }
+    
+    // For multiple cameras, only include file data for cameras with active REC
+    const cameraConfiguration = project?.settings?.cameraConfiguration || 1;
+    if (cameraConfiguration > 1) {
+      for (let i = 1; i <= cameraConfiguration; i++) {
+        const fieldId = `cameraFile${i}`;
+        const isRecActive = cameraRecState[fieldId] ?? true;
+        
+        if (!isRecActive) {
+          // If REC is not active, don't record this camera file
+          delete finalTakeData[fieldId];
+        }
+      }
+    }
+    
+    // Update the log sheet with take data including new fields
+    // Final sanitation to enforce business rules and range persistence
+    const pad4 = (v?: string) => (v ? String(parseInt(v, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        
+        // First, clear any existing range or single values
+        if (fieldId === 'soundFile') {
+          delete out.soundFile;
+          delete out['sound_from'];
+          delete out['sound_to'];
+        } else if (idx != null) {
+          const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+          delete out[base];
+          delete out[`camera${idx}_from`];
+          delete out[`camera${idx}_to`];
+        }
+        
+        // For disabled fields (waste), still save range data if it exists
+        if (!enabled) {
+          if (inRange && r && r.from && r.to) {
             if (fieldId === 'soundFile') {
-              return { from: sheet.data['sound_from'], to: sheet.data['sound_to'] };
-            }
-            if (fieldId.startsWith('cameraFile')) {
-              const camNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
-              return { from: sheet.data[`camera${camNum}_from`], to: sheet.data[`camera${camNum}_to`] };
-            }
-            return {};
-          };
-
-          const existingRange = getExistingRange();
-          const exFrom = existingRange.from ? (parseInt(existingRange.from, 10) || 0) : undefined;
-          const exTo = existingRange.to ? (parseInt(existingRange.to, 10) || 0) : undefined;
-
-          if (exFrom != null && exTo != null) {
-            const exMin = Math.min(exFrom, exTo);
-            const exMax = Math.max(exFrom, exTo);
-            if (checkRangeOverlap(curMin, curMax, exMin, exMax)) {
-              conflicts.push(label);
-              break;
+              out['sound_from'] = pad4(r.from);
+              out['sound_to'] = pad4(r.to);
+            } else if (idx != null) {
+              out[`camera${idx}_from`] = pad4(r.from);
+              out[`camera${idx}_to`] = pad4(r.to);
             }
           }
-
-          const existingVal = sheet.data[fieldId] as string | undefined;
-          if (existingVal && typeof existingVal === 'string' && !existingVal.includes('-')) {
-            const exNum = parseInt(existingVal, 10) || 0;
-            if (exNum >= curMin && exNum <= curMax) {
-              conflicts.push(label);
-              break;
+          return;
+        }
+        
+        // Field is enabled - apply normal logic
+        if (inRange && r && r.from && r.to) {
+          // Range mode - set _from and _to fields
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+          }
+        } else if (!inRange) {
+          // Single value mode
+          if (fieldId === 'soundFile' && data.soundFile) {
+            out.soundFile = data.soundFile;
+          } else if (idx != null) {
+            const base = idx === 1 && cameraConfiguration === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            if (data[base]) {
+              out[base] = data[base];
             }
           }
         }
       };
-
-      if (takeData.soundFile && !disabledFields.has('soundFile')) {
-        checkField('soundFile', 'Sound File', takeData.soundFile as string, rangeData['soundFile'] || null);
-      }
-
-      if (camCount === 1) {
-        if (takeData.cameraFile && !disabledFields.has('cameraFile')) {
-          checkField('cameraFile', 'Camera File', takeData.cameraFile as string, rangeData['cameraFile'] || null);
-        }
-      } else {
-        for (let i = 1; i <= camCount; i++) {
-          const fid = `cameraFile${i}`;
-          const isRecActive = cameraRecState[fid] ?? true;
-          if (isRecActive && takeData[fid]) {
-            checkField(fid, `Camera File ${i}`, takeData[fid] as string, rangeData[fid] || null);
-          }
-        }
-      }
-
-      if (conflicts.length > 0) {
-        Alert.alert(
-          'Duplicate Detected',
-          'The camera file and/or sound file are already a part of another take. Please adjust the values.',
-          [{ text: 'Cancel', style: 'cancel' }]
-        );
-        return true;
-      }
-      return false;
-    };
-
-    if (duplicateInfo.type === 'take') {
-      const hasConflicts = conflictsWithOtherTakes();
-      if (hasConflicts) return;
-    }
-
-    let newLogData = { ...takeData };
-
-    if (duplicateInfo.type === 'take') {
-      if (existingEntry.data?.soundFile) {
-        newLogData.soundFile = existingEntry.data.soundFile;
-      }
-      if (camCount === 1 && existingEntry.data?.cameraFile) {
-        newLogData.cameraFile = existingEntry.data.cameraFile;
-      } else if (camCount > 1) {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          if (existingEntry.data?.[fieldId]) {
-            newLogData[fieldId] = existingEntry.data[fieldId];
-          }
-        }
-      }
-
-      const currentSceneNumber = takeData.sceneNumber;
-      const currentShotNumber = takeData.shotNumber;
-      const targetSceneNumber = existingEntry.data?.sceneNumber;
-      const targetShotNumber = existingEntry.data?.shotNumber;
-
-      // Always insert into the target's scene and shot when inserting before
-      newLogData.sceneNumber = targetSceneNumber;
-      newLogData.shotNumber = targetShotNumber;
-      const originalTargetTakeNumber = existingEntry.data?.takeNumber;
-      if (originalTargetTakeNumber) {
-        newLogData.takeNumber = originalTargetTakeNumber;
-      }
-    } else if (duplicateInfo.type === 'file') {
-      // Preserve user-entered values; do not overwrite unrelated file fields
-      // Only align take number positioning below
-
-      const currentSceneNumber = takeData.sceneNumber;
-      const currentShotNumber = takeData.shotNumber;
-      const targetSceneNumber = existingEntry.data?.sceneNumber;
-      const targetShotNumber = existingEntry.data?.shotNumber;
-
-      // Always insert into the target's scene and shot when inserting before
-      newLogData.sceneNumber = targetSceneNumber;
-      newLogData.shotNumber = targetShotNumber;
-      if (existingEntry.data?.takeNumber) {
-        newLogData.takeNumber = existingEntry.data.takeNumber;
-      }
-    }
-
-    // Create the log FIRST before shifting file numbers, so we can pass its ID to updateFileNumbers
-    const logSheet = (() => {
-      try {
-        // When inserting before an existing entry, create at target ID and shift IDs
-        if (duplicateInfo && position === 'before' && existingEntry?.id) {
-          const inserted = insertNewLogBefore(
-            projectId,
-            String(existingEntry.id),
-            `Take ${stats.totalTakes + 1}`,
-            'take',
-            '',
-            () => ({ ...newLogData })
-          );
-          if (inserted) return inserted;
-        }
-      } catch {}
-      // Fallback: normal append
-      return addLogSheet(
-        `Take ${stats.totalTakes + 1}`,
-        'take',
-        '',
-        projectId
-      );
-    })();
-
-    // Increment take numbers for Insert Before when the target is in the same Scene & Shot
-    const tScene = existingEntry.data?.sceneNumber as string | undefined;
-    const tShot = existingEntry.data?.shotNumber as string | undefined;
-    const tTake = parseInt(existingEntry.data?.takeNumber || '0', 10);
-    // Compare against the new logData's scene/shot to decide shifting
-    const sameSceneShot = newLogData.sceneNumber === tScene && newLogData.shotNumber === tShot;
-    if (sameSceneShot && !Number.isNaN(tTake)) {
-      updateTakeNumbers(projectId, tScene || '', tShot || '', tTake, 1);
-    }
-
-    const targetFileNumber = duplicateInfo.number as number;
-    const insertedLogId = logSheet?.id; // Get the inserted log's ID to pass to updateFileNumbers
-
-    if (duplicateInfo.fieldId === 'soundFile') {
-      // Check if target duplicate has sound file (not blank)
-      const targetSoundExists = !!(typeof existingEntry.data?.soundFile === 'string' && existingEntry.data.soundFile.trim()) || 
-                                 !!(typeof existingEntry.data?.sound_from === 'string' && existingEntry.data.sound_from.trim());
       
-      if (targetSoundExists) {
-        let soundStart = targetFileNumber;
-        const hasRange = typeof existingEntry.data?.sound_from === 'string' && typeof existingEntry.data?.sound_to === 'string';
-        if (hasRange) {
-          const lower = parseInt(existingEntry.data.sound_from, 10);
-          if (!Number.isNaN(lower)) soundStart = lower;
-        } else if (typeof existingEntry.data?.soundFile === 'string') {
-          const n = parseInt(existingEntry.data.soundFile, 10);
-          if (!Number.isNaN(n)) soundStart = n;
-        } else if (typeof existingEntry.data?.sound_from === 'string') {
-          const n = parseInt(existingEntry.data.sound_from, 10);
-          if (!Number.isNaN(n)) soundStart = n;
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+      
+      if (cameraConfiguration === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= cameraConfiguration; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
         }
-        
-        // Calculate increment based on new log's range size
-        let soundIncrement = 1;
-        const newLogRange = rangeData['soundFile'];
-        if (showRangeMode['soundFile'] && newLogRange?.from && newLogRange?.to) {
-          const newFrom = parseInt(newLogRange.from, 10) || 0;
-          const newTo = parseInt(newLogRange.to, 10) || 0;
-          soundIncrement = Math.abs(newTo - newFrom) + 1;
-        }
-        
-        updateFileNumbers(projectId, 'soundFile', soundStart, soundIncrement, insertedLogId);
+      }
+      return out;
+    };
+    
+    finalTakeData = pruneDisabled(finalTakeData);
+    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
+    finalTakeData = applyRangePersistence(finalTakeData);
+    
+    logSheet.data = {
+      ...finalTakeData,
+      classification,
+      shotDetails,
+      isGoodTake,
+      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
+      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
+      cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
+    };
+    
+    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+    
+    router.back();
+  };
 
-        const targetRange = getRangeFromData(existingEntry.data, 'soundFile');
-        if (targetRange && showRangeMode['soundFile'] && rangeData['soundFile']?.from && rangeData['soundFile']?.to) {
-          const insertedFrom = parseInt(rangeData['soundFile'].from, 10) || 0;
-          const insertedTo = parseInt(rangeData['soundFile'].to, 10) || 0;
+  const styles = createStyles(colors);
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <Stack.Screen 
+        options={{
+          title: "New Log",
+          headerLeft: () => <HeaderLeft />,
+          headerBackVisible: false,
+          headerTitleAlign: 'center',
+        }} 
+      />
+      
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
+      >
+        <View style={styles.formContainer}>
+
+          {/* Scene, Shot, Take on same row */}
+          <View style={styles.topRowContainer}>
+            {enabledFields.find(f => f.id === 'sceneNumber') && (
+              <View style={styles.topFieldContainer}>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('sceneNumber') && styles.disabledLabel,
+                  validationErrors.has('sceneNumber') && styles.errorLabel
+                ]}>
+                  Scene
+                </Text>
+                <Input
+                  ref={(ref) => { inputRefs.current['sceneNumber'] = ref; }}
+                  value={takeData.sceneNumber || ''}
+                  onChangeText={(text) => {
+                    updateTakeData('sceneNumber', text);
+                    if (validationErrors.has('sceneNumber')) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev);
+                        newErrors.delete('sceneNumber');
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder=""
+                  placeholderTextColor={colors.subtext}
+                  returnKeyType="next"
+                  editable={!disabledFields.has('sceneNumber')}
+                  onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
+                  onFocus={(event) => {
+                    const target: any = undefined;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        if (scrollViewRef.current) {
+                          scrollViewRef.current.scrollTo({ y: pageY - 100, animated: true });
+                        }
+                      });
+                    }, 100);
+                  }}
+                />
+              </View>
+            )}
+            {enabledFields.find(f => f.id === 'shotNumber') && (
+              <View style={styles.topFieldContainer}>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('shotNumber') && styles.disabledLabel,
+                  validationErrors.has('shotNumber') && styles.errorLabel
+                ]}>
+                  Shot{!disabledFields.has('shotNumber') && classification !== 'Ambience' && classification !== 'SFX' && <Text style={styles.asterisk}> *</Text>}
+                </Text>
+                <Input
+                  ref={(ref) => { inputRefs.current['shotNumber'] = ref; }}
+                  value={disabledFields.has('shotNumber') ? '' : (takeData.shotNumber || '')}
+                  onChangeText={(text) => {
+                    updateTakeData('shotNumber', text);
+                    if (validationErrors.has('shotNumber')) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev);
+                        newErrors.delete('shotNumber');
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder=""
+                  placeholderTextColor={colors.subtext}
+                  returnKeyType="next"
+                  editable={!disabledFields.has('shotNumber')}
+                  onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
+                  onFocus={(event) => {
+                    const target: any = undefined;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
+                  }}
+                />
+              </View>
+            )}
+            {enabledFields.find(f => f.id === 'takeNumber') && (
+              <View style={styles.topFieldContainer}>
+                <Text style={[
+                  styles.topFieldLabel,
+                  disabledFields.has('takeNumber') && styles.disabledLabel
+                ]}>
+                  Take
+                </Text>
+                <Input
+                  ref={(ref) => { inputRefs.current['takeNumber'] = ref; }}
+                  value={disabledFields.has('takeNumber') ? '' : (takeData.takeNumber || '')}
+                  onChangeText={(text) => updateTakeData('takeNumber', text)}
+                  placeholder=""
+                  placeholderTextColor={colors.subtext}
+                  returnKeyType="next"
+                  editable={!disabledFields.has('takeNumber')}
+                  onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
+                  onFocus={(event) => {
+                    const target: any = undefined;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
+                  }}
+                />
+              </View>
+            )}
+          </View>
+
+          {/* Classification */}
+          <View style={styles.classificationRow}>
+            <TouchableOpacity
+              style={[
+                styles.classificationTab,
+                classification === 'Regular' && styles.classificationTabActive
+              ]}
+              onPress={() => setClassification('Regular')}
+            >
+              <Text style={[
+                styles.classificationTabText,
+                classification === 'Regular' && styles.classificationTabTextActive
+              ]}>
+                Regular
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.classificationTab,
+                classification === 'Waste' && styles.classificationTabActive
+              ]}
+              onPress={() => setClassification('Waste')}
+            >
+              <Text style={[
+                styles.classificationTabText,
+                classification === 'Waste' && styles.classificationTabTextActive
+              ]}>
+                Waste
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.classificationTab,
+                classification === 'Insert' && styles.classificationTabActive
+              ]}
+              onPress={() => setClassification('Insert')}
+            >
+              <Text style={[
+                styles.classificationTabText,
+                classification === 'Insert' && styles.classificationTabTextActive
+              ]}>
+                Insert
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.classificationTab,
+                classification === 'Ambience' && styles.classificationTabActive
+              ]}
+              onPress={() => setClassification('Ambience')}
+            >
+              <Text style={[
+                styles.classificationTabText,
+                classification === 'Ambience' && styles.classificationTabTextActive
+              ]}>
+                Ambience
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.classificationTab,
+                classification === 'SFX' && styles.classificationTabActive
+              ]}
+              onPress={() => setClassification('SFX')}
+            >
+              <Text style={[
+                styles.classificationTabText,
+                classification === 'SFX' && styles.classificationTabTextActive
+              ]}>
+                SFX
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sound File */}
+          {enabledFields.find(f => f.id === 'soundFile') && (
+            <View style={styles.fieldContainer}>
+              <Text style={[
+                styles.fieldLabel,
+                disabledFields.has('soundFile') && styles.disabledLabel,
+                validationErrors.has('soundFile') && styles.errorLabel
+              ]}>
+                Sound File{!disabledFields.has('soundFile') && <Text style={styles.asterisk}> *</Text>}
+              </Text>
+              <Input
+                ref={(ref) => { inputRefs.current['soundFile'] = ref; }}
+                value={disabledFields.has('soundFile') ? '' : (takeData.soundFile || '')}
+                onChangeText={(text) => {
+                  updateTakeData('soundFile', text);
+                  if (validationErrors.has('soundFile')) {
+                    setValidationErrors(prev => {
+                      const newErrors = new Set(prev);
+                      newErrors.delete('soundFile');
+                      return newErrors;
+                    });
+                  }
+                }}
+                placeholder=""
+                placeholderTextColor={colors.subtext}
+                returnKeyType="next"
+                editable={!disabledFields.has('soundFile')}
+                onSubmitEditing={() => !disabledFields.has('soundFile') && focusNextField('soundFile', allFieldIds)}
+                onFocus={(event) => {
+                  const target: any = undefined;
+                  setTimeout(() => {
+                    target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                      const scrollY = Math.max(0, pageY - 100);
+                      scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                    });
+                  }, 100);
+                }}
+              />
+            </View>
+          )}
+
+          {/* Camera File(s) */}
+          {cameraConfiguration === 1 ? (
+            enabledFields.find(f => f.id === 'cameraFile') && (
+              <View style={styles.fieldContainer}>
+                <Text style={[
+                  styles.fieldLabel,
+                  disabledFields.has('cameraFile') && styles.disabledLabel,
+                  validationErrors.has('cameraFile') && styles.errorLabel
+                ]}>
+                  Camera File{!disabledFields.has('cameraFile') && <Text style={styles.asterisk}> *</Text>}
+                </Text>
+                <Input
+                  ref={(ref) => { inputRefs.current['cameraFile'] = ref; }}
+                  value={disabledFields.has('cameraFile') ? '' : (takeData.cameraFile || '')}
+                  onChangeText={(text) => {
+                    updateTakeData('cameraFile', text);
+                    if (validationErrors.has('cameraFile')) {
+                      setValidationErrors(prev => {
+                        const newErrors = new Set(prev);
+                        newErrors.delete('cameraFile');
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  placeholder=""
+                  placeholderTextColor={colors.subtext}
+                  returnKeyType="next"
+                  editable={!disabledFields.has('cameraFile')}
+                  onSubmitEditing={() => !disabledFields.has('cameraFile') && focusNextField('cameraFile', allFieldIds)}
+                  onFocus={(event) => {
+                    const target: any = undefined;
+                    setTimeout(() => {
+                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                        const scrollY = Math.max(0, pageY - 100);
+                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                      });
+                    }, 100);
+                  }}
+                />
+              </View>
+            )
+          ) : (
+            Array.from({ length: cameraConfiguration }, (_, i) => i + 1).map((cameraNum) => {
+              const fieldId = `cameraFile${cameraNum}`;
+              const isRecActive = cameraRecState[fieldId] ?? true;
+              if (!enabledFields.find(f => f.id === fieldId) || !isRecActive) return null;
+              
+              return (
+                <View key={fieldId} style={styles.fieldContainer}>
+                  <Text style={[
+                    styles.fieldLabel,
+                    disabledFields.has(fieldId) && styles.disabledLabel,
+                    validationErrors.has(fieldId) && styles.errorLabel
+                  ]}>
+                    Camera File {cameraNum}{!disabledFields.has(fieldId) && <Text style={styles.asterisk}> *</Text>}
+                  </Text>
+                  <Input
+                    ref={(ref) => { inputRefs.current[fieldId] = ref; }}
+                    value={disabledFields.has(fieldId) ? '' : (takeData[fieldId] || '')}
+                    onChangeText={(text) => {
+                      updateTakeData(fieldId, text);
+                      if (validationErrors.has(fieldId)) {
+                        setValidationErrors(prev => {
+                          const newErrors = new Set(prev);
+                          newErrors.delete(fieldId);
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    placeholder=""
+                    placeholderTextColor={colors.subtext}
+                    returnKeyType="next"
+                    editable={!disabledFields.has(fieldId)}
+                    onSubmitEditing={() => !disabledFields.has(fieldId) && focusNextField(fieldId, allFieldIds)}
+                    onFocus={(event) => {
+                      const target: any = undefined;
+                      setTimeout(() => {
+                        target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                          const scrollY = Math.max(0, pageY - 100);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }, 100);
+                    }}
+                  />
+                </View>
+              );
+            })
+          )}
+
+          {/* Add Button */}
+          <Button
+            title="Add Log"
+            onPress={() => handleAddTake()}
+            style={styles.addButton}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+  },
+  headerButton: {
+    padding: 8,
+    marginHorizontal: 8,
+  },
+  formContainer: {
+    backgroundColor: 'transparent',
+    margin: 0,
+    borderRadius: 0,
+    padding: 0,
+    shadowColor: 'transparent',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  topRowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  topFieldContainer: {
+    flex: 1,
+  },
           const insertedMax = Math.max(insertedFrom, insertedTo);
           const deltaLocal = Math.abs(insertedTo - insertedFrom) + 1;
 
