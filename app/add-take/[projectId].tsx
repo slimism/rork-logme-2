@@ -987,7 +987,7 @@ export default function AddTakeScreen() {
       return;
     }
     
-    // New logic: only camera AND sound duplicates on the same take allow insert-before
+    // Find duplicates for a field (used for duplicate detection only - insert-before is not allowed in Add flow)
     const getEligibleDuplicateForField = (fieldId: string) => {
       const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
       const currentVal = takeData[fieldId] as string | undefined;
@@ -1274,8 +1274,8 @@ This would break the logging logic and create inconsistencies in the file number
       return;
     }
 
-    // New rule: allow Insert Before when only one duplicate exists AND the other field is blank
-    // Allow insert-before when target duplicate has the other field blank (but not for Ambience/SFX)
+    // Check for duplicates when only one field has a duplicate and the other field is blank
+    // Note: Insert-before is NOT allowed in Add flow - this just shows an error message
     if (!isCurrentAmbienceOrSFX && soundDup) {
       const target = soundDup.existingEntry;
       const camCount = project?.settings?.cameraConfiguration || 1;
