@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet, insertNewLogBefore } = useProjectStore();
+  const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet } = useProjectStore();
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -1312,13 +1312,9 @@ This would break the logging logic and create inconsistencies in the file number
         }
         Alert.alert(
           'Duplicate Detected',
-          `Sound file is a duplicate at ${loc}. Do you want to insert before?`,
+          `Sound file is a duplicate at ${loc}. Insert-before is only available when editing an existing take.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Insert Before',
-              onPress: () => addLogWithDuplicateHandling('before', { type: 'file', fieldId: 'soundFile', existingEntry: e, number: soundDup.number }),
-            },
+            { text: 'OK', style: 'default' }
           ]
         );
         return;
@@ -1444,40 +1440,6 @@ This would break the logging logic and create inconsistencies in the file number
     // No duplicate, add normally (pass override if provided)
     addNewTake(overrideTakeNumber);
   };
-  
-  const addLogWithDuplicateHandling = (position: 'before', duplicateInfo: any) => {
-    // Only use trial if this is the trial project and not unlocked
-    const isTrialProject = tokenStore.isTrialProject(projectId);
-    const isUnlocked = tokenStore.isProjectUnlocked(projectId);
-    if (isTrialProject && !isUnlocked) {
-      tokenStore.useTrial();
-    }
-
-    const camCount = project?.settings?.cameraConfiguration || 1;
-    const existingEntry = duplicateInfo.existingEntry;
-
-    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
-
-    const conflictsWithOtherTakes = (): boolean => {
-      const conflicts: string[] = [];
-      const excludeId = existingEntry?.id as string | undefined;
-
-      const checkRangeOverlap = (minA: number, maxA: number, minB: number, maxB: number) => !(maxA < minB || minA > maxB);
-
-      const checkField = (fieldId: string, label: string, currentVal?: string, currentRange?: { from: string; to: string } | null) => {
-        if (disabledFields.has(fieldId)) return;
-        const isRange = !!(showRangeMode[fieldId] && currentRange?.from && currentRange?.to);
-        const currentNum = currentVal ? (parseInt(currentVal, 10) || 0) : 0;
-        const curFrom = currentRange?.from ? (parseInt(currentRange.from, 10) || 0) : currentNum;
-        const curTo = currentRange?.to ? (parseInt(currentRange.to, 10) || 0) : currentNum;
-        const curMin = Math.min(curFrom, curTo);
-        const curMax = Math.max(curFrom, curTo);
-
-        for (const sheet of projectLogSheets) {
-          if (!sheet.data || (excludeId && sheet.id === excludeId)) continue;
-          const getExistingRange = (): { from?: string; to?: string } => {
-            if (fieldId === 'soundFile') {
-              return { from: sheet.data['sound_from'], to: sheet.data['sound_to'] };
             }
             if (fieldId.startsWith('cameraFile')) {
               const camNum = fieldId === 'cameraFile' ? 1 : (parseInt(fieldId.replace('cameraFile', ''), 10) || 1);
@@ -2330,37 +2292,6 @@ This would break the logging logic and create inconsistencies in the file number
 
       const soundEnabled = !disabledFields.has('soundFile');
       handleField('soundFile', soundEnabled);
-
-      if (camCount === 1) {
-        const camEnabled = !disabledFields.has('cameraFile');
-        handleField('cameraFile', camEnabled, 1);
-      } else {
-        for (let i = 1; i <= camCount; i++) {
-          const fieldId = `cameraFile${i}`;
-          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
-          handleField(fieldId, camEnabled, i);
-        }
-      }
-      return out;
-    };
-
-    finalTakeData = sanitizeDataBeforeSave(finalTakeData, classification);
-    finalTakeData = applyRangePersistence(finalTakeData);
-
-    logSheet.data = {
-      ...finalTakeData,
-      classification,
-      shotDetails,
-      isGoodTake,
-      wasteOptions: classification === 'Waste' ? JSON.stringify(wasteOptions) : '',
-      insertSoundSpeed: classification === 'Insert' ? (insertSoundSpeed?.toString() || '') : '',
-      cameraRecState: camCount > 1 ? cameraRecState : undefined
-    };
-
-    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
-
-    router.back();
-  };
 
   const addLogWithSelectiveDuplicateHandling = (position: 'before', duplicateInfo: any) => {
     // Only use trial if this is the trial project and not unlocked
