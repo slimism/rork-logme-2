@@ -1623,10 +1623,9 @@ This would break the logging logic and create inconsistencies in the file number
       try {
         // When inserting before an existing entry, create at target ID and shift IDs
         if (duplicateInfo && position === 'before' && existingEntry?.id) {
-          const targetLocator = String((existingEntry as any)?.projectLocalId ?? existingEntry.id);
           const inserted = insertNewLogBefore(
             projectId,
-            targetLocator,
+            String(existingEntry.id),
             `Take ${stats.totalTakes + 1}`,
             'take',
             '',
