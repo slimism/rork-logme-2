@@ -1618,6 +1618,83 @@ This would break the logging logic and create inconsistencies in the file number
       }
     }
 
+    // Apply range persistence to format ranges with _from/_to fields before creating the log
+    // This ensures updateFileNumbers can properly initialize tempCamera/tempSound from the inserted log
+    const pad4 = (v?: string) => (v ? String(parseInt(v as any, 10) || 0).padStart(4, '0') : '');
+    const applyRangePersistence = (data: Record<string, any>) => {
+      const out: Record<string, any> = { ...data };
+      const handleField = (fieldId: string, enabled: boolean, idx?: number) => {
+        const r = rangeData[fieldId];
+        const inRange = showRangeMode[fieldId] === true;
+        
+        // First, clear any existing range or single values
+        if (fieldId === 'soundFile') {
+          delete out.soundFile;
+          delete out['sound_from'];
+          delete out['sound_to'];
+        } else if (idx != null) {
+          const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+          delete out[base];
+          delete out[`camera${idx}_from`];
+          delete out[`camera${idx}_to`];
+        }
+        
+        // For disabled fields (waste), still save range data if it exists
+        if (!enabled) {
+          if (inRange && r && r.from && r.to) {
+            if (fieldId === 'soundFile') {
+              out['sound_from'] = pad4(r.from);
+              out['sound_to'] = pad4(r.to);
+            } else if (idx != null) {
+              out[`camera${idx}_from`] = pad4(r.from);
+              out[`camera${idx}_to`] = pad4(r.to);
+            }
+          }
+          return;
+        }
+        
+        // Field is enabled - apply normal logic
+        if (inRange && r && r.from && r.to) {
+          // Range mode - set _from and _to fields
+          if (fieldId === 'soundFile') {
+            out['sound_from'] = pad4(r.from);
+            out['sound_to'] = pad4(r.to);
+          } else if (idx != null) {
+            out[`camera${idx}_from`] = pad4(r.from);
+            out[`camera${idx}_to`] = pad4(r.to);
+          }
+        } else if (!inRange) {
+          // Single value mode
+          if (fieldId === 'soundFile' && data.soundFile) {
+            out.soundFile = data.soundFile;
+          } else if (idx != null) {
+            const base = idx === 1 && camCount === 1 ? 'cameraFile' : `cameraFile${idx}`;
+            if (data[base]) {
+              out[base] = data[base];
+            }
+          }
+        }
+      };
+      
+      const soundEnabled = !disabledFields.has('soundFile');
+      handleField('soundFile', soundEnabled);
+      
+      if (camCount === 1) {
+        const camEnabled = !disabledFields.has('cameraFile');
+        handleField('cameraFile', camEnabled, 1);
+      } else {
+        for (let i = 1; i <= camCount; i++) {
+          const fieldId = `cameraFile${i}`;
+          const camEnabled = !disabledFields.has(fieldId) && (cameraRecState[fieldId] ?? true);
+          handleField(fieldId, camEnabled, i);
+        }
+      }
+      return out;
+    };
+    
+    // Format ranges before creating the log
+    newLogData = applyRangePersistence(newLogData);
+
     // Create the log FIRST before shifting file numbers, so we can pass its ID to updateFileNumbers
     const logSheet = (() => {
       try {
