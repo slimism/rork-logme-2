@@ -19,20 +19,7 @@ The new architecture separates concerns into distinct, maintainable services:
 - `checkBlankFields()` - Determine which fields are blank
 - `getDuplicateHandlingStrategy()` - Determine the appropriate handling strategy
 
-### 2. FileNumberService (`fileNumberService.ts`)
-**Purpose**: Handles file number operations and range management
-**Responsibilities**:
-- Calculate range deltas
-- Determine file start numbers for shifting
-- Handle range persistence
-- Manage file number updates
-
-**Key Methods**:
-- `shiftFileNumbers()` - Shift file numbers for a specific field
-- `calculateRangeDelta()` - Calculate the increment for ranges
-- `applyRangePersistence()` - Apply range data to log entries
-
-### 3. DuplicateHandlerService (`duplicateHandlerService.ts`)
+### 2. DuplicateHandlerService (`duplicateHandlerService.ts`)
 **Purpose**: Coordinates duplicate handling and user interactions
 **Responsibilities**:
 - Orchestrate the duplicate detection and handling process
@@ -59,7 +46,6 @@ The new architecture separates concerns into distinct, maintainable services:
 
 ### 3. **Maintainability**
 - Changes to duplicate logic only affect DuplicateService
-- File number logic is centralized in FileNumberService
 - Easy to add new duplicate handling strategies
 
 ### 4. **Reusability**

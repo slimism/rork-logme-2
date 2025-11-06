@@ -1,6 +1,5 @@
 import { LogSheet, Project } from '@/types';
 import { DuplicateService, DuplicateInfo, BlankFieldCheck } from './duplicateService';
-import { FileNumberService } from './fileNumberService';
 
 export interface DuplicateHandlingParams {
   logSheet: LogSheet;
@@ -22,7 +21,6 @@ export interface DuplicateHandlingParams {
 
 export class DuplicateHandlerService {
   private duplicateService: DuplicateService;
-  private fileNumberService: FileNumberService;
   private params: DuplicateHandlingParams;
 
   constructor(params: DuplicateHandlingParams) {
@@ -35,11 +33,6 @@ export class DuplicateHandlerService {
       params.project ? [] : [], // Will be set properly in checkAndHandleDuplicates
       params.project,
       excludeIds
-    );
-
-    this.fileNumberService = new FileNumberService(
-      this.createUpdateFileNumbersHandler(),
-      params.updateLogSheet
     );
   }
 
@@ -303,13 +296,6 @@ This would break the logging logic and create inconsistencies in the file number
   /**
    * Helper methods
    */
-  private createUpdateFileNumbersHandler() {
-    return (projectId: string, fieldId: string, fromNumber: number, increment: number) => {
-      // This would be connected to the actual updateFileNumbers function from the store
-      console.log('Updating file numbers:', projectId, fieldId, fromNumber, increment);
-    };
-  }
-
   private findFirstDuplicateFile(): any {
     // Implementation for finding first duplicate file
     return null;
