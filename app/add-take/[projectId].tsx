@@ -1357,7 +1357,7 @@ export default function AddTakeScreen() {
       return;
     }
 
-    // Block when overlap with an existing range is detected (no insert-before in Add flow)
+    // Check for range conflicts - allow insert-before for all conflicts
     const generalRangeConflict = findGeneralRangeConflict();
     if (generalRangeConflict) {
       const e = generalRangeConflict.existingEntry;
@@ -1370,15 +1370,20 @@ export default function AddTakeScreen() {
       } else {
         loc = `Scene ${e.data?.sceneNumber || 'Unknown'}, Shot ${e.data?.shotNumber || 'Unknown'}, Take ${e.data?.takeNumber || 'Unknown'}`;
       }
+      
+      // Allow insert-before for all range conflicts
       Alert.alert(
-        'Part of Ranged Take',
-        `${generalRangeConflict.label} is part of a take that contains a range at ${loc}. Adjust the value(s) to continue.`,
-        [{ text: 'OK', style: 'default' }]
+        'Duplicate Detected',
+        `${generalRangeConflict.label} overlaps with a range at ${loc}. Do you want to insert before?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Insert Before', onPress: () => handleAddTakeWithInsertBefore(e) }
+        ]
       );
       return;
     }
     
-    // Find duplicates for a field (used for duplicate detection only - insert-before is not allowed in Add flow)
+    // Find duplicates for a field (used for duplicate detection - insert-before is now allowed)
     const getEligibleDuplicateForField = (fieldId: string) => {
       const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
       const currentVal = takeData[fieldId] as string | undefined;
