@@ -86,17 +86,13 @@ export const useProjectStore = create<ProjectState>()(
         const targetLog = projectLogs.find(s => parseInt(s.projectLocalId as string, 10) === targetNumeric) ||
                           projectLogs.find(s => parseInt(s.id as string, 10) === targetNumeric);
         const targetLocal = targetLog ? (parseInt(targetLog.projectLocalId as string, 10) || targetNumeric) : targetNumeric;
-        
-        console.log(`[insertNewLogBefore] targetNumeric=${targetNumeric}, targetLog found=${!!targetLog}, targetLog.projectLocalId=${targetLog ? (targetLog.projectLocalId || 'N/A') : 'N/A'}, targetLocal=${targetLocal}`);
 
         set((prev) => {
-          const logsToIncrement: Array<{ id: string; oldLocal: number; newLocal: number }> = [];
           const updated: LogSheet[] = prev.logSheets.map(s => {
             if (s.projectId !== projectId) return s;
             const nLocal = parseInt(s.projectLocalId as string, 10) || 0;
             if (nLocal >= targetLocal) {
               const newLocal = (nLocal + 1).toString();
-              logsToIncrement.push({ id: s.id, oldLocal: nLocal, newLocal: parseInt(newLocal, 10) });
               return { ...s, projectLocalId: newLocal, updatedAt: new Date().toISOString() };
             }
             return s;
@@ -104,10 +100,6 @@ export const useProjectStore = create<ProjectState>()(
           // Place new log with the target id
           const inserted: LogSheet = { ...newLog, projectLocalId: targetLocal.toString() };
           updated.push(inserted);
-          
-          console.log(`[insertNewLogBefore] Assignment complete:`);
-          console.log(`  - New log assigned projectLocalId=${targetLocal}`);
-          console.log(`  - Logs incremented (${logsToIncrement.length}):`, logsToIncrement.map(l => `${l.id}: ${l.oldLocal}→${l.newLocal}`).join(', '));
           // ACTION: log inserted-before event
           try {
             const collectCameraFields = (d: any): Record<string, string> => {
@@ -1351,9 +1343,7 @@ export const useProjectStore = create<ProjectState>()(
                       // delta is already set correctly above: inserted log's delta for target duplicate,
                       // or the take's own original delta for subsequent takes
                       newLower = tempCamera[cameraNum]! + 1;
-                      // For single values: newUpper = newLower (single file number)
-                      // For ranges: newUpper = newLower + delta (range of file numbers)
-                      newUpper = currentFieldVal.isRange ? (newLower + delta) : newLower;
+                      newUpper = newLower + delta;
                       
                       const cameraCalcFormula = currentFieldVal.isRange
                         ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`
