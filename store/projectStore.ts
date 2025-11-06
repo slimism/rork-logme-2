@@ -1343,7 +1343,9 @@ export const useProjectStore = create<ProjectState>()(
                       // delta is already set correctly above: inserted log's delta for target duplicate,
                       // or the take's own original delta for subsequent takes
                       newLower = tempCamera[cameraNum]! + 1;
-                      newUpper = newLower + delta;
+                      // For single values: newUpper = newLower (single file number)
+                      // For ranges: newUpper = newLower + delta (range of file numbers)
+                      newUpper = currentFieldVal.isRange ? (newLower + delta) : newLower;
                       
                       const cameraCalcFormula = currentFieldVal.isRange
                         ? `Range: newLower = tempCamera[${cameraNum}](${tempCamera[cameraNum]}) + 1 = ${newLower}, newUpper = ${newLower} + ${delta} = ${newUpper}`

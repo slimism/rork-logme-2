@@ -11,6 +11,33 @@ import Toast from 'react-native-toast-message';
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const { projects, logSheets, addLogSheet, updateTakeNumbers, updateFileNumbers, updateLogSheet, insertNewLogBefore } = useProjectStore();
+  
+  // Helper function to emit ORDER AFTER snapshot after save operations
+  const emitOrderAfterSnapshot = (projectId: string) => {
+    try {
+      const state = useProjectStore.getState();
+      const orderAfter = state.logSheets
+        .filter(s => s.projectId === projectId)
+        .sort((a, b) => (parseInt((a.projectLocalId as string) || '0', 10) || 0) - (parseInt((b.projectLocalId as string) || '0', 10) || 0))
+        .map(s => ({
+          id: s.projectLocalId || s.id,
+          scene: (s.data as any)?.sceneNumber,
+          shot: (s.data as any)?.shotNumber,
+          take: (s.data as any)?.takeNumber,
+          camera: ((s.data as any)?.camera1_from && (s.data as any)?.camera1_to)
+            ? `${(s.data as any)?.camera1_from}-${(s.data as any)?.camera1_to}`
+            : ((s.data as any)?.cameraFile || undefined),
+          sound: ((s.data as any)?.sound_from && (s.data as any)?.sound_to)
+            ? `${(s.data as any)?.sound_from}-${(s.data as any)?.sound_to}`
+            : ((s.data as any)?.soundFile || undefined),
+          classification: (s.data as any)?.classification || undefined,
+          ...(() => { const d:any=(s.data as any)||{}; const o:Record<string,string>={}; for(let i=1;i<=10;i++){const fk=`camera${i}_from`;const tk=`camera${i}_to`;const ck=`cameraFile${i}`; if (d[fk]&&d[tk]) o[`camera${i}`]=`${d[fk]}-${d[tk]}`; else if (d[ck]) o[`camera${i}`]=d[ck];} return o;})()
+        }));
+      console.log(`[ACTION] ORDER AFTER -> projectId=${projectId}`, orderAfter);
+    } catch (error) {
+      console.error('Error emitting ORDER AFTER snapshot:', error);
+    }
+  };
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
@@ -1896,7 +1923,11 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
-    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+    try { 
+      updateLogSheet(logSheet.id, logSheet.data);
+      // Emit ORDER AFTER snapshot after save to ensure each log is captured
+      emitOrderAfterSnapshot(projectId);
+    } catch {}
 
     router.back();
   };
@@ -2229,7 +2260,11 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
-    try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+    try { 
+      updateLogSheet(logSheet.id, logSheet.data);
+      // Emit ORDER AFTER snapshot after save to ensure each log is captured
+      emitOrderAfterSnapshot(projectId);
+    } catch {}
 
     router.back();
   };
@@ -2654,6 +2689,12 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: camCount > 1 ? cameraRecState : undefined
     };
 
+    try { 
+      updateLogSheet(logSheet.id, logSheet.data);
+      // Emit ORDER AFTER snapshot after save to ensure each log is captured
+      emitOrderAfterSnapshot(projectId);
+    } catch {}
+
     router.back();
   };
 
@@ -2766,7 +2807,11 @@ This would break the logging logic and create inconsistencies in the file number
       cameraRecState: cameraConfiguration > 1 ? cameraRecState : undefined
     };
   
-  try { updateLogSheet(logSheet.id, logSheet.data); } catch {}
+  try { 
+      updateLogSheet(logSheet.id, logSheet.data);
+      // Emit ORDER AFTER snapshot after save to ensure each log is captured
+      emitOrderAfterSnapshot(projectId);
+    } catch {}
     
     router.back();
   };
