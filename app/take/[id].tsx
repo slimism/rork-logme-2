@@ -2496,7 +2496,7 @@ This would break the logging logic and create inconsistencies in the file number
           isLandscape ? styles.scrollContentLandscape : null,
         ]}
       >
-        <View style={[styles.sectionContainer, isLandscape ? styles.mainContainerLandscape : null]}>
+        <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
               {classification === 'Ambience' ? 'Ambience' : classification === 'SFX' ? 'SFX' : `Scene ${takeData.sceneNumber || 'Unknown'} - Shot ${takeData.shotNumber || 'Unknown'}`}
@@ -2938,6 +2938,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     padding: 8,
     marginHorizontal: 8,
   },
+  formContainer: {
+    backgroundColor: 'transparent',
+    margin: 0,
+    borderRadius: 0,
+    padding: 0,
+    shadowColor: 'transparent',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
@@ -3063,7 +3077,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: 'transparent',
     margin: 0,
     borderRadius: 0,
-    paddingHorizontal: 16,
+    padding: 0,
     shadowColor: 'transparent',
     shadowOffset: {
       width: 0,
