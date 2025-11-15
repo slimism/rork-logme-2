@@ -5,19 +5,14 @@ import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { useThemeStore } from '@/store/themeStore';
 
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 
-const logoDark = require('../../../assets/images/logo-dark.png');
-const logoLight = require('../../../assets/images/logo-light.png');
-
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
-  const { darkMode } = useThemeStore();
   const colors = useColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -248,7 +243,7 @@ export default function ProjectsScreen() {
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <Image 
-              source={darkMode ? logoDark : logoLight} 
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
               style={styles.appLogo} 
             />
             <Text style={styles.appTitle}>LogMe</Text>

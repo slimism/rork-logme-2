@@ -4,21 +4,15 @@ import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { useThemeStore } from '@/store/themeStore';
 
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
-import { Project, LogSheet } from '@/types';
-
-const logoDark = require('../../../assets/images/logo-dark.png');
-const logoLight = require('../../../assets/images/logo-light.png');
 
 export default function ProjectsScreen() {
   const colors = useColors();
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
-  const { darkMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -29,17 +23,17 @@ export default function ProjectsScreen() {
   const remainingTrialLogs = getRemainingTrialLogs();
   const styles = createStyles(colors);
 
-  const filteredProjects = projects.filter((project: Project) =>
+  const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getProjectStats = (projectId: string) => {
-    const projectLogSheets = logSheets.filter((sheet: LogSheet) => sheet.projectId === projectId);
+    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
     return {
       shots: projectLogSheets.length,
       lastUpdated: projectLogSheets.length > 0 
-        ? Math.max(...projectLogSheets.map((sheet: LogSheet) => new Date(sheet.updatedAt).getTime()))
-        : new Date(projects.find((p: Project) => p.id === projectId)?.updatedAt || '').getTime()
+        ? Math.max(...projectLogSheets.map(sheet => new Date(sheet.updatedAt).getTime()))
+        : new Date(projects.find(p => p.id === projectId)?.updatedAt || '').getTime()
     };
   };
 
@@ -117,21 +111,21 @@ export default function ProjectsScreen() {
     setShowDeleteModal(false);
   };
 
-  const SwipeableProjectCard = ({ item }: { item: Project }) => {
+  const SwipeableProjectCard = ({ item }: { item: any }) => {
     const translateX = new Animated.Value(0);
     const stats = getProjectStats(item.id);
     const isSelected = selectedProjects.includes(item.id);
     
     const panResponder = PanResponder.create({
-      onMoveShouldSetPanResponder: (_: any, gestureState: any) => {
+      onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
       },
-      onPanResponderMove: (_: any, gestureState: any) => {
+      onPanResponderMove: (_, gestureState) => {
         if (gestureState.dx < 0) {
           translateX.setValue(Math.max(gestureState.dx, -100));
         }
       },
-      onPanResponderRelease: (_: any, gestureState: any) => {
+      onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -50) {
           Animated.spring(translateX, {
             toValue: -100,
@@ -224,7 +218,7 @@ export default function ProjectsScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: Project }) => {
+  const renderItem = ({ item }: { item: any }) => {
     return <SwipeableProjectCard item={item} />;
   };
 
@@ -233,7 +227,7 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={darkMode ? logoDark : logoLight} 
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
@@ -312,7 +306,7 @@ export default function ProjectsScreen() {
         <FlatList
           data={filteredProjects}
           renderItem={renderItem}
-          keyExtractor={(item: Project) => item.id}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
