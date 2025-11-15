@@ -919,7 +919,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: 24,
   },
   shotHeader: {
-    backgroundColor: colors.primary + '30',
+    backgroundColor: colors.primary + '20',
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 0,
