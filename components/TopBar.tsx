@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
@@ -16,11 +16,10 @@ export function TopBar({ showCredits = true }: TopBarProps) {
   const { darkMode } = useThemeStore();
 
   const styles = createStyles(colors);
-  const logoSource = darkMode 
-    ? require('../assets/images/logo-dark.png') 
-    : require('../assets/images/logo-light.png');
+  
+  const logoSource = require('../assets/images/icon.png');
 
-  console.log('[TopBar] Rendering with darkMode:', darkMode);
+  console.log('[TopBar] Rendering with darkMode:', darkMode, 'logo:', darkMode ? 'dark' : 'light');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -30,6 +29,8 @@ export function TopBar({ showCredits = true }: TopBarProps) {
           source={logoSource}
           style={styles.appLogo}
           resizeMode="contain"
+          onLoad={() => console.log('[TopBar] Logo loaded successfully')}
+          onError={(e) => console.error('[TopBar] Image load error:', e.nativeEvent)}
         />
         <Text style={styles.appTitle}>LogMe</Text>
       </View>
@@ -61,10 +62,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flex: 1,
   },
   appLogo: {
-    width: 62,
-    height: 62,
-    marginRight: 12,
-    backgroundColor: 'transparent',
+    width: 40,
+    height: 40,
+    marginRight: 8,
   },
   appTitle: {
     fontSize: 28,

@@ -224,20 +224,22 @@ export default function ProjectsScreen() {
     return <SwipeableProjectCard item={item} />;
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.titleSection}>
-        <View style={styles.appHeader}>
-          <Image 
-            key={darkMode ? 'dark' : 'light'}
-            source={darkMode 
-              ? require('../../../assets/images/logo-dark.png') 
-              : require('../../../assets/images/logo-light.png')
-            }
-            style={styles.appLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appTitle}>LogMe</Text>
+  const renderHeader = () => {
+    const logoSource = require('../../../assets/images/icon.png');
+
+    return (
+      <View style={styles.header}>
+        <View style={styles.titleSection}>
+          <View style={styles.appHeader}>
+            <Image 
+              key={darkMode ? 'dark' : 'light'}
+              source={logoSource}
+              style={styles.appLogo}
+              resizeMode="contain"
+              onLoad={() => console.log('[ProjectsScreen] Logo loaded successfully')}
+              onError={(e) => console.error('[ProjectsScreen] Image load error:', e.nativeEvent)}
+            />
+            <Text style={styles.appTitle}>LogMe</Text>
           <View style={styles.headerActions}>
             <View style={styles.creditsContainer}>
               <Text style={styles.creditsLabel}>Remaining Credits</Text>
@@ -296,8 +298,9 @@ export default function ProjectsScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
-  );
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -372,10 +375,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     width: '100%',
   },
   appLogo: {
-    width: 62,
-    height: 62,
-    marginRight: 12,
-    backgroundColor: 'transparent',
+    width: 40,
+    height: 40,
+    marginRight: 8,
   },
   appTitle: {
     fontSize: 28,
