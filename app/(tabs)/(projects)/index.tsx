@@ -4,14 +4,13 @@ import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
-
-
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
+import { Asset } from 'expo-asset';
 
-const logoLight = require('../../../assets/images/logo-light.png');
-const logoDark = require('../../../assets/images/logo-dark.png');
+const logoLight = Asset.fromModule(require('../../../assets/images/logo-light.png')).uri;
+const logoDark = Asset.fromModule(require('../../../assets/images/logo-dark.png')).uri;
 
 export default function ProjectsScreen() {
   const colors = useColors();
@@ -235,12 +234,13 @@ export default function ProjectsScreen() {
         <View style={styles.appHeader}>
           <Image 
             key={darkMode ? 'dark' : 'light'}
-            source={darkMode ? logoDark : logoLight}
+            source={{ uri: darkMode ? logoDark : logoLight }}
             style={styles.appLogo}
             onError={(error) => {
-              console.log('[ProjectsScreen] Image load error:', error.nativeEvent.error);
+              console.log('[ProjectsScreen] Image load error:', error.nativeEvent?.error);
               console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
               console.log('[ProjectsScreen] darkMode state:', darkMode);
+              console.log('[ProjectsScreen] Logo URI:', darkMode ? logoDark : logoLight);
             }}
             onLoad={() => {
               console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
@@ -385,6 +385,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     width: 62,
     height: 62,
     marginRight: 12,
+    backgroundColor: 'transparent',
   },
   appTitle: {
     fontSize: 28,
