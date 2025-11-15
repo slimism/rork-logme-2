@@ -11,6 +11,9 @@ import { useThemeStore } from '@/store/themeStore';
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 
+const logoDark = require('../../../assets/images/logo-dark.png');
+const logoLight = require('../../../assets/images/logo-light.png');
+
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
@@ -245,10 +248,7 @@ export default function ProjectsScreen() {
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <Image 
-              source={darkMode 
-                ? require('@/assets/images/logo-dark.png')
-                : require('@/assets/images/logo-light.png')
-              } 
+              source={darkMode ? logoDark : logoLight} 
               style={styles.appLogo} 
             />
             <Text style={styles.appTitle}>LogMe</Text>

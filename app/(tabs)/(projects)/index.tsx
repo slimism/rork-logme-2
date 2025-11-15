@@ -9,6 +9,10 @@ import { useThemeStore } from '@/store/themeStore';
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
+import { Project, LogSheet } from '@/types';
+
+const logoDark = require('../../../assets/images/logo-dark.png');
+const logoLight = require('../../../assets/images/logo-light.png');
 
 export default function ProjectsScreen() {
   const colors = useColors();
@@ -25,17 +29,17 @@ export default function ProjectsScreen() {
   const remainingTrialLogs = getRemainingTrialLogs();
   const styles = createStyles(colors);
 
-  const filteredProjects = projects.filter(project =>
+  const filteredProjects = projects.filter((project: Project) =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getProjectStats = (projectId: string) => {
-    const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
+    const projectLogSheets = logSheets.filter((sheet: LogSheet) => sheet.projectId === projectId);
     return {
       shots: projectLogSheets.length,
       lastUpdated: projectLogSheets.length > 0 
-        ? Math.max(...projectLogSheets.map(sheet => new Date(sheet.updatedAt).getTime()))
-        : new Date(projects.find(p => p.id === projectId)?.updatedAt || '').getTime()
+        ? Math.max(...projectLogSheets.map((sheet: LogSheet) => new Date(sheet.updatedAt).getTime()))
+        : new Date(projects.find((p: Project) => p.id === projectId)?.updatedAt || '').getTime()
     };
   };
 
@@ -113,21 +117,21 @@ export default function ProjectsScreen() {
     setShowDeleteModal(false);
   };
 
-  const SwipeableProjectCard = ({ item }: { item: any }) => {
+  const SwipeableProjectCard = ({ item }: { item: Project }) => {
     const translateX = new Animated.Value(0);
     const stats = getProjectStats(item.id);
     const isSelected = selectedProjects.includes(item.id);
     
     const panResponder = PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
+      onMoveShouldSetPanResponder: (_: any, gestureState: any) => {
         return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
       },
-      onPanResponderMove: (_, gestureState) => {
+      onPanResponderMove: (_: any, gestureState: any) => {
         if (gestureState.dx < 0) {
           translateX.setValue(Math.max(gestureState.dx, -100));
         }
       },
-      onPanResponderRelease: (_, gestureState) => {
+      onPanResponderRelease: (_: any, gestureState: any) => {
         if (gestureState.dx < -50) {
           Animated.spring(translateX, {
             toValue: -100,
@@ -220,7 +224,7 @@ export default function ProjectsScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: Project }) => {
     return <SwipeableProjectCard item={item} />;
   };
 
@@ -229,10 +233,7 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={darkMode 
-              ? require('@/assets/images/logo-dark.png')
-              : require('@/assets/images/logo-light.png')
-            } 
+            source={darkMode ? logoDark : logoLight} 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
@@ -311,7 +312,7 @@ export default function ProjectsScreen() {
         <FlatList
           data={filteredProjects}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: Project) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
