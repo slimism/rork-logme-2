@@ -7,10 +7,6 @@ import { useTokenStore } from '@/store/subscriptionStore';
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
-import { Asset } from 'expo-asset';
-
-const logoLight = Asset.fromModule(require('../../../assets/images/logo-light.png')).uri;
-const logoDark = Asset.fromModule(require('../../../assets/images/logo-dark.png')).uri;
 
 export default function ProjectsScreen() {
   const colors = useColors();
@@ -234,17 +230,11 @@ export default function ProjectsScreen() {
         <View style={styles.appHeader}>
           <Image 
             key={darkMode ? 'dark' : 'light'}
-            source={{ uri: darkMode ? logoDark : logoLight }}
+            source={darkMode 
+              ? require('../../../assets/images/logo-dark.png') 
+              : require('../../../assets/images/logo-light.png')
+            }
             style={styles.appLogo}
-            onError={(error) => {
-              console.log('[ProjectsScreen] Image load error:', error.nativeEvent?.error);
-              console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
-              console.log('[ProjectsScreen] darkMode state:', darkMode);
-              console.log('[ProjectsScreen] Logo URI:', darkMode ? logoDark : logoLight);
-            }}
-            onLoad={() => {
-              console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
-            }}
             resizeMode="contain"
           />
           <Text style={styles.appTitle}>LogMe</Text>
