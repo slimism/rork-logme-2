@@ -247,18 +247,20 @@ export default function ProjectsScreen() {
       <View style={styles.header}>
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
-            <Image 
-              source={darkMode ? logoDark : logoLight}
-              style={styles.appLogo}
-              onError={(error) => {
-                console.log('[ProjectsScreen] Image load error:', error.nativeEvent.error);
-                console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
-              }}
-              onLoad={() => {
-                console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
-              }}
-              resizeMode="contain"
-            />
+            <View style={styles.logoContainer}>
+              <Image 
+                source={darkMode ? logoDark : logoLight}
+                style={styles.appLogo}
+                onError={(error) => {
+                  console.log('[ProjectsScreen] Image load error:', error.nativeEvent.error);
+                  console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+                }}
+                onLoad={() => {
+                  console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+                }}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.appTitle}>LogMe</Text>
             <View style={styles.headerActions}>
               <View style={styles.creditsContainer}>
@@ -399,10 +401,19 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: 8,
     width: '100%',
   },
-  appLogo: {
+  logoContainer: {
     width: 62,
     height: 62,
     marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  appLogo: {
+    width: '100%',
+    height: '100%',
+    maxWidth: 62,
+    maxHeight: 62,
   },
   appTitle: {
     fontSize: 28,

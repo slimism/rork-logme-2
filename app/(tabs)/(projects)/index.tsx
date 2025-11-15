@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, Image, PanResponder, Animated, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -8,13 +9,13 @@ import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
 
+const logoLight = require('../../../assets/images/logo-light.png');
+const logoDark = require('../../../assets/images/logo-dark.png');
+
 export default function ProjectsScreen() {
   const colors = useColors();
   const { darkMode } = useThemeStore();
   const { projects, logSheets, deleteProject } = useProjectStore();
-  
-  console.log('[ProjectsScreen] Render - darkMode:', darkMode);
-  console.log('[ProjectsScreen] Logo source:', darkMode ? 'logo-dark.png' : 'logo-light.png');
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -180,7 +181,7 @@ export default function ProjectsScreen() {
             <View style={styles.projectMainRow}>
               <View style={styles.projectImageContainer}>
                 {item.logoUri ? (
-                  <Image source={{ uri: item.logoUri }} style={styles.projectImage} />
+                  <Image source={{ uri: item.logoUri }} style={styles.projectImage} resizeMode="cover" />
                 ) : (
                   <View style={styles.projectImagePlaceholder}>
                     <Film size={40} color="white" />
@@ -225,80 +226,83 @@ export default function ProjectsScreen() {
   };
 
   const renderHeader = () => {
-    const logoSource = require('../../../assets/images/icon.png');
+    const logoSource = darkMode ? logoDark : logoLight;
 
     return (
-      <View style={styles.header}>
-        <View style={styles.titleSection}>
-          <View style={styles.appHeader}>
-            <Image 
-              key={darkMode ? 'dark' : 'light'}
-              source={logoSource}
-              style={styles.appLogo}
-              resizeMode="contain"
-              onLoad={() => console.log('[ProjectsScreen] Logo loaded successfully')}
-              onError={(e) => console.error('[ProjectsScreen] Image load error:', e.nativeEvent)}
-            />
-            <Text style={styles.appTitle}>LogMe</Text>
-          <View style={styles.headerActions}>
-            <View style={styles.creditsContainer}>
-              <Text style={styles.creditsLabel}>Remaining Credits</Text>
-              <View style={styles.creditsRow}>
-                <Text style={styles.creditsNumber}>{tokens}</Text>
+      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <View style={styles.titleSection}>
+            <View style={styles.appHeader}>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={logoSource}
+                  style={styles.appLogo}
+                  resizeMode="contain"
+                  onLoad={() => console.log('[ProjectsScreen] Logo loaded successfully:', darkMode ? 'dark' : 'light')}
+                  onError={(e) => console.error('[ProjectsScreen] Image load error:', e.nativeEvent)}
+                />
+              </View>
+              <Text style={styles.appTitle}>LogMe</Text>
+              <View style={styles.headerActions}>
+                <View style={styles.creditsContainer}>
+                  <Text style={styles.creditsLabel}>Remaining Credits</Text>
+                  <View style={styles.creditsRow}>
+                    <Text style={styles.creditsNumber}>{tokens}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
+                  <Plus size={20} color="white" />
+                </TouchableOpacity>
               </View>
             </View>
-            <TouchableOpacity onPress={handleCreateProject} style={styles.addProjectButton}>
-              <Plus size={20} color="white" />
-            </TouchableOpacity>
+            {isMultiSelectMode ? (
+              <View style={styles.multiSelectHeader}>
+                <Text style={styles.selectedCountText}>
+                  {selectedProjects.length} selected
+                </Text>
+                <View style={styles.multiSelectActions}>
+                  <TouchableOpacity onPress={cancelMultiSelect} style={styles.cancelButton}>
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  {selectedProjects.length > 0 && (
+                    <TouchableOpacity onPress={handleDeleteSelectedProjects} style={styles.deleteButton}>
+                      <Trash2 size={16} color="white" />
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ) : null}
           </View>
-        </View>
-        {isMultiSelectMode ? (
-          <View style={styles.multiSelectHeader}>
-            <Text style={styles.selectedCountText}>
-              {selectedProjects.length} selected
-            </Text>
-            <View style={styles.multiSelectActions}>
-              <TouchableOpacity onPress={cancelMultiSelect} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              {selectedProjects.length > 0 && (
-                <TouchableOpacity onPress={handleDeleteSelectedProjects} style={styles.deleteButton}>
-                  <Trash2 size={16} color="white" />
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
-              )}
+          
+          {!isMultiSelectMode && (
+            <View style={styles.searchContainer}>
+              <View style={styles.searchIcon}>
+                <Search size={20} color={colors.subtext} />
+              </View>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={colors.subtext}
+              />
             </View>
-          </View>
-        ) : null}
-      </View>
-      
-      {!isMultiSelectMode && (
-        <View style={styles.searchContainer}>
-          <View style={styles.searchIcon}>
-            <Search size={20} color={colors.subtext} />
-          </View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={colors.subtext}
-          />
-        </View>
-      )}
+          )}
 
-      {remainingTrialLogs > 0 && !isMultiSelectMode && (
-        <View style={styles.trialBanner}>
-          <View style={styles.trialTextContainer}>
-            <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
-            <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
-            <Text style={styles.buyCreditsText}>Buy Credits</Text>
-          </TouchableOpacity>
+          {remainingTrialLogs > 0 && !isMultiSelectMode && (
+            <View style={styles.trialBanner}>
+              <View style={styles.trialTextContainer}>
+                <Text style={styles.trialTitle}>You&apos;re on a trial</Text>
+                <Text style={styles.trialSubtitle}>{remainingTrialLogs} logs remaining</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/store')} style={styles.buyCreditsButton}>
+                <Text style={styles.buyCreditsText}>Buy Credits</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      )}
-      </View>
+      </SafeAreaView>
     );
   };
 
@@ -358,6 +362,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flex: 1,
     backgroundColor: colors.background,
   },
+  headerSafeArea: {
+    backgroundColor: colors.card,
+  },
   header: {
     backgroundColor: colors.card,
     padding: 20,
@@ -374,10 +381,19 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: 8,
     width: '100%',
   },
+  logoContainer: {
+    width: 62,
+    height: 62,
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
   appLogo: {
-    width: 40,
-    height: 40,
-    marginRight: 8,
+    width: '100%',
+    height: '100%',
+    maxWidth: 62,
+    maxHeight: 62,
   },
   appTitle: {
     fontSize: 28,
