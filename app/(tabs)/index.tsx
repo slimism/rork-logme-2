@@ -249,7 +249,15 @@ export default function ProjectsScreen() {
           <View style={styles.appHeader}>
             <Image 
               source={darkMode ? logoDark : logoLight}
-              style={styles.appLogo} 
+              style={styles.appLogo}
+              onError={(error) => {
+                console.log('[ProjectsScreen] Image load error:', error.nativeEvent.error);
+                console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+              }}
+              onLoad={() => {
+                console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+              }}
+              resizeMode="contain"
             />
             <Text style={styles.appTitle}>LogMe</Text>
             <View style={styles.headerActions}>

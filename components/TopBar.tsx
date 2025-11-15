@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
+import { useThemeStore } from '@/store/themeStore';
 
-const logo = require('../assets/images/logo-light.png');
+const logoLight = require('../assets/images/logo-light.png');
+const logoDark = require('../assets/images/logo-dark.png');
 
 interface TopBarProps {
   showCredits?: boolean;
@@ -14,15 +16,26 @@ export function TopBar({ showCredits = true }: TopBarProps) {
   const { tokens } = useTokenStore();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { darkMode } = useThemeStore();
 
   const styles = createStyles(colors);
+  const logoSource = darkMode ? logoDark : logoLight;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.leftSection}>
         <Image 
-          source={logo}
-          style={styles.appLogo} 
+          source={logoSource}
+          style={styles.appLogo}
+          onError={(error) => {
+            console.log('[TopBar] Image load error:', error.nativeEvent.error);
+            console.log('[TopBar] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+            console.log('[TopBar] Logo source:', logoSource);
+          }}
+          onLoad={() => {
+            console.log('[TopBar] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+          }}
+          resizeMode="contain"
         />
         <Text style={styles.appTitle}>LogMe</Text>
       </View>
