@@ -227,7 +227,9 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
+            source={{ uri: colors.background === '#ffffff' 
+              ? 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/fscou6rjmkbsp5dji3p00'
+              : 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
