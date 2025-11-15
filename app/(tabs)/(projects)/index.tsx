@@ -230,8 +230,8 @@ export default function ProjectsScreen() {
         <View style={styles.appHeader}>
           <Image 
             source={{ uri: darkMode 
-              ? 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/lbegxiix3d2ac74vzcen5'
-              : 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xkpic4wk4nvxuhodotfsk'
+              ? 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xkpic4wk4nvxuhodotfsk'
+              : 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/lbegxiix3d2ac74vzcen5'
             }} 
             style={styles.appLogo} 
           />
