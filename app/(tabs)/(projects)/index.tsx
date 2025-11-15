@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useTokenStore } from '@/store/subscriptionStore';
+import { useThemeStore } from '@/store/themeStore';
 
 
 import { EmptyState } from '@/components/EmptyState';
@@ -13,6 +14,7 @@ export default function ProjectsScreen() {
   const colors = useColors();
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
+  const { darkMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -227,7 +229,10 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
+            source={{ uri: darkMode 
+              ? 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/lbegxiix3d2ac74vzcen5'
+              : 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xkpic4wk4nvxuhodotfsk'
+            }} 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
