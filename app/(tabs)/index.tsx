@@ -9,11 +9,16 @@ import { useTokenStore } from '@/store/subscriptionStore';
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
+import { useThemeStore } from '@/store/themeStore';
+
+const logoLight = require('../../assets/images/logo-light.png');
+const logoDark = require('../../assets/images/logo-dark.png');
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const colors = useColors();
+  const { darkMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -243,7 +248,7 @@ export default function ProjectsScreen() {
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <Image 
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
+              source={darkMode ? logoDark : logoLight}
               style={styles.appLogo} 
             />
             <Text style={styles.appTitle}>LogMe</Text>
