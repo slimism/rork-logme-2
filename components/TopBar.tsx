@@ -54,8 +54,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flex: 1,
   },
   appLogo: {
-    width: 48,
-    height: 48,
+    width: 62,
+    height: 62,
     marginRight: 12,
   },
   appTitle: {
