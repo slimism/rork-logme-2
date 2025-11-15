@@ -3,10 +3,8 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { useThemeStore } from '@/store/themeStore';
 
-const logoDark = require('../assets/images/logo-dark.png');
-const logoLight = require('../assets/images/logo-light.png');
+const logo = require('../assets/images/logo-light.png');
 
 interface TopBarProps {
   showCredits?: boolean;
@@ -14,7 +12,6 @@ interface TopBarProps {
 
 export function TopBar({ showCredits = true }: TopBarProps) {
   const { tokens } = useTokenStore();
-  const { darkMode } = useThemeStore();
   const insets = useSafeAreaInsets();
   const colors = useColors();
 
@@ -24,7 +21,7 @@ export function TopBar({ showCredits = true }: TopBarProps) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.leftSection}>
         <Image 
-          source={darkMode ? logoDark : logoLight}
+          source={logo}
           style={styles.appLogo} 
         />
         <Text style={styles.appTitle}>LogMe</Text>

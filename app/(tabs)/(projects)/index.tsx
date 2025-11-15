@@ -8,15 +8,11 @@ import { useTokenStore } from '@/store/subscriptionStore';
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
-import { useThemeStore } from '@/store/themeStore';
 
-// Pre-require both logo images for dynamic theme switching
-const logoDark = require('../../../assets/images/logo-dark.png');
-const logoLight = require('../../../assets/images/logo-light.png');
+const logo = require('../../../assets/images/logo-light.png');
 
 export default function ProjectsScreen() {
   const colors = useColors();
-  const { darkMode } = useThemeStore();
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -232,9 +228,8 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={darkMode ? logoDark : logoLight}
+            source={logo}
             style={styles.appLogo}
-            key={darkMode ? 'dark' : 'light'}
           />
           <Text style={styles.appTitle}>LogMe</Text>
           <View style={styles.headerActions}>
