@@ -17,6 +17,9 @@ export default function ProjectsScreen() {
   const colors = useColors();
   const { darkMode } = useThemeStore();
   const { projects, logSheets, deleteProject } = useProjectStore();
+  
+  console.log('[ProjectsScreen] Render - darkMode:', darkMode);
+  console.log('[ProjectsScreen] Logo source:', darkMode ? 'logo-dark.png' : 'logo-light.png');
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -231,11 +234,13 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
+            key={darkMode ? 'dark' : 'light'}
             source={darkMode ? logoDark : logoLight}
             style={styles.appLogo}
             onError={(error) => {
               console.log('[ProjectsScreen] Image load error:', error.nativeEvent.error);
               console.log('[ProjectsScreen] Attempting to load:', darkMode ? 'logo-dark.png' : 'logo-light.png');
+              console.log('[ProjectsScreen] darkMode state:', darkMode);
             }}
             onLoad={() => {
               console.log('[ProjectsScreen] Image loaded successfully:', darkMode ? 'logo-dark.png' : 'logo-light.png');
