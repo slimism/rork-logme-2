@@ -25,7 +25,6 @@ export default function ProjectsScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
-
   const remainingTrialLogs = getRemainingTrialLogs();
   const styles = createStyles(colors);
 
@@ -229,14 +228,22 @@ export default function ProjectsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={styles.header} key={`header-${darkMode ? 'dark' : 'light'}`}>
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
-          <Image 
-            key={darkMode ? 'dark' : 'light'}
-            source={darkMode ? logoDark : logoLight}
-            style={styles.appLogo} 
-          />
+          {darkMode ? (
+            <Image 
+              key="logo-dark"
+              source={logoDark}
+              style={styles.appLogo} 
+            />
+          ) : (
+            <Image 
+              key="logo-light"
+              source={logoLight}
+              style={styles.appLogo} 
+            />
+          )}
           <Text style={styles.appTitle}>LogMe</Text>
           <View style={styles.headerActions}>
             <View style={styles.creditsContainer}>
