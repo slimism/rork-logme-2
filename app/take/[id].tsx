@@ -2553,6 +2553,7 @@ This would break the logging logic and create inconsistencies in the file number
                 <TextInput
                   style={[
                     styles.topFieldInput,
+                    styles.shotFieldInput,
                     disabledFields.has('shotNumber') && styles.disabledInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
@@ -2991,6 +2992,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.text,
     backgroundColor: colors.inputBackground,
     height: 48,
+  },
+  shotFieldInput: {
+    backgroundColor: '#BDDFEB',
   },
   fieldContainer: {
     marginBottom: 24,
