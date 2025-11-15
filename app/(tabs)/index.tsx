@@ -249,9 +249,12 @@ export default function ProjectsScreen() {
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
               <Image 
+                key={darkMode ? 'dark' : 'light'}
                 source={darkMode ? logoDark : logoLight}
                 style={styles.appLogo}
                 resizeMode="contain"
+                onLoad={() => console.log('[ProjectsScreen] Logo loaded:', darkMode ? 'dark' : 'light')}
+                onError={(e) => console.error('[ProjectsScreen] Logo error:', e.nativeEvent)}
               />
             </View>
             <Text style={styles.appTitle}>LogMe</Text>
@@ -400,13 +403,10 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
   appLogo: {
-    width: '100%',
-    height: '100%',
-    maxWidth: 62,
-    maxHeight: 62,
+    width: 62,
+    height: 62,
   },
   appTitle: {
     fontSize: 28,
