@@ -229,10 +229,10 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={{ uri: darkMode 
-              ? 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xkpic4wk4nvxuhodotfsk'
-              : 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/lbegxiix3d2ac74vzcen5'
-            }} 
+            source={darkMode 
+              ? require('@/assets/images/logo-dark.png')
+              : require('@/assets/images/logo-light.png')
+            } 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
