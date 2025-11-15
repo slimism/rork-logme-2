@@ -8,9 +8,11 @@ import { useTokenStore } from '@/store/subscriptionStore';
 
 import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
+import { useThemeStore } from '@/store/themeStore';
 
 export default function ProjectsScreen() {
   const colors = useColors();
+  const { darkMode } = useThemeStore();
   const { projects, logSheets, deleteProject } = useProjectStore();
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -227,7 +229,10 @@ export default function ProjectsScreen() {
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
           <Image 
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sz2mmcka8n69ctz726s7e' }} 
+            source={darkMode 
+              ? require('../../../assets/images/logo-dark.png')
+              : require('../../../assets/images/logo-light.png')
+            } 
             style={styles.appLogo} 
           />
           <Text style={styles.appTitle}>LogMe</Text>
