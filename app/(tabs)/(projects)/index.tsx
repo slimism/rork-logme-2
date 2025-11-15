@@ -228,22 +228,14 @@ export default function ProjectsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={styles.header} key={`header-${darkMode ? 'dark' : 'light'}`}>
+    <View style={styles.header}>
       <View style={styles.titleSection}>
         <View style={styles.appHeader}>
-          {darkMode ? (
-            <Image 
-              key="logo-dark"
-              source={logoDark}
-              style={styles.appLogo} 
-            />
-          ) : (
-            <Image 
-              key="logo-light"
-              source={logoLight}
-              style={styles.appLogo} 
-            />
-          )}
+          <Image 
+            source={darkMode ? logoDark : logoLight}
+            style={styles.appLogo}
+            key={darkMode ? 'dark' : 'light'}
+          />
           <Text style={styles.appTitle}>LogMe</Text>
           <View style={styles.headerActions}>
             <View style={styles.creditsContainer}>
