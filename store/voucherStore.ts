@@ -22,41 +22,71 @@ interface VoucherState {
 }
 
 const DEFAULT_VOUCHERS: Voucher[] = [
-  {
-    code: 'WELCOME1',
-    type: 'token',
-    value: 1,
-    description: '1 Free Token',
-    used: false,
-  },
-  {
-    code: 'BOOST4',
-    type: 'token',
-    value: 4,
-    description: '4 Free Tokens',
-    used: false,
-  },
-  {
-    code: 'MEGA10',
-    type: 'token',
-    value: 10,
-    description: '10 Free Tokens',
-    used: false,
-  },
-  {
-    code: 'UNLIMITED',
-    type: 'unlimited',
-    value: 999999,
-    description: 'Unlimited Tokens',
-    used: false,
-  },
-  {
-    code: 'SAVE20',
-    type: 'discount',
-    value: 20,
-    description: '20% Discount (One-time use)',
-    used: false,
-  },
+  // 1 Free Token codes
+  { code: 'WELCOME01LOGS', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WLCM1FREE', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELCMN1TKN', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELC1TOKEN', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WLCM1TOKN', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELCOME-1F', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELCOMEONE', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELCOME-01', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WLCM-1FREE', type: 'token', value: 1, description: '1 Free Token', used: false },
+  { code: 'WELC1TKNS', type: 'token', value: 1, description: '1 Free Token', used: false },
+
+  // 4 Free Tokens codes
+  { code: 'LOGME4TKN', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'FREE4LOGM', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LOG4TOKENS', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LM4FREE', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LOGM-4TKN', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LOG4FREE', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'GET4LOGM', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: '4TOKENSLM', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LM4TKNFREE', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+  { code: 'LOG4NOW', type: 'token', value: 4, description: '4 Free Tokens', used: false },
+
+  // 10 Free Tokens codes
+  { code: 'LOGME10TKNS', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'FREE10LOGM', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LOG10TOKENS', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LM10FREE', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LOGM-10TKNS', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LOG10FREE', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'GET10LOGM', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: '10TOKENSLM', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LM10TKNFREE', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+  { code: 'LOG10NOW', type: 'token', value: 10, description: '10 Free Tokens', used: false },
+
+  // Unlimited Tokens
+  { code: 'LOGMUNLIMIT1', type: 'unlimited', value: 999999, description: 'Unlimited Tokens', used: false },
+
+  // 20% Off Any Bundle codes
+  { code: 'OFF20NOW', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'SAVE20LMA', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'LM20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'OFF20LOGM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'LOGME20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'OFF20BNDL', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'BUNDLE20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'GET20OFFLM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'OFF20-LM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+  { code: 'LM20SAVE', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
+
+  // 25% Off Any Bundle
+  { code: 'LMNEWYEAR26', type: 'discount', value: 25, description: '25% Off Any Bundle', used: false },
+
+  // 30% Off Any Bundle codes
+  { code: 'LESS30OFF', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'LM30SAVE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: '30LMOFFNOW', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'OFF30LESS', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'LOGME30BUNDLE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'BUNDLE30LMA', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'LESS30BNDL', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'GET30OFFLMLSS', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'OFF30-LOGM', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
+  { code: 'LM30SAVEBUNDLE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
 ];
 
 export const useVoucherStore = create<VoucherState>()(
@@ -123,7 +153,7 @@ export const useVoucherStore = create<VoucherState>()(
             }));
             return {
               success: true,
-              message: 'Success! 20% discount applied to all token purchases',
+              message: `Success! ${voucher.value}% discount applied to all token purchases`,
               voucher,
             };
 
