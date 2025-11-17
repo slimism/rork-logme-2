@@ -284,7 +284,7 @@ export default function Store() {
           
           <TouchableOpacity 
             style={styles.purchaseOption}
-            onPress={() => handleTestPurchase(4, 14.99)}
+            onPress={() => handleTestPurchase(4, 16.99)}
           >
             <View style={styles.purchaseInfo}>
               <Text style={styles.purchaseTitle}>4 Tokens</Text>
@@ -292,17 +292,17 @@ export default function Store() {
             </View>
             <View style={styles.priceContainer}>
               {canUseDiscount() && (
-                <Text style={styles.originalPrice}>$14.99</Text>
+                <Text style={styles.originalPrice}>$16.99</Text>
               )}
               <Text style={styles.price}>
-                {canUseDiscount() ? '$11.99' : '$14.99'}
+                {canUseDiscount() ? '$13.59' : '$16.99'}
               </Text>
             </View>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.purchaseOption}
-            onPress={() => handleTestPurchase(10, 29.99)}
+            onPress={() => handleTestPurchase(10, 34.99)}
           >
             <View style={styles.purchaseInfo}>
               <Text style={styles.purchaseTitle}>10 Tokens</Text>
@@ -310,10 +310,10 @@ export default function Store() {
             </View>
             <View style={styles.priceContainer}>
               {canUseDiscount() && (
-                <Text style={styles.originalPrice}>$29.99</Text>
+                <Text style={styles.originalPrice}>$34.99</Text>
               )}
               <Text style={styles.price}>
-                {canUseDiscount() ? '$23.99' : '$29.99'}
+                {canUseDiscount() ? '$27.99' : '$34.99'}
               </Text>
             </View>
           </TouchableOpacity>
