@@ -27,7 +27,7 @@ export default function Store() {
   const colors = useColors();
   const { tokens, addTokens, getRemainingTrialLogs } = useTokenStore();
   const { darkMode } = useThemeStore();
-  const { redeemVoucher, canUseDiscount } = useVoucherStore();
+  const { redeemVoucher, canUseDiscount, getDiscountPercentage } = useVoucherStore();
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [products, setProducts] = useState<TokenPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,9 +96,10 @@ export default function Store() {
     }
   };
 
-  const handleTestPurchase = (tokenCount: number, originalPrice?: number) => {
-    const hasDiscount = canUseDiscount() && originalPrice;
-    const discountedPrice = hasDiscount ? originalPrice! * 0.8 : originalPrice;
+  const handleTestPurchase = (tokenCount: number, originalPrice: number) => {
+    const hasDiscount = canUseDiscount();
+    const discountPercent = getDiscountPercentage();
+    const discountedPrice = hasDiscount ? (originalPrice * (1 - discountPercent / 100)).toFixed(2) : originalPrice.toFixed(2);
     
     Alert.alert(
       'Test Purchase',
@@ -181,14 +182,19 @@ export default function Store() {
     }
   };
 
-
+  const getDiscountedPrice = (originalPrice: number): string => {
+    if (!canUseDiscount()) {
+      return originalPrice.toFixed(2);
+    }
+    const discountPercent = getDiscountPercentage();
+    return (originalPrice * (1 - discountPercent / 100)).toFixed(2);
+  };
 
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Store</Text>
@@ -196,7 +202,6 @@ export default function Store() {
       </View>
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
-        {/* Status Cards */}
         <View style={[styles.statusCard, styles.firstStatusCard]}>
           <Text style={styles.statusLabel}>Remaining Tokens</Text>
           <Text style={styles.statusValue}>{tokens}</Text>
@@ -207,7 +212,6 @@ export default function Store() {
           <Text style={styles.statusValue}>{getRemainingTrialLogs()}</Text>
         </View>
 
-        {/* How Tokens Work */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>How Tokens Work</Text>
           
@@ -227,7 +231,6 @@ export default function Store() {
           </View>
         </View>
 
-        {/* Purchase Vouchers Button */}
         <View style={styles.sectionContainer}>
           <TouchableOpacity 
             style={styles.voucherButton}
@@ -260,7 +263,6 @@ export default function Store() {
           )}
         </View>
 
-        {/* Purchase Credits */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Purchase Tokens</Text>
           
@@ -277,7 +279,7 @@ export default function Store() {
                 <Text style={styles.originalPrice}>$4.99</Text>
               )}
               <Text style={styles.price}>
-                {canUseDiscount() ? '$3.99' : '$4.99'}
+                ${getDiscountedPrice(4.99)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -295,7 +297,7 @@ export default function Store() {
                 <Text style={styles.originalPrice}>$16.99</Text>
               )}
               <Text style={styles.price}>
-                {canUseDiscount() ? '$13.59' : '$16.99'}
+                ${getDiscountedPrice(16.99)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -313,7 +315,7 @@ export default function Store() {
                 <Text style={styles.originalPrice}>$34.99</Text>
               )}
               <Text style={styles.price}>
-                {canUseDiscount() ? '$27.99' : '$34.99'}
+                ${getDiscountedPrice(34.99)}
               </Text>
             </View>
           </TouchableOpacity>

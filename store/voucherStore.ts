@@ -15,10 +15,12 @@ interface VoucherState {
   vouchers: Voucher[];
   usedVouchers: string[];
   discountUsed: boolean;
+  discountPercentage: number;
   initializeDefaultVouchers: () => void;
   redeemVoucher: (code: string) => { success: boolean; message: string; voucher?: Voucher };
   isVoucherUsed: (code: string) => boolean;
   canUseDiscount: () => boolean;
+  getDiscountPercentage: () => number;
 }
 
 const DEFAULT_VOUCHERS: Voucher[] = [
@@ -95,6 +97,7 @@ export const useVoucherStore = create<VoucherState>()(
       vouchers: DEFAULT_VOUCHERS,
       usedVouchers: [],
       discountUsed: false,
+      discountPercentage: 0,
 
       initializeDefaultVouchers: () => {
         const state = get();
@@ -150,6 +153,7 @@ export const useVoucherStore = create<VoucherState>()(
             set((state) => ({
               usedVouchers: [...state.usedVouchers, normalizedCode],
               discountUsed: true,
+              discountPercentage: voucher.value,
             }));
             return {
               success: true,
@@ -170,6 +174,11 @@ export const useVoucherStore = create<VoucherState>()(
       canUseDiscount: () => {
         const state = get();
         return state.discountUsed;
+      },
+
+      getDiscountPercentage: () => {
+        const state = get();
+        return state.discountPercentage;
       },
     }),
     {
