@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check, X, AlertCircle } from 'lucide-react-native';
@@ -45,42 +45,80 @@ export default function AddTakeScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
+  const focusedFieldRef = useRef<{ fieldId: string; isMultiline: boolean } | null>(null);
+
+  // Helper function to scroll to input field when focused
+  const scrollToInput = useCallback((fieldId: string, isMultiline: boolean = false) => {
+    const inputRef = inputRefs.current[fieldId];
+    const scrollView = scrollViewRef.current;
+    if (!inputRef || !scrollView) return;
+
+    // If keyboard is not yet shown, store the field info and wait for keyboard event
+    if (keyboardHeight === 0) {
+      focusedFieldRef.current = { fieldId, isMultiline };
+      return;
+    }
+
+    // Keyboard is shown, scroll immediately
+    setTimeout(() => {
+      const currentInputRef = inputRefs.current[fieldId];
+      const currentScrollView = scrollViewRef.current;
+      if (!currentInputRef || !currentScrollView) return;
+
+      // Use measureLayout for accurate positioning relative to ScrollView
+      currentInputRef.measureLayout(
+        currentScrollView as any,
+        (x, y, width, height) => {
+          // y is relative to ScrollView content top
+          // Calculate scroll position to show field above keyboard
+          const keyboardPadding = keyboardHeight || 350;
+          const extraPadding = isMultiline ? 250 : 150;
+          const headerOffset = 100;
+          
+          // Position field above keyboard with padding
+          const targetScrollY = Math.max(0, y - headerOffset - extraPadding);
+          
+          currentScrollView.scrollTo({ y: targetScrollY, animated: true });
+        },
+        () => {
+          // Fallback: use measure if measureLayout fails
+          currentInputRef.measure((x, y, width, height, pageX, pageY) => {
+            currentScrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+              const relativeY = pageY - spageY;
+              const keyboardPadding = keyboardHeight || 350;
+              const extraPadding = isMultiline ? 250 : 150;
+              const headerOffset = 100;
+              
+              const targetScrollY = Math.max(0, relativeY - headerOffset - extraPadding);
+              currentScrollView.scrollTo({ y: targetScrollY, animated: true });
+            });
+          });
+        }
+      );
+    }, 100);
+  }, [keyboardHeight]);
+
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardHeight(e.endCoordinates.height);
+      // If a field was focused, scroll to it now that keyboard is shown
+      if (focusedFieldRef.current) {
+        setTimeout(() => {
+          scrollToInput(focusedFieldRef.current!.fieldId, focusedFieldRef.current!.isMultiline);
+          focusedFieldRef.current = null;
+        }, 100);
+      }
     });
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardHeight(0);
+      focusedFieldRef.current = null;
     });
 
     return () => {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, []);
-
-  // Helper function to scroll to input field when focused
-  const scrollToInput = (fieldId: string, isMultiline: boolean = false) => {
-    setTimeout(() => {
-      const inputRef = inputRefs.current[fieldId];
-      const scrollView = scrollViewRef.current;
-      if (inputRef && scrollView) {
-        inputRef.measure((x, y, width, height, pageX, pageY) => {
-          // pageY is relative to window top
-          // We need to account for header, safe area, and keyboard
-          const headerHeight = 100; // Header + safe area
-          const keyboardPadding = keyboardHeight > 0 ? keyboardHeight : 350;
-          const extraPadding = isMultiline ? 250 : 150; // More padding for multiline fields like Notes
-          
-          // Calculate target scroll position
-          // Subtract header and add extra padding to position field above keyboard
-          const targetScrollY = Math.max(0, pageY - headerHeight - extraPadding);
-          
-          scrollView.scrollTo({ y: targetScrollY, animated: true });
-        });
-      }
-    }, 500); // Longer timeout to ensure keyboard is fully shown
-  };
+  }, [scrollToInput]);
 
   const showNotification = (message: string, type: 'error' | 'info' = 'error') => {
     setNotification({ message, type });
