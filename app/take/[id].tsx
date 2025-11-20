@@ -2287,7 +2287,7 @@ This would break the logging logic and create inconsistencies in the file number
               }, 100);
             }
           }}
-          blurOnSubmit={isMultiline}
+          blurOnSubmit={false}
           editable={!isDisabled}
         />
       </View>

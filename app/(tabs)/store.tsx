@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Alert,
   Platform,
   TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { Calendar, Hourglass, Infinity, Tag } from 'lucide-react-native';
 import { useColors } from '@/constants/colors';
@@ -33,10 +35,35 @@ export default function Store() {
   const [loading, setLoading] = useState(true);
   const [voucherCode, setVoucherCode] = useState('');
   const [showVoucher, setShowVoucher] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const voucherInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      // Scroll to voucher input when keyboard appears and voucher is shown
+      if (showVoucher && voucherInputRef.current) {
+        setTimeout(() => {
+          voucherInputRef.current?.measure((x, y, width, height, pageX, pageY) => {
+            scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+          });
+        }, 100);
+      }
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, [showVoucher]);
 
   const loadProducts = async () => {
     try {
@@ -194,14 +221,23 @@ export default function Store() {
   const styles = createStyles(colors);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
+    >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Store</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.scrollContainer} 
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={[styles.statusCard, styles.firstStatusCard]}>
           <Text style={styles.statusLabel}>Remaining Tokens</Text>
           <Text style={styles.statusValue}>{tokens}</Text>
@@ -245,6 +281,7 @@ export default function Store() {
           {showVoucher && (
             <View style={styles.voucherInputContainer}>
               <TextInput
+                ref={voucherInputRef}
                 style={styles.voucherInput}
                 placeholder="Enter voucher code"
                 placeholderTextColor={colors.subtext}
@@ -252,6 +289,13 @@ export default function Store() {
                 onChangeText={setVoucherCode}
                 autoCapitalize="characters"
                 autoCorrect={false}
+                onFocus={() => {
+                  setTimeout(() => {
+                    voucherInputRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                      scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+                    });
+                  }, 100);
+                }}
               />
               <TouchableOpacity 
                 style={styles.redeemButton}
@@ -333,7 +377,7 @@ export default function Store() {
         </Text>
       </View>
     </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

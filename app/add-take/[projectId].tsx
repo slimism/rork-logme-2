@@ -2705,19 +2705,21 @@ This would break the logging logic and create inconsistencies in the file number
               focusNextField(field.id, allFieldIds);
             }
           }}
-          onFocus={(event) => {
+          onFocus={() => {
             if (!isDisabled) {
               // Scroll to make the field visible when focused
-              const target: any = undefined;
               setTimeout(() => {
-                target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                  const scrollY = Math.max(0, pageY - 100);
-                  scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                });
+                const inputRef = inputRefs.current[field.id];
+                if (inputRef) {
+                  inputRef.measure((x, y, width, height, pageX, pageY) => {
+                    const scrollY = Math.max(0, pageY - 150);
+                    scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                  });
+                }
               }, 100);
             }
           }}
-          blurOnSubmit={isMultiline}
+          blurOnSubmit={false}
         />
       </View>
     );
@@ -2843,13 +2845,15 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('sceneNumber')}
                   onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
-                  onFocus={(event) => {
-                    const target: any = undefined;
+                  onFocus={() => {
                     setTimeout(() => {
-                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                        const scrollY = Math.max(0, pageY - 100);
-                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                      });
+                      const inputRef = inputRefs.current['sceneNumber'];
+                      if (inputRef) {
+                        inputRef.measure((x, y, width, height, pageX, pageY) => {
+                          const scrollY = Math.max(0, pageY - 150);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }
                     }, 100);
                   }}
                 />
@@ -2887,13 +2891,15 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('shotNumber')}
                   onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
-                  onFocus={(event) => {
-                    const target: any = undefined;
+                  onFocus={() => {
                     setTimeout(() => {
-                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                        const scrollY = Math.max(0, pageY - 100);
-                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                      });
+                      const inputRef = inputRefs.current['shotNumber'];
+                      if (inputRef) {
+                        inputRef.measure((x, y, width, height, pageX, pageY) => {
+                          const scrollY = Math.max(0, pageY - 150);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }
                     }, 100);
                   }}
                 />
@@ -2932,13 +2938,15 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('takeNumber')}
                   onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
-                  onFocus={(event) => {
-                    const target: any = undefined;
+                  onFocus={() => {
                     setTimeout(() => {
-                      target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                        const scrollY = Math.max(0, pageY - 100);
-                        scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                      });
+                      const inputRef = inputRefs.current['takeNumber'];
+                      if (inputRef) {
+                        inputRef.measure((x, y, width, height, pageX, pageY) => {
+                          const scrollY = Math.max(0, pageY - 150);
+                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                        });
+                      }
                     }, 100);
                   }}
                 />
@@ -3039,14 +3047,16 @@ This would break the logging logic and create inconsistencies in the file number
                       focusNextField('cameraFile', allFieldIds);
                     }
                   }}
-                  onFocus={(event) => {
+                  onFocus={() => {
                     if (!disabledFields.has('cameraFile')) {
-                      const target: any = undefined;
                       setTimeout(() => {
-                        target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                          const scrollY = Math.max(0, pageY - 100);
-                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                        });
+                        const inputRef = inputRefs.current['cameraFile'];
+                        if (inputRef) {
+                          inputRef.measure((x, y, width, height, pageX, pageY) => {
+                            const scrollY = Math.max(0, pageY - 150);
+                            scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                          });
+                        }
                       }, 100);
                     }
                   }}
@@ -3165,14 +3175,16 @@ This would break the logging logic and create inconsistencies in the file number
                       focusNextField('soundFile', allFieldIds);
                     }
                   }}
-                  onFocus={(event) => {
+                  onFocus={() => {
                     if (!disabledFields.has('soundFile')) {
-                      const target: any = undefined;
                       setTimeout(() => {
-                        target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                          const scrollY = Math.max(0, pageY - 100);
-                          scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                        });
+                        const inputRef = inputRefs.current['soundFile'];
+                        if (inputRef) {
+                          inputRef.measure((x, y, width, height, pageX, pageY) => {
+                            const scrollY = Math.max(0, pageY - 150);
+                            scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                          });
+                        }
                       }, 100);
                     }
                   }}
@@ -3300,14 +3312,16 @@ This would break the logging logic and create inconsistencies in the file number
                             focusNextField(fieldId, allFieldIds);
                           }
                         }}
-                        onFocus={(event) => {
+                        onFocus={() => {
                           if (!isDisabled) {
-                            const target: any = undefined;
                             setTimeout(() => {
-                              target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                                const scrollY = Math.max(0, pageY - 100);
-                                scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                              });
+                              const inputRef = inputRefs.current[fieldId];
+                              if (inputRef) {
+                                inputRef.measure((x, y, width, height, pageX, pageY) => {
+                                  const scrollY = Math.max(0, pageY - 150);
+                                  scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
+                                });
+                              }
                             }, 100);
                           }
                         }}

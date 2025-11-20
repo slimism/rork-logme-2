@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, Switch, TextInput, TouchableOpacity, Image, Alert, KeyboardAvoidingView, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Text, Switch, TextInput, TouchableOpacity, Image, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { ArrowLeft, Film, Camera, AlertTriangle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,6 +46,22 @@ export default function ProjectSettingsScreen() {
   ]);
 
   const [customFields, setCustomFields] = useState<string[]>(['']);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const toggleField = (fieldId: string) => {
     const field = logSheetFields.find(f => f.id === fieldId);
@@ -173,7 +189,8 @@ export default function ProjectSettingsScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior='padding'
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <Stack.Screen 
         options={{
@@ -184,9 +201,11 @@ export default function ProjectSettingsScreen() {
       />
       
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }}
       >
         <View style={styles.projectHeader}>
           <TouchableOpacity style={styles.iconContainer} onPress={handleAddLogo}>
