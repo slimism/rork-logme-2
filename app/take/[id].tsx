@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check } from 'lucide-react-native';
@@ -2471,9 +2471,9 @@ This would break the logging logic and create inconsistencies in the file number
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <SafeAreaView style={styles.safeArea}>
       <Stack.Screen 
@@ -2485,17 +2485,18 @@ This would break the logging logic and create inconsistencies in the file number
         }} 
       />
 
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
-          isLandscape ? styles.scrollContentLandscape : null,
-        ]}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.scrollContent,
+            { flexGrow: 1, paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
+            isLandscape ? styles.scrollContentLandscape : null,
+          ]}
+        >
         <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
@@ -2823,7 +2824,8 @@ This would break the logging logic and create inconsistencies in the file number
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
       </SafeAreaView>
 
       <Modal

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated, TouchableWithoutFeedback } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check, X, AlertCircle } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -2841,9 +2841,9 @@ This would break the logging logic and create inconsistencies in the file number
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <Stack.Screen 
         options={{
@@ -2854,13 +2854,14 @@ This would break the logging logic and create inconsistencies in the file number
         }} 
       />
       
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
+        >
         <View style={styles.formContainer}>
 
           {/* Scene, Shot, Take on same row */}
@@ -3526,7 +3527,8 @@ This would break the logging logic and create inconsistencies in the file number
         </View>
 
 
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
       
       {/* Waste Modal */}
       <Modal
