@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
@@ -28,9 +29,11 @@ export function TopBar({ showCredits = true }: TopBarProps) {
           <Image 
             source={logoSource}
             style={styles.appLogo}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={200}
             onLoad={() => console.log('[TopBar] Logo loaded successfully:', darkMode ? 'dark' : 'light')}
-            onError={(e) => console.error('[TopBar] Image load error:', e.nativeEvent)}
+            onError={(error) => console.error('[TopBar] Image load error:', error)}
           />
         </View>
         <Text style={styles.appTitle}>LogMe</Text>

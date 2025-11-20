@@ -275,9 +275,9 @@ export default function Store() {
               <Text style={styles.purchaseSubtitle}>Unlock one project</Text>
             </View>
             <View style={styles.priceContainer}>
-              {canUseDiscount() && (
+              {canUseDiscount() ? (
                 <Text style={styles.originalPrice}>$4.99</Text>
-              )}
+              ) : null}
               <Text style={styles.price}>
                 ${getDiscountedPrice(4.99)}
               </Text>
