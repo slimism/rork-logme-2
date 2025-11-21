@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Text, TextInput, TouchableOpacity, Alert, Modal, Platform, Keyboard, Switch, Animated, TouchableWithoutFeedback } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check, X, AlertCircle } from 'lucide-react-native';
@@ -2759,11 +2759,7 @@ This would break the logging logic and create inconsistencies in the file number
   const styles = createStyles(colors);
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+    <View style={{ flex: 1 }}>
       <Stack.Screen 
         options={{
           title: "New Log",
@@ -2775,7 +2771,7 @@ This would break the logging logic and create inconsistencies in the file number
       
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAwareScrollView
-          style={styles.content}
+          style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
           enableOnAndroid={true}
           extraScrollHeight={40}
@@ -3554,7 +3550,7 @@ This would break the logging logic and create inconsistencies in the file number
       )}
       
       <Toast />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Text, TextInput, Alert, Modal, TouchableOpacity, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
@@ -2434,34 +2434,30 @@ This would break the logging logic and create inconsistencies in the file number
   });
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen 
-        options={{
-          title: "Edit Take",
-          headerLeft: () => <HeaderLeft />,
-          headerBackVisible: false,
-          headerTitleAlign: 'center',
-        }} 
-      />
+        <Stack.Screen 
+          options={{
+            title: "Edit Take",
+            headerLeft: () => <HeaderLeft />,
+            headerBackVisible: false,
+            headerTitleAlign: 'center',
+          }} 
+        />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAwareScrollView
-          style={styles.content}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { flexGrow: 1 },
-            isLandscape ? styles.scrollContentLandscape : null,
-          ]}
-          enableOnAndroid={true}
-          extraScrollHeight={40}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { flexGrow: 1 },
+              isLandscape ? styles.scrollContentLandscape : null,
+            ]}
+            enableOnAndroid={true}
+            extraScrollHeight={40}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
         <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
@@ -2756,8 +2752,8 @@ This would break the logging logic and create inconsistencies in the file number
             </TouchableOpacity>
           </View>
         </View>
-        </KeyboardAwareScrollView>
-      </TouchableWithoutFeedback>
+          </KeyboardAwareScrollView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
 
       <Modal
@@ -2843,7 +2839,7 @@ This would break the logging logic and create inconsistencies in the file number
       </Modal>
 
       <Toast />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
