@@ -26,6 +26,9 @@ export default function ProjectsScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
+  // Resolve logo source for iOS compatibility
+  const logoSource = darkMode ? logoDark : logoLight;
+
 
   const remainingTrialLogs = getRemainingTrialLogs();
 
@@ -250,7 +253,7 @@ export default function ProjectsScreen() {
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
               <Image 
-                source={darkMode ? logoDark : logoLight}
+                source={logoSource}
                 style={styles.appLogo}
                 contentFit="contain"
                 cachePolicy="memory-disk"
@@ -405,10 +408,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   appLogo: {
-    width: 62,
-    height: 62,
+    width: '100%',
+    height: '100%',
+    maxWidth: 62,
+    maxHeight: 62,
   },
   appTitle: {
     fontSize: 28,
