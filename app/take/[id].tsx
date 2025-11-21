@@ -138,20 +138,55 @@ export default function EditTakeScreen() {
       const scrollView = scrollViewRef.current;
       if (!input || !scrollView) return;
 
-      input.measure((x, y, width, height, pageX, pageY) => {
-        scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-          const { height: screenHeight } = Dimensions.get('window');
-          const relativeY = pageY - spageY;
-          const availableHeight = screenHeight - keyboardHeight;
-          const headerHeight = 100;
-          const extraPadding = isMultiline ? 200 : 120;
-          const targetPosition = availableHeight - headerHeight - extraPadding;
-          const scrollOffset = Math.max(0, relativeY - targetPosition);
-          
-          scrollView.scrollTo({ y: scrollOffset, animated: true });
+      // Use measureLayout for accurate positioning relative to ScrollView
+      try {
+        input.measureLayout(
+          scrollView as any,
+          (x, y, width, height) => {
+            // y is relative to ScrollView content top
+            const { height: screenHeight } = Dimensions.get('window');
+            const availableHeight = screenHeight - keyboardHeight;
+            const headerHeight = 100;
+            const extraPadding = isMultiline ? 250 : 150;
+            const targetVisibleY = availableHeight - headerHeight - extraPadding;
+            const scrollOffset = Math.max(0, y - targetVisibleY);
+            
+            scrollView.scrollTo({ y: scrollOffset, animated: true });
+          },
+          () => {
+            // Fallback: use measure
+            input.measure((x, y, width, height, pageX, pageY) => {
+              scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+                const { height: screenHeight } = Dimensions.get('window');
+                const relativeY = pageY - spageY;
+                const availableHeight = screenHeight - keyboardHeight;
+                const headerHeight = 100;
+                const extraPadding = isMultiline ? 250 : 150;
+                const targetVisibleY = availableHeight - headerHeight - extraPadding;
+                const scrollOffset = Math.max(0, relativeY - targetVisibleY);
+                
+                scrollView.scrollTo({ y: scrollOffset, animated: true });
+              });
+            });
+          }
+        );
+      } catch (error) {
+        // Fallback if measureLayout throws
+        input.measure((x, y, width, height, pageX, pageY) => {
+          scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+            const { height: screenHeight } = Dimensions.get('window');
+            const relativeY = pageY - spageY;
+            const availableHeight = screenHeight - keyboardHeight;
+            const headerHeight = 100;
+            const extraPadding = isMultiline ? 250 : 150;
+            const targetVisibleY = availableHeight - headerHeight - extraPadding;
+            const scrollOffset = Math.max(0, relativeY - targetVisibleY);
+            
+            scrollView.scrollTo({ y: scrollOffset, animated: true });
+          });
         });
-      });
-    }, Platform.OS === 'ios' ? 300 : 200);
+      }
+    }, Platform.OS === 'ios' ? 400 : 300);
   }, [keyboardHeight]);
 
   useEffect(() => {
@@ -162,9 +197,63 @@ export default function EditTakeScreen() {
       // If a field was focused, scroll to it now that keyboard is shown
       if (focusedFieldRef.current) {
         const { fieldId, isMultiline } = focusedFieldRef.current;
+        // Use longer delay to ensure keyboard animation and layout are complete
         setTimeout(() => {
-          scrollToField(fieldId, isMultiline);
-        }, 100);
+          const input = inputRefs.current[fieldId];
+          const scrollView = scrollViewRef.current;
+          if (!input || !scrollView) return;
+
+          // Use measureLayout for accurate positioning relative to ScrollView
+          try {
+            input.measureLayout(
+              scrollView as any,
+              (x, y, width, height) => {
+                // y is now relative to ScrollView content top (0,0)
+                const { height: screenHeight } = Dimensions.get('window');
+                const availableHeight = screenHeight - kbHeight;
+                const headerHeight = 100;
+                const extraPadding = isMultiline ? 250 : 150;
+                const targetVisibleY = availableHeight - headerHeight - extraPadding;
+                
+                // Calculate how much to scroll: position field at targetVisibleY
+                const scrollOffset = Math.max(0, y - targetVisibleY);
+                
+                scrollView.scrollTo({ y: scrollOffset, animated: true });
+              },
+              () => {
+                // Fallback: use measure if measureLayout fails
+                input.measure((x, y, width, height, pageX, pageY) => {
+                  scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+                    const { height: screenHeight } = Dimensions.get('window');
+                    const relativeY = pageY - spageY;
+                    const availableHeight = screenHeight - kbHeight;
+                    const headerHeight = 100;
+                    const extraPadding = isMultiline ? 250 : 150;
+                    const targetVisibleY = availableHeight - headerHeight - extraPadding;
+                    const scrollOffset = Math.max(0, relativeY - targetVisibleY);
+                    
+                    scrollView.scrollTo({ y: scrollOffset, animated: true });
+                  });
+                });
+              }
+            );
+          } catch (error) {
+            // Fallback if measureLayout throws error
+            input.measure((x, y, width, height, pageX, pageY) => {
+              scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+                const { height: screenHeight } = Dimensions.get('window');
+                const relativeY = pageY - spageY;
+                const availableHeight = screenHeight - kbHeight;
+                const headerHeight = 100;
+                const extraPadding = isMultiline ? 250 : 150;
+                const targetVisibleY = availableHeight - headerHeight - extraPadding;
+                const scrollOffset = Math.max(0, relativeY - targetVisibleY);
+                
+                scrollView.scrollTo({ y: scrollOffset, animated: true });
+              });
+            });
+          }
+        }, Platform.OS === 'ios' ? 400 : 300);
       }
     });
     
@@ -177,7 +266,7 @@ export default function EditTakeScreen() {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [scrollToField]);
+  }, []);
 
   // Initialize REC state separately to avoid infinite loops
   useEffect(() => {
@@ -2505,7 +2594,7 @@ This would break the logging logic and create inconsistencies in the file number
     <KeyboardAvoidingView 
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <SafeAreaView style={styles.safeArea}>
       <Stack.Screen 
@@ -2525,7 +2614,7 @@ This would break the logging logic and create inconsistencies in the file number
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.scrollContent,
-            { flexGrow: 1, paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 },
+            { flexGrow: 1, paddingBottom: keyboardHeight > 0 ? keyboardHeight + 100 : 100 },
             isLandscape ? styles.scrollContentLandscape : null,
           ]}
         >
