@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, TextInput, Alert, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check } from 'lucide-react-native';
@@ -41,12 +42,9 @@ export default function EditTakeScreen() {
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const inputRefs = useRef<Record<string, TextInput | null>>({});
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const writingProgrammaticallyRef = useRef(false);
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
   const savedFieldValues = useRef<Record<string, string>>({});
-  const focusedFieldRef = useRef<{ fieldId: string; isMultiline: boolean } | null>(null);
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
@@ -131,142 +129,6 @@ export default function EditTakeScreen() {
     return nextNumbers;
   }, [getHighestFileNumber]);
 
-  // Helper function to scroll to input field
-  const scrollToField = useCallback((fieldId: string, isMultiline: boolean = false) => {
-    setTimeout(() => {
-      const input = inputRefs.current[fieldId];
-      const scrollView = scrollViewRef.current;
-      if (!input || !scrollView) return;
-
-      // Use measureLayout for accurate positioning relative to ScrollView
-      try {
-        input.measureLayout(
-          scrollView as any,
-          (x, y, width, height) => {
-            // y is relative to ScrollView content top
-            const { height: screenHeight } = Dimensions.get('window');
-            const availableHeight = screenHeight - keyboardHeight;
-            const headerHeight = 100;
-            const extraPadding = isMultiline ? 250 : 150;
-            const targetVisibleY = availableHeight - headerHeight - extraPadding;
-            const scrollOffset = Math.max(0, y - targetVisibleY);
-            
-            scrollView.scrollTo({ y: scrollOffset, animated: true });
-          },
-          () => {
-            // Fallback: use measure
-            input.measure((x, y, width, height, pageX, pageY) => {
-              scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-                const { height: screenHeight } = Dimensions.get('window');
-                const relativeY = pageY - spageY;
-                const availableHeight = screenHeight - keyboardHeight;
-                const headerHeight = 100;
-                const extraPadding = isMultiline ? 250 : 150;
-                const targetVisibleY = availableHeight - headerHeight - extraPadding;
-                const scrollOffset = Math.max(0, relativeY - targetVisibleY);
-                
-                scrollView.scrollTo({ y: scrollOffset, animated: true });
-              });
-            });
-          }
-        );
-      } catch (error) {
-        // Fallback if measureLayout throws
-        input.measure((x, y, width, height, pageX, pageY) => {
-          scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-            const { height: screenHeight } = Dimensions.get('window');
-            const relativeY = pageY - spageY;
-            const availableHeight = screenHeight - keyboardHeight;
-            const headerHeight = 100;
-            const extraPadding = isMultiline ? 250 : 150;
-            const targetVisibleY = availableHeight - headerHeight - extraPadding;
-            const scrollOffset = Math.max(0, relativeY - targetVisibleY);
-            
-            scrollView.scrollTo({ y: scrollOffset, animated: true });
-          });
-        });
-      }
-    }, Platform.OS === 'ios' ? 400 : 300);
-  }, [keyboardHeight]);
-
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      const kbHeight = e.endCoordinates.height;
-      setKeyboardHeight(kbHeight);
-      
-      // If a field was focused, scroll to it now that keyboard is shown
-      if (focusedFieldRef.current) {
-        const { fieldId, isMultiline } = focusedFieldRef.current;
-        // Use longer delay to ensure keyboard animation and layout are complete
-        setTimeout(() => {
-          const input = inputRefs.current[fieldId];
-          const scrollView = scrollViewRef.current;
-          if (!input || !scrollView) return;
-
-          // Use measureLayout for accurate positioning relative to ScrollView
-          try {
-            input.measureLayout(
-              scrollView as any,
-              (x, y, width, height) => {
-                // y is now relative to ScrollView content top (0,0)
-                const { height: screenHeight } = Dimensions.get('window');
-                const availableHeight = screenHeight - kbHeight;
-                const headerHeight = 100;
-                const extraPadding = isMultiline ? 250 : 150;
-                const targetVisibleY = availableHeight - headerHeight - extraPadding;
-                
-                // Calculate how much to scroll: position field at targetVisibleY
-                const scrollOffset = Math.max(0, y - targetVisibleY);
-                
-                scrollView.scrollTo({ y: scrollOffset, animated: true });
-              },
-              () => {
-                // Fallback: use measure if measureLayout fails
-                input.measure((x, y, width, height, pageX, pageY) => {
-                  scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-                    const { height: screenHeight } = Dimensions.get('window');
-                    const relativeY = pageY - spageY;
-                    const availableHeight = screenHeight - kbHeight;
-                    const headerHeight = 100;
-                    const extraPadding = isMultiline ? 250 : 150;
-                    const targetVisibleY = availableHeight - headerHeight - extraPadding;
-                    const scrollOffset = Math.max(0, relativeY - targetVisibleY);
-                    
-                    scrollView.scrollTo({ y: scrollOffset, animated: true });
-                  });
-                });
-              }
-            );
-          } catch (error) {
-            // Fallback if measureLayout throws error
-            input.measure((x, y, width, height, pageX, pageY) => {
-              scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-                const { height: screenHeight } = Dimensions.get('window');
-                const relativeY = pageY - spageY;
-                const availableHeight = screenHeight - kbHeight;
-                const headerHeight = 100;
-                const extraPadding = isMultiline ? 250 : 150;
-                const targetVisibleY = availableHeight - headerHeight - extraPadding;
-                const scrollOffset = Math.max(0, relativeY - targetVisibleY);
-                
-                scrollView.scrollTo({ y: scrollOffset, animated: true });
-              });
-            });
-          }
-        }, Platform.OS === 'ios' ? 400 : 300);
-      }
-    });
-    
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-      focusedFieldRef.current = null;
-    });
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
 
   // Initialize REC state separately to avoid infinite loops
   useEffect(() => {
@@ -2400,14 +2262,6 @@ This would break the logging logic and create inconsistencies in the file number
               }
             }
           }}
-                  onFocus={() => {
-                    if (!isDisabled) {
-                      focusedFieldRef.current = { fieldId: field.id, isMultiline };
-                      if (keyboardHeight > 0) {
-                        scrollToField(field.id, isMultiline);
-                      }
-                    }
-                  }}
           blurOnSubmit={false}
           editable={!isDisabled}
         />
@@ -2518,17 +2372,6 @@ This would break the logging logic and create inconsistencies in the file number
                   inputRefs.current[nextFieldId]?.focus();
                 }
               }}
-              onFocus={(event) => {
-                if (!isDisabled) {
-                  const target = event.target as any;
-                  setTimeout(() => {
-                    target?.measure?.((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                      const scrollY = Math.max(0, pageY - 100);
-                      scrollViewRef.current?.scrollTo({ y: scrollY, animated: true });
-                    });
-                  }, 100);
-                }
-              }}
               editable={!isDisabled}
             />
           )}
@@ -2607,16 +2450,17 @@ This would break the logging logic and create inconsistencies in the file number
       />
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.content} 
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAwareScrollView
+          style={styles.content}
           contentContainerStyle={[
             styles.scrollContent,
-            { flexGrow: 1, paddingBottom: keyboardHeight > 0 ? keyboardHeight + 100 : 100 },
+            { flexGrow: 1 },
             isLandscape ? styles.scrollContentLandscape : null,
           ]}
+          enableOnAndroid={true}
+          extraScrollHeight={40}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
         <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
@@ -2649,14 +2493,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
-                  onFocus={() => {
-                    if (!disabledFields.has('sceneNumber')) {
-                      focusedFieldRef.current = { fieldId: 'sceneNumber', isMultiline: false };
-                      if (keyboardHeight > 0) {
-                        scrollToField('sceneNumber', false);
-                      }
-                    }
-                  }}
                 />
               </View>
             )}
@@ -2681,14 +2517,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
-                  onFocus={() => {
-                    if (!disabledFields.has('shotNumber')) {
-                      focusedFieldRef.current = { fieldId: 'shotNumber', isMultiline: false };
-                      if (keyboardHeight > 0) {
-                        scrollToField('shotNumber', false);
-                      }
-                    }
-                  }}
                 />
               </View>
             )}
@@ -2711,14 +2539,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
-                  onFocus={() => {
-                    if (!disabledFields.has('takeNumber')) {
-                      focusedFieldRef.current = { fieldId: 'takeNumber', isMultiline: false };
-                      if (keyboardHeight > 0) {
-                        scrollToField('takeNumber', false);
-                      }
-                    }
-                  }}
                 />
               </View>
             )}
@@ -2936,7 +2756,7 @@ This would break the logging logic and create inconsistencies in the file number
             </TouchableOpacity>
           </View>
         </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
       </SafeAreaView>
 
