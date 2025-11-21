@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Modal, Platform, Keyboard, Switch, Animated, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check, X, AlertCircle } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -49,66 +49,88 @@ export default function AddTakeScreen() {
 
   // Helper function to scroll to input field when focused
   const scrollToInput = useCallback((fieldId: string, isMultiline: boolean = false) => {
-    const inputRef = inputRefs.current[fieldId];
-    const scrollView = scrollViewRef.current;
-    if (!inputRef || !scrollView) return;
-
-    // If keyboard is not yet shown, store the field info and wait for keyboard event
-    if (keyboardHeight === 0) {
-      focusedFieldRef.current = { fieldId, isMultiline };
-      return;
-    }
-
-    // Keyboard is shown, scroll immediately
-    setTimeout(() => {
+    // Always store the field info when focused
+    focusedFieldRef.current = { fieldId, isMultiline };
+    
+    // Wait for keyboard to appear, then scroll
+    const scrollToField = () => {
       const currentInputRef = inputRefs.current[fieldId];
       const currentScrollView = scrollViewRef.current;
       if (!currentInputRef || !currentScrollView) return;
 
-      // Use measureLayout for accurate positioning relative to ScrollView
-      currentInputRef.measureLayout(
-        currentScrollView as any,
-        (x, y, width, height) => {
-          // y is relative to ScrollView content top
-          // Calculate scroll position to show field above keyboard
-          const keyboardPadding = keyboardHeight || 350;
-          const extraPadding = isMultiline ? 250 : 150;
-          const headerOffset = 100;
-          
-          // Position field above keyboard with padding
-          const targetScrollY = Math.max(0, y - headerOffset - extraPadding);
-          
-          currentScrollView.scrollTo({ y: targetScrollY, animated: true });
-        },
-        () => {
-          // Fallback: use measure if measureLayout fails
-          currentInputRef.measure((x, y, width, height, pageX, pageY) => {
-            currentScrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
-              const relativeY = pageY - spageY;
-              const keyboardPadding = keyboardHeight || 350;
-              const extraPadding = isMultiline ? 250 : 150;
-              const headerOffset = 100;
-              
-              const targetScrollY = Math.max(0, relativeY - headerOffset - extraPadding);
-              currentScrollView.scrollTo({ y: targetScrollY, animated: true });
-            });
+      // Use a longer delay to ensure keyboard animation completes
+      setTimeout(() => {
+        const input = inputRefs.current[fieldId];
+        const scrollView = scrollViewRef.current;
+        if (!input || !scrollView) return;
+
+        // Get the field's position relative to the window
+        input.measure((x, y, width, height, pageX, pageY) => {
+          // Get ScrollView's position
+          scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+            // Calculate relative position within ScrollView content
+            const relativeY = pageY - spageY;
+            
+            // Get screen dimensions to calculate available space above keyboard
+            const { height: screenHeight } = Dimensions.get('window');
+            const currentKeyboardHeight = keyboardHeight || 350;
+            const availableHeight = screenHeight - currentKeyboardHeight;
+            
+            // Calculate how much we need to scroll
+            // We want the field to be visible in the available space above keyboard
+            const headerHeight = 100; // Account for header
+            const extraPadding = isMultiline ? 200 : 120; // Extra space for multiline fields
+            const targetPosition = availableHeight - headerHeight - extraPadding;
+            
+            // Calculate scroll offset needed
+            const currentScrollY = relativeY;
+            const scrollOffset = Math.max(0, currentScrollY - targetPosition);
+            
+            scrollView.scrollTo({ y: scrollOffset, animated: true });
           });
-        }
-      );
-    }, 100);
+        });
+      }, Platform.OS === 'ios' ? 300 : 200);
+    };
+
+    // If keyboard is already shown, scroll immediately
+    if (keyboardHeight > 0) {
+      scrollToField();
+    }
+    // Otherwise, wait for keyboard event (handled in useEffect)
   }, [keyboardHeight]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+      const kbHeight = e.endCoordinates.height;
+      setKeyboardHeight(kbHeight);
+      
       // If a field was focused, scroll to it now that keyboard is shown
       if (focusedFieldRef.current) {
+        const { fieldId, isMultiline } = focusedFieldRef.current;
         setTimeout(() => {
-          scrollToInput(focusedFieldRef.current!.fieldId, focusedFieldRef.current!.isMultiline);
-          focusedFieldRef.current = null;
-        }, 100);
+          const input = inputRefs.current[fieldId];
+          const scrollView = scrollViewRef.current;
+          if (!input || !scrollView) return;
+
+          // Get field position
+          input.measure((x, y, width, height, pageX, pageY) => {
+            // Get ScrollView position
+            scrollView.measure((sx, sy, swidth, sheight, spageX, spageY) => {
+              const { height: screenHeight } = Dimensions.get('window');
+              const relativeY = pageY - spageY;
+              const availableHeight = screenHeight - kbHeight;
+              const headerHeight = 100;
+              const extraPadding = isMultiline ? 200 : 120;
+              const targetPosition = availableHeight - headerHeight - extraPadding;
+              const scrollOffset = Math.max(0, relativeY - targetPosition);
+              
+              scrollView.scrollTo({ y: scrollOffset, animated: true });
+            });
+          });
+        }, Platform.OS === 'ios' ? 300 : 200);
       }
     });
+    
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardHeight(0);
       focusedFieldRef.current = null;
@@ -118,7 +140,7 @@ export default function AddTakeScreen() {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [scrollToInput]);
+  }, []);
 
   const showNotification = (message: string, type: 'error' | 'info' = 'error') => {
     setNotification({ message, type });
