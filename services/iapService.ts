@@ -1,12 +1,12 @@
 import { Platform } from 'react-native';
 
-// Conditionally import StoreKit - only available in development/production builds, not Expo Go
-let StoreKit: any = null;
+// Conditionally import react-native-iap - only available in development/production builds, not Expo Go
+let RNIap: any = null;
 try {
-  StoreKit = require('expo-store-kit');
+  RNIap = require('react-native-iap');
 } catch (error) {
-  // StoreKit not available (likely running in Expo Go)
-  console.log('expo-store-kit not available - running in Expo Go or module not installed');
+  // react-native-iap not available (likely running in Expo Go)
+  console.log('react-native-iap not available - running in Expo Go or module not installed');
 }
 
 export interface IAPProduct {
@@ -58,9 +58,9 @@ class IAPService {
         return false;
       }
 
-      // Check if StoreKit is available (not available in Expo Go)
-      if (!StoreKit) {
-        console.warn('expo-store-kit not available. IAP requires a development build. Use "npx expo run:ios" or EAS Build.');
+      // Check if react-native-iap is available (not available in Expo Go)
+      if (!RNIap) {
+        console.warn('react-native-iap not available. IAP requires a development build. Use "npx expo run:ios" or EAS Build.');
         return false;
       }
 
@@ -70,8 +70,8 @@ class IAPService {
         return false;
       }
 
-      // Initialize StoreKit
-      await StoreKit.initialize();
+      // Initialize react-native-iap connection
+      await RNIap.initConnection();
       
       this.initialized = true;
       console.log('IAP Service initialized successfully');
@@ -95,8 +95,8 @@ class IAPService {
     }
 
     try {
-      if (!StoreKit) {
-        console.warn('expo-store-kit not available. IAP requires a development build.');
+      if (!RNIap) {
+        console.warn('react-native-iap not available. IAP requires a development build.');
         return [];
       }
 
@@ -106,13 +106,13 @@ class IAPService {
       }
 
       // Fetch products from App Store
-      const products = await StoreKit.getProductsAsync(PRODUCT_IDS);
+      const products = await RNIap.getProducts({ skus: PRODUCT_IDS });
       
-      // Map StoreKit products to our IAPProduct format
-      return products.map((product) => ({
+      // Map react-native-iap products to our IAPProduct format
+      return products.map((product: any) => ({
         productId: product.productId,
-        price: product.price,
-        currency: product.currencyCode || 'USD',
+        price: product.localizedPrice || product.price,
+        currency: product.currency || 'USD',
         title: product.title || product.productId,
         description: product.description || '',
         tokens: this.getTokensForProduct(product.productId),
@@ -148,7 +148,7 @@ class IAPService {
       };
     }
 
-    if (!StoreKit) {
+    if (!RNIap) {
       return {
         success: false,
         error: 'IAP requires a development build. Use "npx expo run:ios" or EAS Build to test purchases.',
@@ -158,37 +158,63 @@ class IAPService {
     try {
       console.log(`Attempting to purchase product: ${productId}`);
       
-      // Initiate purchase with StoreKit
-      const result = await StoreKit.purchaseProductAsync(productId);
-      
-      if (result.responseCode === StoreKit.IAPResponseCode.OK) {
-        return {
-          success: true,
-          productId: result.productId || productId,
-          transactionId: result.transactionId,
-        };
-      } else {
-        // Handle different response codes
-        let errorMessage = 'Purchase failed';
-        switch (result.responseCode) {
-          case StoreKit.IAPResponseCode.USER_CANCELED:
-            errorMessage = 'Purchase was canceled';
-            break;
-          case StoreKit.IAPResponseCode.PAYMENT_INVALID:
-            errorMessage = 'Payment method is invalid';
-            break;
-          case StoreKit.IAPResponseCode.STORE_PRODUCT_NOT_AVAILABLE:
-            errorMessage = 'Product is not available';
-            break;
-          default:
-            errorMessage = `Purchase failed with code: ${result.responseCode}`;
-        }
+      // Set up purchase listener before initiating purchase
+      return new Promise<PurchaseResult>((resolve) => {
+        const purchaseUpdateListener = RNIap.purchaseUpdatedListener((purchase: any) => {
+          purchaseUpdateListener.remove();
+          purchaseErrorListener.remove();
+          
+          if (purchase.productId === productId) {
+            // Finish the transaction
+            RNIap.finishTransaction({ purchase });
+            
+            resolve({
+              success: true,
+              productId: purchase.productId,
+              transactionId: purchase.transactionId || purchase.transactionReceipt,
+            });
+          }
+        });
         
-        return {
-          success: false,
-          error: errorMessage,
-        };
-      }
+        // Handle purchase errors
+        const purchaseErrorListener = RNIap.purchaseErrorListener((error: any) => {
+          purchaseErrorListener.remove();
+          purchaseUpdateListener.remove();
+          
+          let errorMessage = 'Purchase failed';
+          if (error.code === 'E_USER_CANCELLED') {
+            errorMessage = 'Purchase was canceled';
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+          
+          resolve({
+            success: false,
+            error: errorMessage,
+          });
+        });
+        
+        // Initiate purchase
+        RNIap.requestPurchase({ sku: productId }).catch((error: any) => {
+          purchaseErrorListener.remove();
+          purchaseUpdateListener.remove();
+          
+          resolve({
+            success: false,
+            error: error.message || 'Purchase failed',
+          });
+        });
+        
+        // Timeout after 60 seconds
+        setTimeout(() => {
+          purchaseUpdateListener.remove();
+          purchaseErrorListener.remove();
+          resolve({
+            success: false,
+            error: 'Purchase timeout',
+          });
+        }, 60000);
+      });
     } catch (error) {
       console.error('Purchase failed:', error);
       return {
@@ -210,8 +236,8 @@ class IAPService {
       return [];
     }
 
-    if (!StoreKit) {
-      console.warn('expo-store-kit not available. IAP requires a development build.');
+    if (!RNIap) {
+      console.warn('react-native-iap not available. IAP requires a development build.');
       return [];
     }
 
@@ -219,12 +245,12 @@ class IAPService {
       console.log('Restoring purchases...');
       
       // Restore completed transactions
-      const transactions = await StoreKit.restoreCompletedTransactionsAsync();
+      const purchases = await RNIap.getAvailablePurchases();
       
-      return transactions.map((transaction) => ({
+      return purchases.map((purchase: any) => ({
         success: true,
-        productId: transaction.productId,
-        transactionId: transaction.transactionId,
+        productId: purchase.productId,
+        transactionId: purchase.transactionId || purchase.transactionReceipt,
       }));
     } catch (error) {
       console.error('Failed to restore purchases:', error);
