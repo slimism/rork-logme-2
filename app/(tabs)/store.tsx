@@ -68,15 +68,33 @@ export default function Store() {
   const loadProducts = async () => {
     try {
       const iapProducts = await iapService.getProducts();
-      const tokenPackages: TokenPackage[] = iapProducts.map((product, index) => ({
-        ...product,
-        originalPrice: index === 1 ? '$27.96' : index === 2 ? '$69.90' : undefined,
-        popular: index === 1,
-        savings: index === 1 ? 'Save $2.97' : index === 2 ? 'Save $19.91' : undefined,
-      }));
+      
+      if (iapProducts.length === 0) {
+        console.warn('No IAP products available. Make sure product IDs are configured in App Store Connect.');
+        setLoading(false);
+        return;
+      }
+
+      // Map IAP products to token packages
+      // You can customize the popular badge and savings based on your product configuration
+      const tokenPackages: TokenPackage[] = iapProducts.map((product, index) => {
+        // Determine which product should be marked as popular (typically the middle tier)
+        const isPopular = index === Math.floor(iapProducts.length / 2);
+        
+        return {
+          ...product,
+          popular: isPopular,
+          // You can add originalPrice and savings if you have discount logic
+        };
+      });
+      
       setProducts(tokenPackages);
     } catch (error) {
       console.error('Failed to load products:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load products. Please check your internet connection and try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -123,29 +141,6 @@ export default function Store() {
     }
   };
 
-  const handleTestPurchase = (tokenCount: number, originalPrice: number) => {
-    const hasDiscount = canUseDiscount();
-    const discountPercent = getDiscountPercentage();
-    const discountedPrice = hasDiscount ? (originalPrice * (1 - discountPercent / 100)).toFixed(2) : originalPrice.toFixed(2);
-    
-    Alert.alert(
-      'Test Purchase',
-      `Add ${tokenCount} token${tokenCount > 1 ? 's' : ''} for testing? (No payment required)`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add Tokens',
-          onPress: () => {
-            addTokens(tokenCount);
-            Alert.alert(
-              'Success!',
-              `${tokenCount} token${tokenCount > 1 ? 's' : ''} added to your account.`
-            );
-          }
-        }
-      ]
-    );
-  };
 
   const handleRedeemVoucher = () => {
     if (!voucherCode.trim()) {
@@ -310,59 +305,54 @@ export default function Store() {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Purchase Tokens</Text>
           
-          <TouchableOpacity 
-            style={styles.purchaseOption}
-            onPress={() => handleTestPurchase(1, 4.99)}
-          >
-            <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>1 Token</Text>
-              <Text style={styles.purchaseSubtitle}>Unlock one project</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading products...</Text>
             </View>
-            <View style={styles.priceContainer}>
-              {canUseDiscount() ? (
-                <Text style={styles.originalPrice}>$4.99</Text>
-              ) : null}
-              <Text style={styles.price}>
-                ${getDiscountedPrice(4.99)}
+          ) : products.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>
+                {Platform.OS === 'ios' 
+                  ? 'No products available. Please configure product IDs in App Store Connect.'
+                  : 'In-app purchases are only available on iOS.'}
               </Text>
             </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.purchaseOption}
-            onPress={() => handleTestPurchase(4, 16.99)}
-          >
-            <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>4 Tokens</Text>
-              <Text style={styles.purchaseSubtitle}>Best value</Text>
-            </View>
-            <View style={styles.priceContainer}>
-              {canUseDiscount() && (
-                <Text style={styles.originalPrice}>$16.99</Text>
-              )}
-              <Text style={styles.price}>
-                ${getDiscountedPrice(16.99)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.purchaseOption}
-            onPress={() => handleTestPurchase(10, 34.99)}
-          >
-            <View style={styles.purchaseInfo}>
-              <Text style={styles.purchaseTitle}>10 Tokens</Text>
-              <Text style={styles.purchaseSubtitle}>For the pros</Text>
-            </View>
-            <View style={styles.priceContainer}>
-              {canUseDiscount() && (
-                <Text style={styles.originalPrice}>$34.99</Text>
-              )}
-              <Text style={styles.price}>
-                ${getDiscountedPrice(34.99)}
-              </Text>
-            </View>
-          </TouchableOpacity>
+          ) : (
+            products.map((packageItem, index) => (
+              <TouchableOpacity
+                key={packageItem.productId}
+                style={[
+                  styles.purchaseOption,
+                  packageItem.popular && styles.popularOption
+                ]}
+                onPress={() => handlePurchase(packageItem)}
+                disabled={purchasing === packageItem.productId}
+              >
+                <View style={styles.purchaseInfo}>
+                  <View style={styles.purchaseTitleRow}>
+                    <Text style={styles.purchaseTitle}>{packageItem.title}</Text>
+                    {packageItem.popular && (
+                      <View style={styles.popularBadge}>
+                        <Text style={styles.popularBadgeText}>POPULAR</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.purchaseSubtitle}>{packageItem.description || `Unlock ${packageItem.tokens} project${packageItem.tokens > 1 ? 's' : ''}`}</Text>
+                </View>
+                <View style={styles.priceContainer}>
+                  {packageItem.originalPrice && canUseDiscount() && (
+                    <Text style={styles.originalPrice}>{packageItem.originalPrice}</Text>
+                  )}
+                  <Text style={styles.price}>
+                    {packageItem.price}
+                  </Text>
+                  {purchasing === packageItem.productId && (
+                    <Text style={styles.purchasingText}>Processing...</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
       {Platform.OS !== 'web' && (
@@ -473,14 +463,40 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  popularOption: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
   purchaseInfo: {
     flex: 1,
+  },
+  purchaseTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
   },
   purchaseTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 2,
+  },
+  popularBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  popularBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
+  },
+  purchasingText: {
+    fontSize: 12,
+    color: colors.subtext,
+    marginTop: 4,
   },
   purchaseSubtitle: {
     fontSize: 13,

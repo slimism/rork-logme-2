@@ -7,18 +7,19 @@ This document provides instructions for implementing actual In-App Purchases (IA
 The app currently includes:
 - ✅ Token-based monetization system
 - ✅ Store UI with product packages
-- ✅ Mock IAP service for development
+- ✅ **Real iOS IAP service using expo-store-kit** (Production-ready)
 - ✅ Token management with Zustand
 - ✅ Trial system (15 free logs)
+- ✅ Product IDs configured: `app.rork.logme.tokens.1`, `app.rork.logme.tokens.4`, `app.rork.logme.tokens.10`
 
 ## Production IAP Setup
 
 ### 1. App Store Connect Configuration
 
 1. **Create In-App Purchase Products:**
-   - Single Token: `com.logme.tokens.single` - $6.99
-   - 4 Tokens Pack: `com.logme.tokens.pack4` - $24.99
-   - 10 Tokens Pack: `com.logme.tokens.pack10` - $49.99
+   - 1 Token Pack: `app.rork.logme.tokens.1`
+   - 4 Tokens Pack: `app.rork.logme.tokens.4`
+   - 10 Tokens Pack: `app.rork.logme.tokens.10`
 
 2. **Product Types:** Use "Consumable" for all token products
 
@@ -78,9 +79,9 @@ class IAPService {
 
   async getProducts(): Promise<IAPProduct[]> {
     const productIds = [
-      'com.logme.tokens.single',
-      'com.logme.tokens.pack4',
-      'com.logme.tokens.pack10'
+      'app.rork.logme.tokens.1',
+      'app.rork.logme.tokens.4',
+      'app.rork.logme.tokens.10'
     ];
     
     const products = await StoreKit.getProductsAsync(productIds);

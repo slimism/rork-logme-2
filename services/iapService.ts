@@ -1,4 +1,5 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import * as StoreKit from 'expo-store-kit';
 
 export interface IAPProduct {
   productId: string;
@@ -16,33 +17,23 @@ export interface PurchaseResult {
   error?: string;
 }
 
-// Mock products for development - replace with actual product IDs from App Store Connect
-const MOCK_PRODUCTS: IAPProduct[] = [
-  {
-    productId: 'com.logme.tokens.single',
-    price: '$6.99',
-    currency: 'USD',
-    title: '1 Token',
-    description: 'Single project token',
-    tokens: 1,
-  },
-  {
-    productId: 'com.logme.tokens.pack4',
-    price: '$24.99',
-    currency: 'USD',
-    title: '4 Tokens Pack',
-    description: 'Four project tokens with savings',
-    tokens: 4,
-  },
-  {
-    productId: 'com.logme.tokens.pack10',
-    price: '$49.99',
-    currency: 'USD',
-    title: '10 Tokens Pack',
-    description: 'Ten project tokens with maximum savings',
-    tokens: 10,
-  },
+// ============================================================================
+// IAP CONFIGURATION - App Store Connect product IDs
+// ============================================================================
+const PRODUCT_IDS: string[] = [
+  'app.rork.logme.tokens.1',
+  'app.rork.logme.tokens.4',
+  'app.rork.logme.tokens.10',
 ];
+
+// Map product IDs to token counts
+// This mapping is used to determine how many tokens each product grants
+const PRODUCT_TO_TOKEN_MAP: Record<string, number> = {
+  'app.rork.logme.tokens.1': 1,
+  'app.rork.logme.tokens.4': 4,
+  'app.rork.logme.tokens.10': 10,
+};
+// ============================================================================
 
 class IAPService {
   private initialized = false;
@@ -54,12 +45,22 @@ class IAPService {
         return false;
       }
 
-      // TODO: Initialize actual IAP service when building for production
-      // Example with expo-store-kit:
-      // await StoreKit.initialize();
+      if (Platform.OS !== 'ios') {
+        console.log('IAP currently only supported on iOS');
+        return false;
+      }
+
+      // Check if product IDs are configured
+      if (PRODUCT_IDS.length === 0) {
+        console.warn('No product IDs configured. Please add your product IDs in services/iapService.ts');
+        return false;
+      }
+
+      // Initialize StoreKit
+      await StoreKit.initialize();
       
       this.initialized = true;
-      console.log('IAP Service initialized (mock mode)');
+      console.log('IAP Service initialized successfully');
       return true;
     } catch (error) {
       console.error('Failed to initialize IAP service:', error);
@@ -69,20 +70,34 @@ class IAPService {
 
   async getProducts(): Promise<IAPProduct[]> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        return [];
+      }
     }
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || Platform.OS !== 'ios') {
       return [];
     }
 
     try {
-      // TODO: Replace with actual product fetching
-      // Example with expo-store-kit:
-      // const products = await StoreKit.getProductsAsync(['com.logme.tokens.single', ...]);
+      if (PRODUCT_IDS.length === 0) {
+        console.warn('No product IDs configured');
+        return [];
+      }
+
+      // Fetch products from App Store
+      const products = await StoreKit.getProductsAsync(PRODUCT_IDS);
       
-      // For now, return mock products
-      return MOCK_PRODUCTS;
+      // Map StoreKit products to our IAPProduct format
+      return products.map((product) => ({
+        productId: product.productId,
+        price: product.price,
+        currency: product.currencyCode || 'USD',
+        title: product.title || product.productId,
+        description: product.description || '',
+        tokens: this.getTokensForProduct(product.productId),
+      }));
     } catch (error) {
       console.error('Failed to fetch products:', error);
       return [];
@@ -91,7 +106,13 @@ class IAPService {
 
   async purchaseProduct(productId: string): Promise<PurchaseResult> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        return {
+          success: false,
+          error: 'IAP service not initialized',
+        };
+      }
     }
 
     if (Platform.OS === 'web') {
@@ -101,25 +122,47 @@ class IAPService {
       };
     }
 
+    if (Platform.OS !== 'ios') {
+      return {
+        success: false,
+        error: 'In-app purchases are currently only available on iOS',
+      };
+    }
+
     try {
-      // TODO: Replace with actual purchase logic
-      // Example with expo-store-kit:
-      // const result = await StoreKit.purchaseProductAsync(productId);
-      
-      // Mock purchase for development
       console.log(`Attempting to purchase product: ${productId}`);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Initiate purchase with StoreKit
+      const result = await StoreKit.purchaseProductAsync(productId);
       
-      // Simulate successful purchase
-      const transactionId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      return {
-        success: true,
-        productId,
-        transactionId,
-      };
+      if (result.responseCode === StoreKit.IAPResponseCode.OK) {
+        return {
+          success: true,
+          productId: result.productId || productId,
+          transactionId: result.transactionId,
+        };
+      } else {
+        // Handle different response codes
+        let errorMessage = 'Purchase failed';
+        switch (result.responseCode) {
+          case StoreKit.IAPResponseCode.USER_CANCELED:
+            errorMessage = 'Purchase was canceled';
+            break;
+          case StoreKit.IAPResponseCode.PAYMENT_INVALID:
+            errorMessage = 'Payment method is invalid';
+            break;
+          case StoreKit.IAPResponseCode.STORE_PRODUCT_NOT_AVAILABLE:
+            errorMessage = 'Product is not available';
+            break;
+          default:
+            errorMessage = `Purchase failed with code: ${result.responseCode}`;
+        }
+        
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
     } catch (error) {
       console.error('Purchase failed:', error);
       return {
@@ -131,20 +174,27 @@ class IAPService {
 
   async restorePurchases(): Promise<PurchaseResult[]> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        return [];
+      }
     }
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || Platform.OS !== 'ios') {
       return [];
     }
 
     try {
-      // TODO: Replace with actual restore logic
-      // Example with expo-store-kit:
-      // const transactions = await StoreKit.restoreCompletedTransactionsAsync();
+      console.log('Restoring purchases...');
       
-      console.log('Restoring purchases (mock mode)');
-      return [];
+      // Restore completed transactions
+      const transactions = await StoreKit.restoreCompletedTransactionsAsync();
+      
+      return transactions.map((transaction) => ({
+        success: true,
+        productId: transaction.productId,
+        transactionId: transaction.transactionId,
+      }));
     } catch (error) {
       console.error('Failed to restore purchases:', error);
       return [];
@@ -152,8 +202,8 @@ class IAPService {
   }
 
   getTokensForProduct(productId: string): number {
-    const product = MOCK_PRODUCTS.find(p => p.productId === productId);
-    return product?.tokens || 0;
+    // Get token count from the mapping
+    return PRODUCT_TO_TOKEN_MAP[productId] || 0;
   }
 }
 
