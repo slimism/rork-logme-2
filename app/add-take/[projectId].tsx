@@ -2774,9 +2774,14 @@ This would break the logging logic and create inconsistencies in the file number
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
           enableOnAndroid={true}
-          extraScrollHeight={40}
+          enableAutomaticScroll={true}
+          extraScrollHeight={150}
+          extraHeight={100}
+          enableResetScrollToCoords={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          keyboardOpeningTime={0}
         >
         <View style={styles.formContainer}>
 
