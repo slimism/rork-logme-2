@@ -70,7 +70,11 @@ export default function Store() {
       const iapProducts = await iapService.getProducts();
       
       if (iapProducts.length === 0) {
-        console.warn('No IAP products available. Make sure product IDs are configured in App Store Connect.');
+        // This could mean:
+        // 1. Running in Expo Go (IAP not available)
+        // 2. Products not configured in App Store Connect
+        // 3. Network error
+        console.warn('No IAP products available. If running in Expo Go, IAP requires a development build.');
         setLoading(false);
         return;
       }
@@ -313,7 +317,7 @@ export default function Store() {
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>
                 {Platform.OS === 'ios' 
-                  ? 'No products available. Please configure product IDs in App Store Connect.'
+                  ? 'IAP not available. To test purchases, create a development build using "npx expo run:ios" or EAS Build. IAP does not work in Expo Go.'
                   : 'In-app purchases are only available on iOS.'}
               </Text>
             </View>

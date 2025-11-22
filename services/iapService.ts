@@ -1,5 +1,13 @@
 import { Platform } from 'react-native';
-import * as StoreKit from 'expo-store-kit';
+
+// Conditionally import StoreKit - only available in development/production builds, not Expo Go
+let StoreKit: any = null;
+try {
+  StoreKit = require('expo-store-kit');
+} catch (error) {
+  // StoreKit not available (likely running in Expo Go)
+  console.log('expo-store-kit not available - running in Expo Go or module not installed');
+}
 
 export interface IAPProduct {
   productId: string;
@@ -50,6 +58,12 @@ class IAPService {
         return false;
       }
 
+      // Check if StoreKit is available (not available in Expo Go)
+      if (!StoreKit) {
+        console.warn('expo-store-kit not available. IAP requires a development build. Use "npx expo run:ios" or EAS Build.');
+        return false;
+      }
+
       // Check if product IDs are configured
       if (PRODUCT_IDS.length === 0) {
         console.warn('No product IDs configured. Please add your product IDs in services/iapService.ts');
@@ -81,6 +95,11 @@ class IAPService {
     }
 
     try {
+      if (!StoreKit) {
+        console.warn('expo-store-kit not available. IAP requires a development build.');
+        return [];
+      }
+
       if (PRODUCT_IDS.length === 0) {
         console.warn('No product IDs configured');
         return [];
@@ -126,6 +145,13 @@ class IAPService {
       return {
         success: false,
         error: 'In-app purchases are currently only available on iOS',
+      };
+    }
+
+    if (!StoreKit) {
+      return {
+        success: false,
+        error: 'IAP requires a development build. Use "npx expo run:ios" or EAS Build to test purchases.',
       };
     }
 
@@ -181,6 +207,11 @@ class IAPService {
     }
 
     if (Platform.OS === 'web' || Platform.OS !== 'ios') {
+      return [];
+    }
+
+    if (!StoreKit) {
+      console.warn('expo-store-kit not available. IAP requires a development build.');
       return [];
     }
 
