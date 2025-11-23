@@ -10,8 +10,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
 
-const logoLight = require('../../../assets/images/logo-light.png');
-const logoDark = require('../../../assets/images/logo-dark.png');
+const logoLight = require('@/assets/images/logo-light.png');
+const logoDark = require('@/assets/images/logo-dark.png');
 
 export default function ProjectsScreen() {
   const colors = useColors();
