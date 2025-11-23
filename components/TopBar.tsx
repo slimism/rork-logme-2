@@ -1,13 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Image as RNImage } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
 import { useThemeStore } from '@/store/themeStore';
 
-const logoLight = require('@/assets/images/logo-light.png');
-const logoDark = require('@/assets/images/logo-dark.png');
+const logoLight = require('../assets/images/logo-light.png');
+const logoDark = require('../assets/images/logo-dark.png');
 
 interface TopBarProps {
   showCredits?: boolean;
@@ -26,12 +25,10 @@ export function TopBar({ showCredits = true }: TopBarProps) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.leftSection}>
         <View style={styles.logoContainer}>
-          <Image 
+          <RNImage 
             source={logoSource}
             style={styles.appLogo}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={200}
+            resizeMode="contain"
             onLoad={() => console.log('[TopBar] Logo loaded successfully:', darkMode ? 'dark' : 'light')}
             onError={(error) => console.error('[TopBar] Image load error:', error)}
           />
