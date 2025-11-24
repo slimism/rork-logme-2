@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image as RNImage } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -233,10 +233,11 @@ export default function ProjectsScreen() {
           <View style={styles.titleSection}>
             <View style={styles.appHeader}>
               <View style={styles.logoContainer}>
-                <RNImage 
+                <Image 
                   source={darkMode ? logoDark : logoLight}
                   style={styles.appLogo}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  transition={200}
                   onLoad={() => console.log('[ProjectsScreen] Logo loaded:', darkMode ? 'dark' : 'light')}
                   onError={(error) => console.error('[ProjectsScreen] Logo error:', error)}
                 />
@@ -388,8 +389,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     alignItems: 'center',
   },
   appLogo: {
-    width: 62,
-    height: 62,
+    width: '100%',
+    height: '100%',
   },
   appTitle: {
     fontSize: 28,
