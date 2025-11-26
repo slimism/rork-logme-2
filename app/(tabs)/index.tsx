@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image, ImageResolvedAssetSource } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -29,14 +29,6 @@ export default function ProjectsScreen() {
   // Resolve logo source for iOS compatibility
   const logoSource = darkMode ? logoDark : logoLight;
 
-  // Preload both logo images to eliminate loading delay
-  useEffect(() => {
-    const lightSource = Image.resolveAssetSource(logoLight);
-    const darkSource = Image.resolveAssetSource(logoDark);
-    if (lightSource) Image.prefetch(lightSource.uri);
-    if (darkSource) Image.prefetch(darkSource.uri);
-  }, []);
-
 
   const remainingTrialLogs = getRemainingTrialLogs();
 
@@ -48,7 +40,7 @@ export default function ProjectsScreen() {
     const projectLogSheets = logSheets.filter(sheet => sheet.projectId === projectId);
     return {
       shots: projectLogSheets.length,
-      lastUpdated: projectLogSheets.length > 0 
+      lastUpdated: projectLogSheets.length > 0
         ? Math.max(...projectLogSheets.map(sheet => new Date(sheet.updatedAt).getTime()))
         : new Date(projects.find(p => p.id === projectId)?.updatedAt || '').getTime()
     };
@@ -83,7 +75,7 @@ export default function ProjectsScreen() {
       );
       return;
     }
-    
+
     router.push('/project-settings');
   };
 
@@ -107,8 +99,8 @@ export default function ProjectsScreen() {
   };
 
   const toggleProjectSelection = (projectId: string) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId) 
+    setSelectedProjects(prev =>
+      prev.includes(projectId)
         ? prev.filter(id => id !== projectId)
         : [...prev, projectId]
     );
@@ -147,7 +139,7 @@ export default function ProjectsScreen() {
     const translateX = new Animated.Value(0);
     const stats = getProjectStats(item.id);
     const isSelected = selectedProjects.includes(item.id);
-    
+
     const panResponder = PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 50;
@@ -171,7 +163,7 @@ export default function ProjectsScreen() {
         }
       },
     });
-    
+
     return (
       <View style={styles.swipeContainer}>
         <View style={styles.deleteAction}>
@@ -182,7 +174,7 @@ export default function ProjectsScreen() {
             <Trash2 size={24} color="white" />
           </TouchableOpacity>
         </View>
-        
+
         <Animated.View
           style={[
             styles.projectCard,
@@ -257,10 +249,14 @@ export default function ProjectsScreen() {
   const renderHeader = () => (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
+          <View style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}>
+            <Image source={logoLight} />
+            <Image source={logoDark} />
+          </View>
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
-              <Image 
+              <Image
                 source={logoSource}
                 style={styles.appLogo}
                 resizeMode="contain"
@@ -300,7 +296,7 @@ export default function ProjectsScreen() {
             </View>
           ) : null}
         </View>
-        
+
         {!isMultiSelectMode && (
           <View style={styles.searchContainer}>
             <View style={styles.searchIcon}>
@@ -336,7 +332,7 @@ export default function ProjectsScreen() {
   return (
     <View style={styles.container}>
       {renderHeader()}
-      
+
       {filteredProjects.length === 0 ? (
         <EmptyState
           title={searchQuery ? "No Projects Found" : "Get Started"}
@@ -352,7 +348,7 @@ export default function ProjectsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      
+
       <Modal
         visible={showDeleteModal}
         transparent={true}
@@ -362,7 +358,7 @@ export default function ProjectsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Project Options</Text>
-            
+
             <TouchableOpacity
               style={styles.deleteOption}
               onPress={confirmDeleteProject}
@@ -370,7 +366,7 @@ export default function ProjectsScreen() {
               <Trash2 size={20} color={colors.error} />
               <Text style={styles.deleteOptionText}>Delete Project</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.cancelOption}
               onPress={cancelDeleteProject}
