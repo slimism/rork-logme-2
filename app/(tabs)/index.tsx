@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal } from 'react-native';
-import { Image } from 'expo-image';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
@@ -202,7 +202,7 @@ export default function ProjectsScreen() {
             <View style={styles.projectMainRow}>
               <View style={styles.projectImageContainer}>
                 {item.logoUri ? (
-                  <Image source={{ uri: item.logoUri }} style={styles.projectImage} contentFit="cover" transition={200} />
+                  <ExpoImage source={{ uri: item.logoUri }} style={styles.projectImage} contentFit="cover" transition={200} />
                 ) : (
                   <View style={styles.projectImagePlaceholder}>
                     <Film size={40} color="white" />
@@ -255,10 +255,9 @@ export default function ProjectsScreen() {
               <Image 
                 source={logoSource}
                 style={styles.appLogo}
-                contentFit="contain"
-                transition={200}
+                resizeMode="contain"
                 onLoad={() => console.log('[ProjectsScreen] Logo loaded:', darkMode ? 'dark' : 'light')}
-                onError={(error) => console.error('[ProjectsScreen] Logo error:', error)}
+                onError={(error) => console.error('[ProjectsScreen] Logo error:', error.nativeEvent.error)}
               />
             </View>
             <Text style={styles.appTitle}>LogMe</Text>
