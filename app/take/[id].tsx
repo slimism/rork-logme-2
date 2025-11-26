@@ -2709,7 +2709,7 @@ This would break the logging logic and create inconsistencies in the file number
           </View>
         </View>
 
-        <View style={styles.addTakeSection}>
+        <View style={[styles.addTakeSection, { paddingBottom: 40 }]}>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               testID="good-take-button"

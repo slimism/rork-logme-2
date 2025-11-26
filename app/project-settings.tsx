@@ -31,8 +31,8 @@ export default function ProjectSettingsScreen() {
   const [cameraConfiguration, setCameraConfiguration] = useState(1);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: boolean}>({});
-  
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: boolean }>({});
+
   const [logSheetFields, setLogSheetFields] = useState<LogSheetField[]>([
     { id: 'sceneNumber', label: 'Scene number', enabled: true, required: true },
     { id: 'shotNumber', label: 'Shot number', enabled: true, required: true },
@@ -67,8 +67,8 @@ export default function ProjectSettingsScreen() {
     const field = logSheetFields.find(f => f.id === fieldId);
     if (field?.required) return;
 
-    setLogSheetFields(prev => 
-      prev.map(field => 
+    setLogSheetFields(prev =>
+      prev.map(field =>
         field.id === fieldId
           ? { ...field, enabled: !field.enabled }
           : field
@@ -81,7 +81,7 @@ export default function ProjectSettingsScreen() {
   };
 
   const updateCustomField = (index: number, value: string) => {
-    setCustomFields(prev => 
+    setCustomFields(prev =>
       prev.map((field, i) => i === index ? value : field)
     );
   };
@@ -93,7 +93,7 @@ export default function ProjectSettingsScreen() {
   const handleAddLogo = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (permissionResult.granted === false) {
         Alert.alert('Permission Required', 'Permission to access camera roll is required!');
         return;
@@ -116,7 +116,7 @@ export default function ProjectSettingsScreen() {
   };
 
   const validateRequiredFields = () => {
-    const errors: {[key: string]: boolean} = {};
+    const errors: { [key: string]: boolean } = {};
     let hasErrors = false;
 
     if (!projectName.trim()) {
@@ -154,12 +154,12 @@ export default function ProjectSettingsScreen() {
   const handleConfirmSave = () => {
     const enabledFields = logSheetFields.filter(field => field.enabled);
     const validCustomFields = customFields.filter(field => field.trim());
-    
+
     // Ensure camera configuration is valid (defaults to 1 if invalid)
-    const validCameraConfig = cameraConfiguration && cameraConfiguration > 0 
-      ? cameraConfiguration 
+    const validCameraConfig = cameraConfiguration && cameraConfiguration > 0
+      ? cameraConfiguration
       : 1;
-    
+
     const projectSettings = {
       logSheetFields: enabledFields,
       customFields: validCustomFields,
@@ -187,25 +187,25 @@ export default function ProjectSettingsScreen() {
   const styles = createStyles(colors);
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           title: "Project Settings",
           headerLeft: () => <HeaderLeft />,
           headerBackVisible: false,
-        }} 
+        }}
       />
-      
-      <ScrollView 
+
+      <ScrollView
         ref={scrollViewRef}
-        style={styles.content} 
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }}
+        contentContainerStyle={{ paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 40 }}
       >
         <View style={styles.projectHeader}>
           <TouchableOpacity style={styles.iconContainer} onPress={handleAddLogo}>
@@ -248,7 +248,7 @@ export default function ProjectSettingsScreen() {
           <Text style={styles.sectionSubtitle}>
             Add key personnel information that will appear on exported log sheets.
           </Text>
-          
+
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Director Name</Text>
             <TextInput
@@ -259,7 +259,7 @@ export default function ProjectSettingsScreen() {
               placeholderTextColor={colors.subtext}
             />
           </View>
-          
+
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Cinematographer Name</Text>
             <TextInput
@@ -270,7 +270,7 @@ export default function ProjectSettingsScreen() {
               placeholderTextColor={colors.subtext}
             />
           </View>
-          
+
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Logger Name *</Text>
             <TextInput
@@ -296,7 +296,7 @@ export default function ProjectSettingsScreen() {
           <Text style={styles.sectionSubtitle}>
             Set the number of cameras used. This will create multiple camera file fields for each take.
           </Text>
-          
+
           <View style={styles.cameraConfigRow}>
             <View style={styles.cameraConfigContent}>
               <View style={styles.checkbox}>
@@ -333,7 +333,7 @@ export default function ProjectSettingsScreen() {
           <Text style={styles.sectionSubtitle}>
             Select the fields you want to include in your log sheets. Required fields cannot be disabled.
           </Text>
-          
+
           {logSheetFields.map((field) => (
             <View key={field.id} style={styles.fieldRow}>
               <View style={styles.fieldInfo}>
@@ -361,7 +361,7 @@ export default function ProjectSettingsScreen() {
           <Text style={styles.sectionSubtitle}>
             Add custom fields specific to your project needs.
           </Text>
-          
+
           {customFields.map((field, index) => (
             <View key={index} style={styles.customFieldRow}>
               <TextInput
@@ -372,7 +372,7 @@ export default function ProjectSettingsScreen() {
                 placeholderTextColor={colors.subtext}
               />
               {customFields.length > 1 && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => removeCustomField(index)}
                   style={styles.removeButton}
                 >
@@ -381,20 +381,20 @@ export default function ProjectSettingsScreen() {
               )}
             </View>
           ))}
-          
+
           <TouchableOpacity onPress={addCustomField} style={styles.addFieldButton}>
             <Text style={styles.addFieldText}>+ Add Custom Field</Text>
           </TouchableOpacity>
+
+          <View style={styles.saveButtonContainer}>
+            <Button
+              title="Save Settings"
+              onPress={handleSaveSettings}
+              style={styles.saveButton}
+            />
+          </View>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Button
-          title="Save Settings"
-          onPress={handleSaveSettings}
-          style={styles.saveButton}
-        />
-      </View>
 
       <Modal
         visible={showConfirmModal}
@@ -408,11 +408,11 @@ export default function ProjectSettingsScreen() {
               <AlertTriangle size={24} color={colors.warning} />
               <Text style={styles.modalTitle}>Confirm Project Settings</Text>
             </View>
-            
+
             <Text style={styles.modalMessage}>
               Once you create this project, you cannot change these settings later. Are you sure you want to proceed?
             </Text>
-            
+
             {tokens > 0 && (
               <View style={styles.tokenWarning}>
                 <Text style={styles.tokenWarningText}>
@@ -420,17 +420,17 @@ export default function ProjectSettingsScreen() {
                 </Text>
               </View>
             )}
-            
+
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
                 onPress={handleCancelSave}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]} 
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleConfirmSave}
               >
                 <Text style={styles.confirmButtonText}>Create Project</Text>
@@ -452,11 +452,11 @@ export default function ProjectSettingsScreen() {
               <AlertTriangle size={24} color={colors.error} />
               <Text style={styles.modalTitle}>Required Fields Missing</Text>
             </View>
-            
+
             <Text style={styles.modalMessage}>
               Please fill in all required fields before saving your project settings.
             </Text>
-            
+
             <View style={styles.requiredFieldsList}>
               {validationErrors.projectName && (
                 <Text style={styles.requiredFieldItem}>• Project Name</Text>
@@ -465,10 +465,10 @@ export default function ProjectSettingsScreen() {
                 <Text style={styles.requiredFieldItem}>• Logger Name</Text>
               )}
             </View>
-            
+
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]} 
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
                 onPress={() => setShowValidationModal(false)}
               >
                 <Text style={styles.confirmButtonText}>OK</Text>
@@ -687,11 +687,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.primary,
     fontWeight: '500',
   },
-  footer: {
-    backgroundColor: colors.card,
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  saveButtonContainer: {
+    marginTop: 20,
+    paddingBottom: 20,
   },
   saveButton: {
     backgroundColor: '#2c3e50',
