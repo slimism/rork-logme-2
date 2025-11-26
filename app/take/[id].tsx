@@ -2447,7 +2447,7 @@ This would break the logging logic and create inconsistencies in the file number
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <KeyboardAwareScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+            contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 40 }]}
             enableOnAndroid={true}
             enableAutomaticScroll={true}
             extraScrollHeight={150}
