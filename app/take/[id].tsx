@@ -2441,7 +2441,24 @@ This would break the logging logic and create inconsistencies in the file number
             title: "Edit Take",
             headerLeft: () => <HeaderLeft />,
             headerBackVisible: false,
-        < View style={styles.formContainer}>
+          }}
+        />
+        
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+            enableOnAndroid={true}
+            enableAutomaticScroll={true}
+            extraScrollHeight={150}
+            extraHeight={100}
+            enableResetScrollToCoords={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            keyboardOpeningTime={0}
+          >
+        <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
               {classification === 'Ambience' ? 'Ambience' : classification === 'SFX' ? 'SFX' : `Scene ${takeData.sceneNumber || 'Unknown'} - Shot ${takeData.shotNumber || 'Unknown'}`}
