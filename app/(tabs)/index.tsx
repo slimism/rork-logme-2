@@ -12,8 +12,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
 
-const logoLight = require('../../assets/images/logo-light.png');
-const logoDark = require('../../assets/images/logo-dark.png');
+// Use remote URL for iOS compatibility (same as Splash Screen)
+const LOGO_URL = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sxgkwkx03y0dzrrkc8aoa';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
@@ -25,9 +25,6 @@ export default function ProjectsScreen() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-
-  // Resolve logo source for iOS compatibility
-  const logoSource = darkMode ? logoDark : logoLight;
 
 
   const remainingTrialLogs = getRemainingTrialLogs();
@@ -249,18 +246,14 @@ export default function ProjectsScreen() {
   const renderHeader = () => (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
-        <View style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}>
-          <Image source={logoLight} />
-          <Image source={logoDark} />
-        </View>
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
               <Image
-                source={logoSource}
+                source={{ uri: LOGO_URL }}
                 style={styles.appLogo}
                 resizeMode="contain"
-                onLoad={() => console.log('[ProjectsScreen] Logo loaded:', darkMode ? 'dark' : 'light')}
+                onLoad={() => console.log('[ProjectsScreen] Logo loaded successfully')}
                 onError={(error) => console.error('[ProjectsScreen] Logo error:', error.nativeEvent.error)}
               />
             </View>
