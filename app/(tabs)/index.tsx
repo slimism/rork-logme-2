@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -249,10 +249,10 @@ export default function ProjectsScreen() {
   const renderHeader = () => (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
-          <View style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}>
-            <Image source={logoLight} />
-            <Image source={logoDark} />
-          </View>
+        <View style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}>
+          <Image source={logoLight} />
+          <Image source={logoDark} />
+        </View>
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
@@ -330,24 +330,30 @@ export default function ProjectsScreen() {
   const styles = createStyles(colors);
 
   return (
-    <View style={styles.container}>
-      {renderHeader()}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        {renderHeader()}
 
-      {filteredProjects.length === 0 ? (
-        <EmptyState
-          title={searchQuery ? "No Projects Found" : "Get Started"}
-          message={searchQuery ? "No projects match your search." : "Create your first film production project to get started."}
-          icon={<Film size={48} color={colors.primary} />}
-        />
-      ) : (
-        <FlatList
-          data={filteredProjects}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        {filteredProjects.length === 0 ? (
+          <EmptyState
+            title={searchQuery ? "No Projects Found" : "Get Started"}
+            message={searchQuery ? "No projects match your search." : "Create your first film production project to get started."}
+            icon={<Film size={48} color={colors.primary} />}
+          />
+        ) : (
+          <FlatList
+            data={filteredProjects}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showDeleteModal}
@@ -376,7 +382,7 @@ export default function ProjectsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
