@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image, ImageResolvedAssetSource } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -31,8 +31,10 @@ export default function ProjectsScreen() {
 
   // Preload both logo images to eliminate loading delay
   useEffect(() => {
-    Image.prefetch(Image.resolveAssetSource(logoLight).uri);
-    Image.prefetch(Image.resolveAssetSource(logoDark).uri);
+    const lightSource = Image.resolveAssetSource(logoLight);
+    const darkSource = Image.resolveAssetSource(logoDark);
+    if (lightSource) Image.prefetch(lightSource.uri);
+    if (darkSource) Image.prefetch(darkSource.uri);
   }, []);
 
 
