@@ -397,12 +397,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   header: {
     backgroundColor: colors.card,
     padding: 20,
-    paddingTop: 12,
+    paddingTop: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   titleSection: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   appHeader: {
     flexDirection: 'row',
