@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +28,12 @@ export default function ProjectsScreen() {
 
   // Resolve logo source for iOS compatibility
   const logoSource = darkMode ? logoDark : logoLight;
+
+  // Preload both logo images to eliminate loading delay
+  useEffect(() => {
+    Image.prefetch(Image.resolveAssetSource(logoLight).uri);
+    Image.prefetch(Image.resolveAssetSource(logoDark).uri);
+  }, []);
 
 
   const remainingTrialLogs = getRemainingTrialLogs();
