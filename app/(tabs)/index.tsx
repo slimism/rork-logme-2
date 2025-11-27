@@ -12,8 +12,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { useThemeStore } from '@/store/themeStore';
 
-// Use remote URL for iOS compatibility (same as Splash Screen)
-const LOGO_URL = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sxgkwkx03y0dzrrkc8aoa';
+// Use remote URLs for logos
+const LOGO_LIGHT_URL = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/i3opqe4xnsa7x0ts9bg0b';
+const LOGO_DARK_URL = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/gigsj147sl86cyu49r9sb';
 
 export default function ProjectsScreen() {
   const { projects, logSheets, deleteProject } = useProjectStore();
@@ -250,7 +251,7 @@ export default function ProjectsScreen() {
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
               <Image
-                source={{ uri: LOGO_URL }}
+                source={{ uri: darkMode ? LOGO_DARK_URL : LOGO_LIGHT_URL }}
                 style={styles.appLogo}
                 resizeMode="contain"
                 onLoad={() => console.log('[ProjectsScreen] Logo loaded successfully')}
