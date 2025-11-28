@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from 'react-native-toast-message';
@@ -17,14 +17,21 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     SplashScreen.hideAsync();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  const handleSplashFinish = () => {
-    setShowSplash(false);
-  };
+  const handleSplashFinish = useCallback(() => {
+    if (isMountedRef.current) {
+      setShowSplash(false);
+    }
+  }, []);
 
   if (showSplash) {
     return <CustomSplashScreen onFinish={handleSplashFinish} />;
