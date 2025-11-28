@@ -30,6 +30,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "app.rork.log-me-atan1jw1",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
