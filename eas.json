@@ -17,6 +17,9 @@
       },
       "ios": {
         "image": "latest"
+      },
+      "android": {
+        "buildType": "aab"
       }
     }
   },

@@ -53,14 +53,14 @@ class IAPService {
         return false;
       }
 
-      if (Platform.OS !== 'ios') {
-        console.log('IAP currently only supported on iOS');
+      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+        console.log('IAP only supported on iOS and Android');
         return false;
       }
 
       // Check if react-native-iap is available (not available in Expo Go)
       if (!RNIap) {
-        console.warn('react-native-iap not available. IAP requires a development build. Use "npx expo run:ios" or EAS Build.');
+        console.warn(`react-native-iap not available. IAP requires a development build. Use "npx expo run:${Platform.OS}" or EAS Build.`);
         return false;
       }
 
@@ -74,7 +74,7 @@ class IAPService {
       await RNIap.initConnection();
       
       this.initialized = true;
-      console.log('IAP Service initialized successfully');
+      console.log(`IAP Service initialized successfully for ${Platform.OS}`);
       return true;
     } catch (error) {
       console.error('Failed to initialize IAP service:', error);
@@ -90,7 +90,7 @@ class IAPService {
       }
     }
 
-    if (Platform.OS === 'web' || Platform.OS !== 'ios') {
+    if (Platform.OS === 'web' || (Platform.OS !== 'ios' && Platform.OS !== 'android')) {
       return [];
     }
 
@@ -105,7 +105,7 @@ class IAPService {
         return [];
       }
 
-      // Fetch products from App Store
+      // Fetch products from App Store (iOS) or Google Play (Android)
       const products = await RNIap.getProducts({ skus: PRODUCT_IDS });
       
       // Map react-native-iap products to our IAPProduct format
@@ -141,17 +141,17 @@ class IAPService {
       };
     }
 
-    if (Platform.OS !== 'ios') {
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
       return {
         success: false,
-        error: 'In-app purchases are currently only available on iOS',
+        error: 'In-app purchases are only available on iOS and Android',
       };
     }
 
     if (!RNIap) {
       return {
         success: false,
-        error: 'IAP requires a development build. Use "npx expo run:ios" or EAS Build to test purchases.',
+        error: `IAP requires a development build. Use "npx expo run:${Platform.OS}" or EAS Build to test purchases.`,
       };
     }
 
@@ -232,7 +232,7 @@ class IAPService {
       }
     }
 
-    if (Platform.OS === 'web' || Platform.OS !== 'ios') {
+    if (Platform.OS === 'web' || (Platform.OS !== 'ios' && Platform.OS !== 'android')) {
       return [];
     }
 

@@ -35,7 +35,8 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "INTERNET",
-        "CAMERA"
+        "CAMERA",
+        "com.android.vending.BILLING"
       ]
     },
     "web": {
@@ -59,6 +60,9 @@
         {
           "ios": {
             "usesStoreKit2": true
+          },
+          "android": {
+            "billingPermission": "com.android.vending.BILLING"
           }
         }
       ]
