@@ -2,6 +2,7 @@
   "name": "expo-app",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "packageManager": "bun@1.3.3",
   "scripts": {
     "start": "bunx rork start -p etpmdf2p79o43atan1jw1 --tunnel",
     "start-web": "bunx rork start -p etpmdf2p79o43atan1jw1 --web --tunnel",
