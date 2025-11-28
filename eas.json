@@ -13,7 +13,8 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "POD_INSTALLER_FLAGS": "--repo-update"
+        "POD_INSTALLER_FLAGS": "--repo-update",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       },
       "ios": {
         "image": "latest"
