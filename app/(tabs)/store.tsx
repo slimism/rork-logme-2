@@ -80,10 +80,19 @@ export default function Store() {
       }
 
       // Map IAP products to token packages
+      // Filter out any products without valid productId
+      const validProducts = iapProducts.filter(product => {
+        if (!product.productId) {
+          console.warn('Product missing productId, skipping:', product);
+          return false;
+        }
+        return true;
+      });
+      
       // You can customize the popular badge and savings based on your product configuration
-      const tokenPackages: TokenPackage[] = iapProducts.map((product, index) => {
+      const tokenPackages: TokenPackage[] = validProducts.map((product, index) => {
         // Determine which product should be marked as popular (typically the middle tier)
-        const isPopular = index === Math.floor(iapProducts.length / 2);
+        const isPopular = index === Math.floor(validProducts.length / 2);
         
         return {
           ...product,
@@ -92,6 +101,7 @@ export default function Store() {
         };
       });
       
+      console.log('Loaded products:', tokenPackages.map(p => ({ productId: p.productId, title: p.title })));
       setProducts(tokenPackages);
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -105,6 +115,17 @@ export default function Store() {
   };
 
   const handlePurchase = async (packageItem: TokenPackage) => {
+    // Validate productId before proceeding
+    if (!packageItem?.productId) {
+      console.error('Cannot purchase: productId is missing', packageItem);
+      Alert.alert(
+        'Purchase Error',
+        'Product information is invalid. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (Platform.OS === 'web') {
       Alert.alert(
         'Purchase Not Available',
@@ -114,6 +135,7 @@ export default function Store() {
       return;
     }
 
+    console.log('Purchase initiated for product:', packageItem.productId);
     setPurchasing(packageItem.productId);
     
     try {
@@ -322,40 +344,42 @@ export default function Store() {
               </Text>
             </View>
           ) : (
-            products.map((packageItem, index) => (
-              <TouchableOpacity
-                key={packageItem.productId}
-                style={[
-                  styles.purchaseOption,
-                  packageItem.popular && styles.popularOption
-                ]}
-                onPress={() => handlePurchase(packageItem)}
-                disabled={purchasing === packageItem.productId}
-              >
-                <View style={styles.purchaseInfo}>
-                  <View style={styles.purchaseTitleRow}>
-                    <Text style={styles.purchaseTitle}>{packageItem.title}</Text>
-                    {packageItem.popular && (
-                      <View style={styles.popularBadge}>
-                        <Text style={styles.popularBadgeText}>POPULAR</Text>
-                      </View>
+            products
+              .filter(packageItem => packageItem.productId) // Filter out any products without productId
+              .map((packageItem, index) => (
+                <TouchableOpacity
+                  key={packageItem.productId || `product-${index}`}
+                  style={[
+                    styles.purchaseOption,
+                    packageItem.popular && styles.popularOption
+                  ]}
+                  onPress={() => handlePurchase(packageItem)}
+                  disabled={purchasing === packageItem.productId || !packageItem.productId}
+                >
+                  <View style={styles.purchaseInfo}>
+                    <View style={styles.purchaseTitleRow}>
+                      <Text style={styles.purchaseTitle}>{packageItem.title}</Text>
+                      {packageItem.popular && (
+                        <View style={styles.popularBadge}>
+                          <Text style={styles.popularBadgeText}>POPULAR</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.purchaseSubtitle}>{packageItem.description || `Unlock ${packageItem.tokens} project${packageItem.tokens > 1 ? 's' : ''}`}</Text>
+                  </View>
+                  <View style={styles.priceContainer}>
+                    {packageItem.originalPrice && canUseDiscount() && (
+                      <Text style={styles.originalPrice}>{packageItem.originalPrice}</Text>
+                    )}
+                    <Text style={styles.price}>
+                      {packageItem.price}
+                    </Text>
+                    {purchasing === packageItem.productId && (
+                      <Text style={styles.purchasingText}>Processing...</Text>
                     )}
                   </View>
-                  <Text style={styles.purchaseSubtitle}>{packageItem.description || `Unlock ${packageItem.tokens} project${packageItem.tokens > 1 ? 's' : ''}`}</Text>
-                </View>
-                <View style={styles.priceContainer}>
-                  {packageItem.originalPrice && canUseDiscount() && (
-                    <Text style={styles.originalPrice}>{packageItem.originalPrice}</Text>
-                  )}
-                  <Text style={styles.price}>
-                    {packageItem.price}
-                  </Text>
-                  {purchasing === packageItem.productId && (
-                    <Text style={styles.purchasingText}>Processing...</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))
+                </TouchableOpacity>
+              ))
           )}
         </View>
 

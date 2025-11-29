@@ -5,7 +5,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "POD_INSTALLER_FLAGS": "--repo-update"
+      }
     },
     "preview": {
       "distribution": "internal"

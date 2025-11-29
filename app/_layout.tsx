@@ -69,20 +69,6 @@ function RootLayoutNav() {
             headerBackTitle: "Projects"
           }} 
         />
-        <Stack.Screen 
-          name="folder/[id]" 
-          options={{ 
-            title: "Folder",
-            headerBackTitle: "Project"
-          }} 
-        />
-        <Stack.Screen 
-          name="logsheet/[id]" 
-          options={{ 
-            title: "Log Sheet",
-            headerBackTitle: "Folder"
-          }} 
-        />
       </Stack>
       <Toast />
     </>

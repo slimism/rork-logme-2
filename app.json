@@ -29,15 +29,16 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.log-me-atan1jw1",
+      "package": "app.rork.logme.atan1jw1",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "INTERNET",
-        "CAMERA",
-        "com.android.vending.BILLING"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "com.android.vending.BILLING",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -70,6 +71,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "41f48dd4-6b7e-4283-a750-4e135f30a94a"
+      }
+    },
+    "owner": "devxhope"
   }
 }
