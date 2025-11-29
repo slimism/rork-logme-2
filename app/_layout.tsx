@@ -17,19 +17,33 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const isMountedRef = useRef(true);
+  const isMountedRef = useRef(false);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    isMountedRef.current = true;
+    
+    // Hide the native splash screen after a short delay to ensure component is mounted
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {
+        // Ignore errors
+      });
+    }, 100);
     
     return () => {
       isMountedRef.current = false;
+      clearTimeout(timer);
     };
   }, []);
 
   const handleSplashFinish = useCallback(() => {
+    // Ensure state update happens after component is mounted
     if (isMountedRef.current) {
-      setShowSplash(false);
+      // Use requestAnimationFrame to defer state update until after render
+      requestAnimationFrame(() => {
+        if (isMountedRef.current) {
+          setShowSplash(false);
+        }
+      });
     }
   }, []);
 
