@@ -1,21 +1,20 @@
-// Polyfill for React's use() hook which is needed for Zustand 5.x but not available in React 18
-
-// Import React first
 import * as React from 'react';
 
-// Add the use polyfill if it doesn't exist
-if (!React.use) {
-  React.use = function use(promise) {
-    if (promise && typeof promise.then === 'function') {
-      // For promises, throw to let React Suspense handle it
-      throw promise;
+try {
+  if (!React.use || typeof React.use !== 'function') {
+    const usePolyfill = function use(promise) {
+      if (promise && typeof promise === 'object' && typeof promise.then === 'function') {
+        throw promise;
+      }
+      return promise;
+    };
+    
+    React.use = usePolyfill;
+    
+    if (React.default && !React.default.use) {
+      React.default.use = usePolyfill;
     }
-    // For context-like usage, return the value directly
-    return promise;
-  };
-}
-
-// Also patch the default export if it exists
-if (React.default && !React.default.use) {
-  React.default.use = React.use;
+  }
+} catch (error) {
+  console.warn('Failed to polyfill React.use:', error);
 }
