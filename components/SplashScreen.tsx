@@ -15,9 +15,6 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   }, [onFinish]);
 
   useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    let isMounted = true;
-
     // Start animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -33,22 +30,12 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
       }),
     ]).start(() => {
       // Wait a bit then finish
-      if (isMounted) {
-        timeout = setTimeout(() => {
-          if (isMounted) {
-            handleFinish();
-          }
-        }, 1500);
-      }
+      const timeout = setTimeout(() => {
+        handleFinish();
+      }, 1500);
+      
+      return () => clearTimeout(timeout);
     });
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-    };
   }, [fadeAnim, scaleAnim, handleFinish]);
 
 

@@ -5,9 +5,6 @@ const config = getDefaultConfig(__dirname);
 // Fix for getDevServer error
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
-// Ensure polyfills are resolved first
-config.resolver.sourceExts = [...(config.resolver.sourceExts || []), 'js', 'jsx', 'ts', 'tsx'];
-
 // Disable development server features that might cause conflicts
 config.server = {
   ...config.server,

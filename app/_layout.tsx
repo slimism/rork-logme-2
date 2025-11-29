@@ -1,8 +1,6 @@
-// Import polyfill FIRST - this must run before any expo-router code
-import '../polyfills';
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from 'react-native-toast-message';
@@ -19,35 +17,14 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const isMountedRef = useRef(false);
 
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Hide the native splash screen after a short delay to ensure component is mounted
-    const timer = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {
-        // Ignore errors
-      });
-    }, 100);
-    
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(timer);
-    };
+    SplashScreen.hideAsync();
   }, []);
 
-  const handleSplashFinish = useCallback(() => {
-    // Ensure state update happens after component is mounted
-    if (isMountedRef.current) {
-      // Use requestAnimationFrame to defer state update until after render
-      requestAnimationFrame(() => {
-        if (isMountedRef.current) {
-          setShowSplash(false);
-        }
-      });
-    }
-  }, []);
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
 
   if (showSplash) {
     return <CustomSplashScreen onFinish={handleSplashFinish} />;
