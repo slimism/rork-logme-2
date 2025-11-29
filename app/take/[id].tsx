@@ -412,7 +412,6 @@ export default function EditTakeScreen() {
   };
 
   const formatFileNumber = (value: string): string => {
-    if (!value || typeof value !== 'string') return '';
     const numeric = value.replace(/[^0-9]/g, '');
     const num = parseInt(numeric, 10);
     if (isNaN(num)) return '';
@@ -420,7 +419,6 @@ export default function EditTakeScreen() {
   };
 
   const formatFileNumberOnBlur = (value: string): string => {
-    if (!value || typeof value !== 'string') return '';
     const numeric = value.replace(/[^0-9]/g, '');
     return numeric ? String(parseInt(numeric, 10)).padStart(4, '0') : '';
   };
@@ -446,7 +444,7 @@ export default function EditTakeScreen() {
   };
 
   const updateRangeData = (fieldId: string, type: 'from' | 'to', value: string) => {
-    const numericValue = value && typeof value === 'string' ? value.replace(/[^0-9]/g, '') : '';
+    const numericValue = value.replace(/[^0-9]/g, '');
     setRangeData(prev => ({
       ...prev,
       [fieldId]: {
