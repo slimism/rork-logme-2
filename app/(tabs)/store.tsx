@@ -379,7 +379,7 @@ export default function Store() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Secure payments processed through the App Store
+          Secure Payments are processed through Apple and Google Play Stores.
         </Text>
       </View>
     </ScrollView>
