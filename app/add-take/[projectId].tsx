@@ -43,6 +43,16 @@ export default function AddTakeScreen() {
   const wasteTemporaryStorageRef = useRef<{ [key: string]: string }>({});
 
   const inputRefs = useRef<Record<string, TextInput | null>>({});
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+
+  const handleInputFocus = (fieldId: string) => {
+    setTimeout(() => {
+      const inputRef = inputRefs.current[fieldId];
+      if (inputRef && scrollViewRef.current) {
+        scrollViewRef.current.scrollToFocusedInput(inputRef as any);
+      }
+    }, 100);
+  };
 
   const showNotification = (message: string, type: 'error' | 'info' = 'error') => {
     setNotification({ message, type });
@@ -2685,6 +2695,7 @@ This would break the logging logic and create inconsistencies in the file number
           keyboardType={getKeyboardType(field.id)}
           returnKeyType={isMultiline ? 'default' : 'next'}
           editable={!isDisabled}
+          onFocus={() => handleInputFocus(field.id)}
           onSubmitEditing={() => {
             if (!isMultiline && !isDisabled) {
               focusNextField(field.id, allFieldIds);
@@ -2771,6 +2782,7 @@ This would break the logging logic and create inconsistencies in the file number
       
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAwareScrollView
+          ref={scrollViewRef}
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 40 }]}
           enableOnAndroid={true}
@@ -2781,7 +2793,11 @@ This would break the logging logic and create inconsistencies in the file number
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           scrollEnabled={true}
-          keyboardOpeningTime={0}
+          keyboardOpeningTime={250}
+          enableOnIOS={true}
+          keyboardDismissMode="interactive"
+          scrollToOverflowEnabled={true}
+          viewIsInsideTabBar={false}
         >
         <View style={styles.formContainer}>
 
@@ -2819,6 +2835,7 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('sceneNumber')}
                   onSubmitEditing={() => !disabledFields.has('sceneNumber') && focusNextField('sceneNumber', allFieldIds)}
+                  onFocus={() => handleInputFocus('sceneNumber')}
                 />
               </View>
             )}
@@ -2854,6 +2871,7 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('shotNumber')}
                   onSubmitEditing={() => !disabledFields.has('shotNumber') && focusNextField('shotNumber', allFieldIds)}
+                  onFocus={() => handleInputFocus('shotNumber')}
                 />
               </View>
             )}
@@ -2890,6 +2908,7 @@ This would break the logging logic and create inconsistencies in the file number
                   returnKeyType="next"
                   editable={!disabledFields.has('takeNumber')}
                   onSubmitEditing={() => !disabledFields.has('takeNumber') && focusNextField('takeNumber', allFieldIds)}
+                  onFocus={() => handleInputFocus('takeNumber')}
                 />
               </View>
             )}
@@ -2983,6 +3002,7 @@ This would break the logging logic and create inconsistencies in the file number
                   maxLength={4}
                   returnKeyType="next"
                   editable={!disabledFields.has('cameraFile')}
+                  onFocus={() => handleInputFocus('cameraFile')}
                   onSubmitEditing={() => {
                     if (!disabledFields.has('cameraFile')) {
                       focusNextField('cameraFile', allFieldIds);
@@ -3005,6 +3025,7 @@ This would break the logging logic and create inconsistencies in the file number
                 placeholder="Enter card number"
                 placeholderTextColor={colors.subtext}
                 returnKeyType="next"
+                onFocus={() => handleInputFocus('cardNumber')}
                 onSubmitEditing={() => focusNextField('cardNumber', allFieldIds)}
               />
             </View>
@@ -3098,6 +3119,7 @@ This would break the logging logic and create inconsistencies in the file number
                   maxLength={4}
                   returnKeyType="next"
                   editable={!disabledFields.has('soundFile')}
+                  onFocus={() => handleInputFocus('soundFile')}
                   onSubmitEditing={() => {
                     if (!disabledFields.has('soundFile')) {
                       focusNextField('soundFile', allFieldIds);

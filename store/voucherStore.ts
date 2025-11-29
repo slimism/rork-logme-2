@@ -5,7 +5,7 @@ import { useTokenStore } from './subscriptionStore';
 
 export interface Voucher {
   code: string;
-  type: 'token' | 'unlimited' | 'discount';
+  type: 'token' | 'unlimited';
   value: number;
   description: string;
   used: boolean;
@@ -14,13 +14,9 @@ export interface Voucher {
 interface VoucherState {
   vouchers: Voucher[];
   usedVouchers: string[];
-  discountUsed: boolean;
-  discountPercentage: number;
   initializeDefaultVouchers: () => void;
   redeemVoucher: (code: string) => { success: boolean; message: string; voucher?: Voucher };
   isVoucherUsed: (code: string) => boolean;
-  canUseDiscount: () => boolean;
-  getDiscountPercentage: () => number;
 }
 
 const DEFAULT_VOUCHERS: Voucher[] = [
@@ -62,33 +58,6 @@ const DEFAULT_VOUCHERS: Voucher[] = [
 
   // Unlimited Tokens
   { code: 'LOGMUNLIMIT1', type: 'unlimited', value: 999999, description: 'Unlimited Tokens', used: false },
-
-  // 20% Off Any Bundle codes
-  { code: 'OFF20NOW', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'SAVE20LMA', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'LM20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'OFF20LOGM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'LOGME20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'OFF20BNDL', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'BUNDLE20OFF', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'GET20OFFLM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'OFF20-LM', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-  { code: 'LM20SAVE', type: 'discount', value: 20, description: '20% Off Any Bundle', used: false },
-
-  // 25% Off Any Bundle
-  { code: 'LMNEWYEAR26', type: 'discount', value: 25, description: '25% Off Any Bundle', used: false },
-
-  // 30% Off Any Bundle codes
-  { code: 'LESS30OFF', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'LM30SAVE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: '30LMOFFNOW', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'OFF30LESS', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'LOGME30BUNDLE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'BUNDLE30LMA', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'LESS30BNDL', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'GET30OFFLMLSS', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'OFF30-LOGM', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
-  { code: 'LM30SAVEBUNDLE', type: 'discount', value: 30, description: '30% Off Any Bundle', used: false },
 ];
 
 export const useVoucherStore = create<VoucherState>()(
@@ -96,8 +65,6 @@ export const useVoucherStore = create<VoucherState>()(
     (set, get) => ({
       vouchers: DEFAULT_VOUCHERS,
       usedVouchers: [],
-      discountUsed: false,
-      discountPercentage: 0,
 
       initializeDefaultVouchers: () => {
         const state = get();
@@ -118,10 +85,6 @@ export const useVoucherStore = create<VoucherState>()(
         
         if (state.usedVouchers.includes(normalizedCode)) {
           return { success: false, message: 'This voucher has already been used' };
-        }
-
-        if (voucher.type === 'discount' && state.discountUsed) {
-          return { success: false, message: 'Discount voucher can only be used once per device' };
         }
 
         const tokenStore = useTokenStore.getState();
@@ -149,18 +112,6 @@ export const useVoucherStore = create<VoucherState>()(
               voucher,
             };
 
-          case 'discount':
-            set((state) => ({
-              usedVouchers: [...state.usedVouchers, normalizedCode],
-              discountUsed: true,
-              discountPercentage: voucher.value,
-            }));
-            return {
-              success: true,
-              message: `Success! ${voucher.value}% discount applied to all token purchases`,
-              voucher,
-            };
-
           default:
             return { success: false, message: 'Invalid voucher type' };
         }
@@ -169,16 +120,6 @@ export const useVoucherStore = create<VoucherState>()(
       isVoucherUsed: (code: string) => {
         const state = get();
         return state.usedVouchers.includes(code.trim().toUpperCase());
-      },
-
-      canUseDiscount: () => {
-        const state = get();
-        return state.discountUsed;
-      },
-
-      getDiscountPercentage: () => {
-        const state = get();
-        return state.discountPercentage;
       },
     }),
     {

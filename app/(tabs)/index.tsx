@@ -392,6 +392,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.card,
     padding: 20,
     paddingTop: 1,
+    marginTop: -35,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },

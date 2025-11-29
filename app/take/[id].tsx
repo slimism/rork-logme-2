@@ -42,9 +42,19 @@ export default function EditTakeScreen() {
   const [disabledFields, setDisabledFields] = useState<Set<string>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const inputRefs = useRef<Record<string, TextInput | null>>({});
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
   const writingProgrammaticallyRef = useRef(false);
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
   const savedFieldValues = useRef<Record<string, string>>({});
+
+  const handleInputFocus = (fieldId: string) => {
+    setTimeout(() => {
+      const inputRef = inputRefs.current[fieldId];
+      if (inputRef && scrollViewRef.current) {
+        scrollViewRef.current.scrollToFocusedInput(inputRef as any);
+      }
+    }, 100);
+  };
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
@@ -2223,6 +2233,7 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               editable={!isDisabled}
+              onFocus={() => handleInputFocus(field.id)}
             />
           )}
         </View>
@@ -2254,6 +2265,7 @@ This would break the logging logic and create inconsistencies in the file number
           numberOfLines={isMultiline ? 3 : 1}
           keyboardType={getKeyboardType(field.id)}
           returnKeyType={isMultiline ? 'default' : 'next'}
+          onFocus={() => handleInputFocus(field.id)}
           onSubmitEditing={() => {
             if (!isMultiline) {
               const nextFieldId = getNextFieldId(field.id, allFieldIds);
@@ -2366,6 +2378,7 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               returnKeyType="next"
+              onFocus={() => handleInputFocus(fieldId)}
               onSubmitEditing={() => {
                 const nextFieldId = getNextFieldId(fieldId, allFieldIds);
                 if (nextFieldId && inputRefs.current[nextFieldId]) {
@@ -2446,6 +2459,7 @@ This would break the logging logic and create inconsistencies in the file number
         
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <KeyboardAwareScrollView
+            ref={scrollViewRef}
             style={{ flex: 1 }}
             contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 40 }]}
             enableOnAndroid={true}
@@ -2456,7 +2470,11 @@ This would break the logging logic and create inconsistencies in the file number
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             scrollEnabled={true}
-            keyboardOpeningTime={0}
+            keyboardOpeningTime={250}
+            enableOnIOS={true}
+            keyboardDismissMode="interactive"
+            scrollToOverflowEnabled={true}
+            viewIsInsideTabBar={false}
           >
         <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
@@ -2479,6 +2497,7 @@ This would break the logging logic and create inconsistencies in the file number
                   Scene<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
+                  ref={(ref) => { inputRefs.current['sceneNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
                     disabledFields.has('sceneNumber') && styles.disabledInput,
@@ -2489,6 +2508,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
+                  onFocus={() => handleInputFocus('sceneNumber')}
                 />
               </View>
             )}
@@ -2502,9 +2522,9 @@ This would break the logging logic and create inconsistencies in the file number
                   Shot<Text style={styles.asterisk}> *</Text>
                 </Text>
                 <TextInput
+                  ref={(ref) => { inputRefs.current['shotNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
-                    styles.shotFieldInput,
                     disabledFields.has('shotNumber') && styles.disabledInput,
                     validationErrors.has('shotNumber') && styles.errorInput
                   ]}
@@ -2513,6 +2533,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
+                  onFocus={() => handleInputFocus('shotNumber')}
                 />
               </View>
             )}
@@ -2524,6 +2545,7 @@ This would break the logging logic and create inconsistencies in the file number
                   validationErrors.has('takeNumber') && styles.errorLabel
                 ]}>Take<Text style={styles.asterisk}> *</Text></Text>
                 <TextInput
+                  ref={(ref) => { inputRefs.current['takeNumber'] = ref; }}
                   style={[
                     styles.topFieldInput,
                     disabledFields.has('takeNumber') && styles.disabledInput,
@@ -2535,6 +2557,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
+                  onFocus={() => handleInputFocus('takeNumber')}
                 />
               </View>
             )}
@@ -2603,6 +2626,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={'Enter card number'}
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
+                  onFocus={() => handleInputFocus('cardNumber')}
                 />
               </View>
             ) : (
@@ -2621,6 +2645,7 @@ This would break the logging logic and create inconsistencies in the file number
                         placeholder={`Enter ${label}`}
                         placeholderTextColor={colors.subtext}
                         returnKeyType="next"
+                        onFocus={() => handleInputFocus(fieldId)}
                       />
                     </View>
                   );
@@ -2654,6 +2679,7 @@ This would break the logging logic and create inconsistencies in the file number
                 placeholderTextColor={colors.subtext}
                 returnKeyType="next"
                 editable={!disabledFields.has('episodeNumber')}
+                onFocus={() => handleInputFocus('episodeNumber')}
               />
             </View>
           )}
@@ -2855,7 +2881,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   scrollContent: {
     flexGrow: 1,
     alignItems: 'stretch',
-    padding: 16,
+    paddingTop: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   scrollContentLandscape: {
     paddingHorizontal: 16,
@@ -3273,7 +3301,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: 'white',
   },
   takeInfo: {
-    marginBottom: 16,
+    marginBottom: 12,
     alignItems: 'center',
   },
   takeTitle: {

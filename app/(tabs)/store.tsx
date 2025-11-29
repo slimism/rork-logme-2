@@ -29,7 +29,7 @@ export default function Store() {
   const colors = useColors();
   const { tokens, addTokens, getRemainingTrialLogs } = useTokenStore();
   const { darkMode } = useThemeStore();
-  const { redeemVoucher, canUseDiscount, getDiscountPercentage } = useVoucherStore();
+  const { redeemVoucher } = useVoucherStore();
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [products, setProducts] = useState<TokenPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,6 @@ export default function Store() {
         return {
           ...product,
           popular: isPopular,
-          // You can add originalPrice and savings if you have discount logic
         };
       });
       
@@ -230,14 +229,6 @@ export default function Store() {
     }
   };
 
-  const getDiscountedPrice = (originalPrice: number): string => {
-    if (!canUseDiscount()) {
-      return originalPrice.toFixed(2);
-    }
-    const discountPercent = getDiscountPercentage();
-    return (originalPrice * (1 - discountPercent / 100)).toFixed(2);
-  };
-
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
@@ -368,9 +359,6 @@ export default function Store() {
                     <Text style={styles.purchaseSubtitle}>{packageItem.description || `Unlock ${packageItem.tokens} project${packageItem.tokens > 1 ? 's' : ''}`}</Text>
                   </View>
                   <View style={styles.priceContainer}>
-                    {packageItem.originalPrice && canUseDiscount() && (
-                      <Text style={styles.originalPrice}>{packageItem.originalPrice}</Text>
-                    )}
                     <Text style={styles.price}>
                       {packageItem.price}
                     </Text>
@@ -619,11 +607,5 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  originalPrice: {
-    fontSize: 13,
-    color: colors.subtext,
-    textDecorationLine: 'line-through',
-    marginBottom: 2,
   },
 });
