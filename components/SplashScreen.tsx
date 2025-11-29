@@ -15,7 +15,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   }, [onFinish]);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
 
     // Start animations
