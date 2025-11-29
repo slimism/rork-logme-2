@@ -1,0 +1,14 @@
+# Normalize line endings and file permissions
+* text=auto eol=lf
+
+# Ensure image files are treated as binary and have correct permissions
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+
+# Remove execute bit from all files
+* -text
+
