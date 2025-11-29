@@ -1,3 +1,5 @@
+// Import polyfill FIRST - this must run before any expo-router code
+import '../polyfills';
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState, useCallback, useRef } from "react";

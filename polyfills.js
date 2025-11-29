@@ -38,21 +38,23 @@ const usePolyfill = function use(promise) {
       }
       
       // Patch module cache for future imports
-      if (require.cache) {
+      if (require.cache && typeof require.resolve === 'function') {
         try {
           const reactModulePath = require.resolve('react');
-          const reactModule = require.cache[reactModulePath];
-          if (reactModule && reactModule.exports) {
-            const exports = reactModule.exports;
-            if (exports && (!exports.use || typeof exports.use !== 'function')) {
-              exports.use = usePolyfill;
-            }
-            if (exports && exports.default && (!exports.default.use || typeof exports.default.use !== 'function')) {
-              exports.default.use = usePolyfill;
+          if (reactModulePath && typeof reactModulePath === 'string') {
+            const reactModule = require.cache[reactModulePath];
+            if (reactModule && reactModule.exports) {
+              const exports = reactModule.exports;
+              if (exports && (!exports.use || typeof exports.use !== 'function')) {
+                exports.use = usePolyfill;
+              }
+              if (exports && exports.default && (!exports.default.use || typeof exports.default.use !== 'function')) {
+                exports.default.use = usePolyfill;
+              }
             }
           }
         } catch (e) {
-          // Ignore module cache errors
+          // Ignore module cache errors - this is not critical
         }
       }
     }

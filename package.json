@@ -1,6 +1,6 @@
 {
   "name": "expo-app",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "version": "1.0.0",
   "packageManager": "bun@1.3.3",
   "scripts": {
