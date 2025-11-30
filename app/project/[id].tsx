@@ -448,7 +448,7 @@ export default function ProjectScreen() {
     );
   }
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, darkMode);
 
   return (
     <View style={styles.container}>
@@ -729,7 +729,7 @@ export default function ProjectScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>, darkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -919,7 +919,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: 24,
   },
   shotHeader: {
-    backgroundColor: '#b8e6fe',
+    backgroundColor: darkMode ? '#1a1a1a' : '#b8e6fe',
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 0,
