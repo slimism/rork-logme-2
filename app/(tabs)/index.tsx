@@ -246,8 +246,8 @@ export default function ProjectsScreen() {
   };
 
   const renderHeader = () => (
-    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-      <View style={styles.header}>
+    <View style={styles.headerSafeArea}>
+      <View style={[styles.header, { paddingTop: insets.top + 7 }]}>
         <View style={styles.titleSection}>
           <View style={styles.appHeader}>
             <View style={styles.logoContainer}>
@@ -319,7 +319,7 @@ export default function ProjectsScreen() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 
   const styles = createStyles(colors);
@@ -405,9 +405,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   header: {
     backgroundColor: colors.card,
-    padding: 20,
-    paddingTop: 1,
-    marginTop: -35,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
