@@ -919,7 +919,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, darkMode: boolean) =
     marginBottom: 24,
   },
   shotHeader: {
-    backgroundColor: darkMode ? '#1a1a1a' : '#b8e6fe',
+    backgroundColor: darkMode ? '#252525' : '#b8e6fe',
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 0,
