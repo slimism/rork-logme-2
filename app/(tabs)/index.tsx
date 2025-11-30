@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Text, TextInput, Alert, TouchableOpacity, PanResponder, Animated, Modal, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Plus, Search, Film, Clock, Trash2, User } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -21,6 +21,7 @@ export default function ProjectsScreen() {
   const { tokens, canCreateProject, getRemainingTrialLogs } = useTokenStore();
   const colors = useColors();
   const { darkMode } = useThemeStore();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -324,13 +325,18 @@ export default function ProjectsScreen() {
   const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-      >
-        {renderHeader()}
+    <View style={styles.container}>
+      {/* Safe area overlay - only covers the top safe area in dark mode */}
+      {darkMode && (
+        <View style={[styles.safeAreaOverlay, { height: insets.top }]} />
+      )}
+      <SafeAreaView style={styles.container} edges={[]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+          {renderHeader()}
 
         {filteredProjects.length === 0 ? (
           <EmptyState
@@ -376,7 +382,8 @@ export default function ProjectsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -384,6 +391,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  safeAreaOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1a1a', // colors.card in dark mode
+    zIndex: 1000,
   },
   headerSafeArea: {
     backgroundColor: colors.card,
