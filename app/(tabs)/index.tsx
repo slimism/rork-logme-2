@@ -434,7 +434,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     height: '100%',
   },
   appTitle: {
-    fontSize: 28,
+    fontSize: 14,
+    fontFamily: 'Montserrat',
     fontWeight: 'bold',
     color: colors.text,
     flex: 1,
