@@ -259,7 +259,6 @@ export default function ProjectsScreen() {
                 onError={(error) => console.error('[ProjectsScreen] Logo error:', error.nativeEvent.error)}
               />
             </View>
-            <Text style={styles.appTitle}>LogMe</Text>
             <View style={styles.headerActions}>
               <View style={styles.creditsContainer}>
                 <Text style={styles.creditsLabel}>Remaining Tokens</Text>
