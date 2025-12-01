@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
+    "privacy": "https://sites.google.com/view/privacy-log-me?usp=sharing",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -29,7 +30,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.logme.atan1jw1",
+      "package": "com.devxhope.logmeatan1jw1",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
