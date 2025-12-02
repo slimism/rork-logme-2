@@ -147,11 +147,16 @@ class IAPService {
           // Get the raw price value (use price or parse displayPrice)
           const rawPrice = product.price || (product.displayPrice ? parseFloat(product.displayPrice.replace(/[^0-9.-]/g, '')) : 0);
           
+          // Clean the product title by removing everything in parentheses
+          let cleanTitle = product.title || product.displayName || productIdentifier;
+          // Remove all content in parentheses (including nested parentheses)
+          cleanTitle = cleanTitle.replace(/\s*\([^)]*(\([^)]*\))*[^)]*\)\s*/g, '').trim();
+          
           const mappedProduct = {
             productId: productIdentifier, // Map 'id' to 'productId' for our interface
             price: this.formatPrice(rawPrice),
             currency: product.currency || 'USD',
-            title: product.title || product.displayName || productIdentifier,
+            title: cleanTitle,
             description: product.description || '',
             tokens: this.getTokensForProduct(productIdentifier),
           };
