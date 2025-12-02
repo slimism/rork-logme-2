@@ -8,6 +8,7 @@ import { useTokenStore } from '@/store/subscriptionStore';
 import { useColors } from '@/constants/colors';
 import { ClassificationType, ShotDetailsType, TakeData } from '@/types';
 import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AddTakeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -15,6 +16,7 @@ export default function AddTakeScreen() {
   const tokenStore = useTokenStore();
   const { getRemainingTrialLogs, tokens, canAddLog } = tokenStore;
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   
   const [project, setProject] = useState(projects.find(p => p.id === projectId));
   const [takeData, setTakeData] = useState<TakeData>({});
@@ -2784,7 +2786,7 @@ This would break the logging logic and create inconsistencies in the file number
         <KeyboardAwareScrollView
           ref={scrollViewRef}
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 40 }]}
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: Math.max(40, insets.bottom + 20) }]}
           enableOnAndroid={true}
           enableAutomaticScroll={true}
           extraScrollHeight={150}
@@ -3418,7 +3420,7 @@ This would break the logging logic and create inconsistencies in the file number
           </View>
         </View>
 
-        <View style={styles.addTakeSection}>
+        <View style={[styles.addTakeSection, { marginBottom: Math.max(0, insets.bottom) }]}>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               testID="good-take-button"

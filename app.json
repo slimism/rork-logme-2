@@ -9,9 +9,7 @@
     "userInterfaceStyle": "automatic",
     "privacy": "https://sites.google.com/view/privacy-log-me?usp=sharing",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1f1f20"
     },
     "ios": {
       "supportsTablet": true,
