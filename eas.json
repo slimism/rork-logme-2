@@ -8,9 +8,6 @@
       "distribution": "internal",
       "env": {
         "POD_INSTALLER_FLAGS": "--repo-update"
-      },
-      "android": {
-        "buildType": "app-bundle"
       }
     },
     "preview": {
