@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, Text, TextInput, Alert, Modal, TouchableOpacity, Platform, Keyboard, useWindowDimensions, TouchableWithoutFeedback } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { ArrowLeft, Check } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
@@ -21,6 +21,7 @@ export default function EditTakeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projects, logSheets, updateLogSheet, updateTakeNumbers, moveExistingLogBefore, updateFileNumbers } = useProjectStore();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
 
   const [logSheet, setLogSheet] = useState(logSheets.find(l => l.id === id));
   const [project, setProject] = useState<any>(null);
@@ -47,14 +48,6 @@ export default function EditTakeScreen() {
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
   const savedFieldValues = useRef<Record<string, string>>({});
 
-  const handleInputFocus = (fieldId: string) => {
-    setTimeout(() => {
-      const inputRef = inputRefs.current[fieldId];
-      if (inputRef && scrollViewRef.current) {
-        scrollViewRef.current.scrollToFocusedInput(inputRef as any);
-      }
-    }, 100);
-  };
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
@@ -2233,7 +2226,6 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               editable={!isDisabled}
-              onFocus={() => handleInputFocus(field.id)}
             />
           )}
         </View>
@@ -2265,7 +2257,6 @@ This would break the logging logic and create inconsistencies in the file number
           numberOfLines={isMultiline ? 3 : 1}
           keyboardType={getKeyboardType(field.id)}
           returnKeyType={isMultiline ? 'default' : 'next'}
-          onFocus={() => handleInputFocus(field.id)}
           onSubmitEditing={() => {
             if (!isMultiline) {
               const nextFieldId = getNextFieldId(field.id, allFieldIds);
@@ -2378,7 +2369,6 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               returnKeyType="next"
-              onFocus={() => handleInputFocus(fieldId)}
               onSubmitEditing={() => {
                 const nextFieldId = getNextFieldId(fieldId, allFieldIds);
                 if (nextFieldId && inputRefs.current[nextFieldId]) {
@@ -2448,34 +2438,33 @@ This would break the logging logic and create inconsistencies in the file number
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safeArea}>
-        <Stack.Screen
-          options={{
-            title: "Edit Take",
-            headerLeft: () => <HeaderLeft />,
-            headerBackVisible: false,
-          }}
-        />
-        
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAwareScrollView
-            ref={scrollViewRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 40 }]}
-            enableOnAndroid={true}
-            enableAutomaticScroll={true}
-            extraScrollHeight={150}
-            extraHeight={100}
-            enableResetScrollToCoords={false}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={true}
-            keyboardOpeningTime={250}
-            enableOnIOS={true}
-            keyboardDismissMode="interactive"
-            scrollToOverflowEnabled={true}
-            viewIsInsideTabBar={false}
-          >
+      <Stack.Screen
+        options={{
+          title: "Edit Take",
+          headerLeft: () => <HeaderLeft />,
+          headerBackVisible: false,
+        }}
+      />
+      
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAwareScrollView
+          ref={scrollViewRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: Math.max(40, insets.bottom + 20) }]}
+          enableOnAndroid={false}
+          enableAutomaticScroll={false}
+          extraScrollHeight={150}
+          extraHeight={100}
+          enableResetScrollToCoords={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          keyboardOpeningTime={250}
+          enableOnIOS={true}
+          keyboardDismissMode="interactive"
+          scrollToOverflowEnabled={true}
+          viewIsInsideTabBar={false}
+        >
         <View style={styles.formContainer}>
           <View style={styles.takeInfo}>
             <Text style={styles.takeTitle}>
@@ -2508,7 +2497,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
-                  onFocus={() => handleInputFocus('sceneNumber')}
                 />
               </View>
             )}
@@ -2533,7 +2521,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
-                  onFocus={() => handleInputFocus('shotNumber')}
                 />
               </View>
             )}
@@ -2557,7 +2544,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
-                  onFocus={() => handleInputFocus('takeNumber')}
                 />
               </View>
             )}
@@ -2626,7 +2612,6 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={'Enter card number'}
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
-                  onFocus={() => handleInputFocus('cardNumber')}
                 />
               </View>
             ) : (
@@ -2645,7 +2630,6 @@ This would break the logging logic and create inconsistencies in the file number
                         placeholder={`Enter ${label}`}
                         placeholderTextColor={colors.subtext}
                         returnKeyType="next"
-                        onFocus={() => handleInputFocus(fieldId)}
                       />
                     </View>
                   );
@@ -2679,7 +2663,6 @@ This would break the logging logic and create inconsistencies in the file number
                 placeholderTextColor={colors.subtext}
                 returnKeyType="next"
                 editable={!disabledFields.has('episodeNumber')}
-                onFocus={() => handleInputFocus('episodeNumber')}
               />
             </View>
           )}
@@ -2752,7 +2735,7 @@ This would break the logging logic and create inconsistencies in the file number
           </View>
         </View>
 
-        <View style={[styles.addTakeSection, { paddingBottom: 40 }]}>
+        <View style={[styles.addTakeSection, { marginBottom: Math.max(0, insets.bottom) }]}>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               testID="good-take-button"
@@ -2780,7 +2763,6 @@ This would break the logging logic and create inconsistencies in the file number
         </View>
       </KeyboardAwareScrollView>
     </TouchableWithoutFeedback>
-      </SafeAreaView >
 
       <Modal
         visible={showWasteModal}

@@ -151,6 +151,10 @@ class IAPService {
           let cleanTitle = product.title || product.displayName || productIdentifier;
           // Remove all content in parentheses (including nested parentheses)
           cleanTitle = cleanTitle.replace(/\s*\([^)]*(\([^)]*\))*[^)]*\)\s*/g, '').trim();
+          // Remove any trailing closing parentheses or opening parentheses that might remain
+          cleanTitle = cleanTitle.replace(/\)\s*$/g, '').replace(/^\s*\(/g, '').trim();
+          // Remove any standalone parentheses
+          cleanTitle = cleanTitle.replace(/\s*[()]\s*/g, ' ').trim();
           
           const mappedProduct = {
             productId: productIdentifier, // Map 'id' to 'productId' for our interface
