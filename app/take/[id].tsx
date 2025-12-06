@@ -48,6 +48,10 @@ export default function EditTakeScreen() {
   const lastAutoIncrementRef = useRef<{ [key: string]: number }>({});
   const savedFieldValues = useRef<Record<string, string>>({});
 
+  const handleInputFocus = (fieldId: string) => {
+    // Removed scrollToFocusedInput to prevent double scroll
+    // Automatic scroll (enableAutomaticScroll={true}) will handle positioning
+  };
 
   const { width, height } = useWindowDimensions();
   const styles = createStyles(colors);
@@ -2226,6 +2230,7 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               editable={!isDisabled}
+              onFocus={() => handleInputFocus(field.id)}
             />
           )}
         </View>
@@ -2257,6 +2262,7 @@ This would break the logging logic and create inconsistencies in the file number
           numberOfLines={isMultiline ? 3 : 1}
           keyboardType={getKeyboardType(field.id)}
           returnKeyType={isMultiline ? 'default' : 'next'}
+          onFocus={() => handleInputFocus(field.id)}
           onSubmitEditing={() => {
             if (!isMultiline) {
               const nextFieldId = getNextFieldId(field.id, allFieldIds);
@@ -2369,6 +2375,7 @@ This would break the logging logic and create inconsistencies in the file number
               keyboardType="numeric"
               maxLength={4}
               returnKeyType="next"
+              onFocus={() => handleInputFocus(fieldId)}
               onSubmitEditing={() => {
                 const nextFieldId = getNextFieldId(fieldId, allFieldIds);
                 if (nextFieldId && inputRefs.current[nextFieldId]) {
@@ -2451,8 +2458,8 @@ This would break the logging logic and create inconsistencies in the file number
           ref={scrollViewRef}
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: Math.max(40, insets.bottom + 20) }]}
-          enableOnAndroid={false}
-          enableAutomaticScroll={false}
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
           extraScrollHeight={150}
           extraHeight={100}
           enableResetScrollToCoords={false}
@@ -2497,6 +2504,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('sceneNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('sceneNumber')}
+                  onFocus={() => handleInputFocus('sceneNumber')}
                 />
               </View>
             )}
@@ -2521,6 +2529,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={disabledFields.has('shotNumber') ? '' : ''}
                   placeholderTextColor={colors.subtext}
                   editable={!disabledFields.has('shotNumber')}
+                  onFocus={() => handleInputFocus('shotNumber')}
                 />
               </View>
             )}
@@ -2544,6 +2553,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholderTextColor={colors.subtext}
                   keyboardType="numeric"
                   editable={!disabledFields.has('takeNumber')}
+                  onFocus={() => handleInputFocus('takeNumber')}
                 />
               </View>
             )}
@@ -2612,6 +2622,7 @@ This would break the logging logic and create inconsistencies in the file number
                   placeholder={'Enter card number'}
                   placeholderTextColor={colors.subtext}
                   returnKeyType="next"
+                  onFocus={() => handleInputFocus('cardNumber')}
                 />
               </View>
             ) : (
@@ -2630,6 +2641,7 @@ This would break the logging logic and create inconsistencies in the file number
                         placeholder={`Enter ${label}`}
                         placeholderTextColor={colors.subtext}
                         returnKeyType="next"
+                        onFocus={() => handleInputFocus(fieldId)}
                       />
                     </View>
                   );
@@ -2663,6 +2675,7 @@ This would break the logging logic and create inconsistencies in the file number
                 placeholderTextColor={colors.subtext}
                 returnKeyType="next"
                 editable={!disabledFields.has('episodeNumber')}
+                onFocus={() => handleInputFocus('episodeNumber')}
               />
             </View>
           )}
