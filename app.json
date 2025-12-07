@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LogMe Clone",
+    "name": "LogMe - Film Logger",
     "slug": "log-me-atan1jw1",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,10 +16,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.log-me-atan1jw1",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
+        "NSPhotoLibraryUsageDescription": "LogMe needs access to your photos to add project logos and images to your film production logs.",
+        "NSCameraUsageDescription": "LogMe needs access to your camera to capture photos for project logos and documentation.",
+        "NSMicrophoneUsageDescription": "LogMe needs access to your microphone for audio logging features during film production."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -32,18 +33,16 @@
       },
       "package": "com.devxhope.logmeatan1jw1",
       "versionCode": 1,
+      "targetSdkVersion": 34,
+      "minSdkVersion": 21,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
         "android.permission.INTERNET",
         "android.permission.CAMERA",
         "com.android.vending.BILLING",
-        "android.permission.RECORD_AUDIO",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "INTERNET"
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -59,7 +58,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
+          "photosPermission": "LogMe needs access to your photos to add project logos and images to your film production logs."
         }
       ],
       [
