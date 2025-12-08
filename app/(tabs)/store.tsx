@@ -332,7 +332,7 @@ export default function Store() {
             ? 'Secure Payments are processed through the Apple App Store.'
             : Platform.OS === 'android'
             ? 'Secure Payments are processed through Google Play Store.'
-            : 'Secure Payments are processed through Apple and Google Play Stores.'}
+            : 'Secure Payments are processed through the Apple App Store.'}
         </Text>
       </View>
     </ScrollView>

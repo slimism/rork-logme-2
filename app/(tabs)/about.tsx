@@ -25,7 +25,7 @@ export default function AboutScreen() {
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
-            <Text style={styles.versionValue}>1.0.0</Text>
+            <Text style={styles.versionValue}>1.1.0</Text>
           </View>
           <View style={[styles.versionRow, { marginTop: 16 }]}>
             <Text style={styles.versionLabel}>Dark Mode</Text>
@@ -69,6 +69,33 @@ export default function AboutScreen() {
         <View style={styles.whiteContainer}>
           <Text style={styles.aboutText}>
             LogMe is a professional tool designed for film production crews to efficiently manage projects and takes. It offers features like take logging, smart filtering, PDF export, customizable fields, and multi-camera support.
+          </Text>
+        </View>
+
+        <Text style={styles.outsideSectionTitle}>LEGAL</Text>
+        <View style={styles.whiteContainer}>
+          <Text style={styles.legalText}>
+            <Text
+              onPress={() => {
+                Linking.openURL('https://sites.google.com/view/privacy-log-me?usp=sharing').catch((err) => {
+                  console.log('[About] Failed to open privacy policy', err);
+                });
+              }}
+              style={{ color: colors.primary, textDecorationLine: 'underline' }}
+            >
+              Privacy Policy
+            </Text>
+            {' • '}
+            <Text
+              onPress={() => {
+                Linking.openURL('https://sites.google.com/d/1OjgOIpfZzcuUx8kR3JUwGXn_SI3-2G7j/p/1y0TonMrE2cFF2CoKl3_s4_NjccsAZ8r0/edit').catch((err) => {
+                  console.log('[About] Failed to open terms and conditions', err);
+                });
+              }}
+              style={{ color: colors.primary, textDecorationLine: 'underline' }}
+            >
+              Terms and Conditions
+            </Text>
           </Text>
         </View>
 
@@ -217,5 +244,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.text,
     lineHeight: 24,
     fontWeight: '400',
+  },
+  legalText: {
+    fontSize: 17,
+    color: colors.text,
+    lineHeight: 24,
+    fontWeight: '400',
+    textAlign: 'center',
   },
 });

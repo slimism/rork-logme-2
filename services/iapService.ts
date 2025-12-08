@@ -122,7 +122,8 @@ class IAPService {
         return [];
       }
 
-      // Fetch products from App Store (iOS) or Google Play (Android)
+      // Fetch products from App Store (iOS) using StoreKit
+      // On iOS builds, this exclusively uses Apple's App Store payment system
       // Note: fetchProducts replaced getProducts in react-native-iap v14+
       const products = await RNIap.fetchProducts({ skus: PRODUCT_IDS });
       

@@ -3,15 +3,11 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity,
-  Alert,
-  Platform,
 } from 'react-native';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { Crown, Check, Layers } from 'lucide-react-native';
-import { useSubscriptionStore } from '@/store/subscriptionStore';
 
 interface UpgradeModalProps {
   visible: boolean;
@@ -24,43 +20,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   onClose,
   onUpgrade,
 }) => {
-  const { setPro } = useSubscriptionStore();
-
-  const handlePurchase = async () => {
-    try {
-      // In a real app, this would integrate with expo-in-app-purchases or similar
-      // For now, we'll simulate the purchase
-      if (Platform.OS === 'web') {
-        // Web simulation
-        const confirmed = window.confirm('Simulate purchase of Film Log Pro subscription?');
-        if (confirmed) {
-          setPro(true, new Date().toISOString());
-          Alert.alert('Success!', 'Welcome to Film Log Pro!');
-          onUpgrade?.();
-          onClose();
-        }
-      } else {
-        // Mobile simulation - in production, use actual IAP
-        Alert.alert(
-          'Purchase Film Log Pro',
-          'Choose your subscription plan to unlock unlimited projects and remove ads.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Purchase',
-              onPress: () => {
-                setPro(true, new Date().toISOString());
-                Alert.alert('Success!', 'Welcome to Film Log Pro!');
-                onUpgrade?.();
-                onClose();
-              },
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Purchase failed. Please try again.');
-    }
+  const handleUpgrade = () => {
+    // Navigate to store page for purchasing
+    onUpgrade?.();
+    onClose();
   };
 
   const features = [
@@ -132,7 +95,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           />
           <Button
             title="Upgrade Now"
-            onPress={handlePurchase}
+            onPress={handleUpgrade}
             style={[styles.button, styles.upgradeButton]}
             icon={<Crown size={18} color="white" />}
           />
