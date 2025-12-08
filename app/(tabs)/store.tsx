@@ -184,51 +184,6 @@ export default function Store() {
     }
   };
 
-  const handleRestorePurchases = async () => {
-    if (Platform.OS === 'web') {
-      Alert.alert(
-        'Restore Not Available',
-        'Purchase restoration is not available on web.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    try {
-      const restoredPurchases = await iapService.restorePurchases();
-      
-      if (restoredPurchases.length > 0) {
-        let totalTokens = 0;
-        restoredPurchases.forEach(purchase => {
-          if (purchase.success && purchase.productId) {
-            totalTokens += iapService.getTokensForProduct(purchase.productId);
-          }
-        });
-        
-        if (totalTokens > 0) {
-          addTokens(totalTokens);
-          Alert.alert(
-            'Purchases Restored',
-            `Successfully restored ${totalTokens} tokens from previous purchases.`,
-            [{ text: 'OK' }]
-          );
-        }
-      } else {
-        Alert.alert(
-          'No Purchases Found',
-          'No previous purchases were found to restore.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      Alert.alert(
-        'Restore Failed',
-        'Failed to restore purchases. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
@@ -371,15 +326,13 @@ export default function Store() {
           )}
         </View>
 
-      {Platform.OS !== 'web' && (
-        <TouchableOpacity style={styles.restoreButton} onPress={handleRestorePurchases}>
-          <Text style={styles.restoreButtonText}>Restore Purchases</Text>
-        </TouchableOpacity>
-      )}
-
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Secure Payments are processed through Apple and Google Play Stores.
+          {Platform.OS === 'ios' 
+            ? 'Secure Payments are processed through the Apple App Store.'
+            : Platform.OS === 'android'
+            ? 'Secure Payments are processed through Google Play Store.'
+            : 'Secure Payments are processed through Apple and Google Play Stores.'}
         </Text>
       </View>
     </ScrollView>
@@ -536,21 +489,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   loadingText: {
     fontSize: 16,
     color: colors.subtext,
-  },
-  restoreButton: {
-    backgroundColor: 'transparent',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  restoreButtonText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   footer: {
     alignItems: 'center',

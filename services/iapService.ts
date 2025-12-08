@@ -304,40 +304,6 @@ class IAPService {
     }
   }
 
-  async restorePurchases(): Promise<PurchaseResult[]> {
-    if (!this.initialized) {
-      const initialized = await this.initialize();
-      if (!initialized) {
-        return [];
-      }
-    }
-
-    if (Platform.OS === 'web' || (Platform.OS !== 'ios' && Platform.OS !== 'android')) {
-      return [];
-    }
-
-    if (!RNIap) {
-      console.warn('react-native-iap not available. IAP requires a development build.');
-      return [];
-    }
-
-    try {
-      console.log('Restoring purchases...');
-      
-      // Restore completed transactions
-      const purchases = await RNIap.getAvailablePurchases();
-      
-      return purchases.map((purchase: any) => ({
-        success: true,
-        productId: purchase.productId,
-        transactionId: purchase.transactionId || purchase.transactionReceipt,
-      }));
-    } catch (error) {
-      console.error('Failed to restore purchases:', error);
-      return [];
-    }
-  }
-
   getTokensForProduct(productId: string): number {
     // Get token count from the mapping
     return PRODUCT_TO_TOKEN_MAP[productId] || 0;
