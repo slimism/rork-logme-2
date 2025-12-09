@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search, FileText } from 'lucide-react-native';
+import { Plus, ArrowLeft, Share, Check, SlidersHorizontal, X, Search } from 'lucide-react-native';
 import { useProjectStore } from '@/store/projectStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useTokenStore } from '@/store/subscriptionStore';
@@ -11,8 +11,6 @@ import { EmptyState } from '@/components/EmptyState';
 import { useColors } from '@/constants/colors';
 import { exportProjectToPDF } from '@/utils/pdfExport';
 import { ClassificationType } from '@/types';
-import { consoleLogger } from '@/utils/consoleLogger';
-import { logger } from '@/components/CameraHandlers/logger';
 
 export default function ProjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,7 +26,6 @@ export default function ProjectScreen() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [isExportingLogs, setIsExportingLogs] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     scene: '',
@@ -81,9 +78,6 @@ export default function ProjectScreen() {
   const HeaderRight = () => {
     return (
       <View style={styles.headerRightContainer}>
-        <TouchableOpacity onPress={handleExportLogs} style={styles.exportButton} disabled={isExportingLogs}>
-          <FileText size={20} color={isExportingLogs ? colors.subtext : colors.primary} />
-        </TouchableOpacity>
         <TouchableOpacity onPress={handleExportPDF} style={styles.exportButton} disabled={isExporting}>
           <Share size={20} color={isExporting ? colors.subtext : colors.primary} />
         </TouchableOpacity>
@@ -141,30 +135,6 @@ export default function ProjectScreen() {
       setIsExporting(false);
     }
   };
-
-  const handleExportLogs = async () => {
-    setIsExportingLogs(true);
-    try {
-      const success = await consoleLogger.exportLogs();
-      if (!success) {
-        Alert.alert('Error', 'Failed to export comprehensive logs. Please try again.');
-      } else {
-        const cameraHandlerLogCount = logger.getLogs().length;
-        const consoleLogCount = consoleLogger.getLogs().length;
-        Alert.alert(
-          'Success', 
-          `Comprehensive logs exported successfully!\n\nConsole logs: ${consoleLogCount}\nCamera handler logs: ${cameraHandlerLogCount}`
-        );
-      }
-    } catch (error) {
-      console.error('Export logs error:', error);
-      Alert.alert('Error', 'Failed to export comprehensive logs. Please try again.');
-    } finally {
-      setIsExportingLogs(false);
-    }
-  };
-
-
 
   // Get recently created logs (2 most recent)
   const recentlyCreatedLogs = React.useMemo(() => {
@@ -835,6 +805,10 @@ const createStyles = (colors: ReturnType<typeof useColors>, darkMode: boolean) =
     marginBottom: 4,
   },
   takeTime: {
+    fontSize: 14,
+    color: colors.subtext,
+  },
+  takeTimeDark: {
     fontSize: 14,
     color: colors.subtext,
   },
