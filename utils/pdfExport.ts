@@ -48,9 +48,10 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               content: "-";
             }
             th { 
-              background-color: #f0f0f0; 
+              background-color: #5DB1E3; 
               font-weight: bold; 
               text-align: center;
+              color: #fff;
             }
             h1 { 
               color: #000; 
@@ -60,14 +61,14 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               font-size: 24px;
             }
             h2 { 
-              color: #fff; 
-              background-color: #5DB1E3;
+              color: #000;
+              background-color: transparent;
               margin-top: 25px; 
               margin-bottom: 15px;
               font-size: 18px;
-              border: 1px solid #333;
               padding: 8px;
-              text-align: center;
+              text-align: left;
+              font-weight: bold;
             }
             .project-header { 
               background: #f9f9f9; 
@@ -198,9 +199,10 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               content: "-";
             }
             th { 
-              background-color: #f0f0f0; 
+              background-color: #5DB1E3; 
               font-weight: bold; 
               text-align: center;
+              color: #fff;
             }
             h1 { 
               color: #000; 
@@ -210,14 +212,14 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               font-size: 20px;
             }
             h2 { 
-              color: #fff; 
-              background-color: #5DB1E3;
+              color: #000;
+              background-color: transparent;
               margin-top: 20px; 
               margin-bottom: 10px;
               font-size: 16px;
-              border: 1px solid #333;
               padding: 6px;
-              text-align: center;
+              text-align: left;
+              font-weight: bold;
             }
             .project-header { 
               background: #f9f9f9; 
@@ -584,7 +586,7 @@ const generateFilmLogHTML = (
       return a.localeCompare(b, undefined, { numeric: true });
     });
 
-    sceneContent += `<div class="scene-header">${scene}</div>`;
+    sceneContent += `<div class="scene-header">Scene: ${scene}</div>`;
     
     sortedShots.forEach(shot => {
       const takes = shots[shot];
@@ -597,7 +599,7 @@ const generateFilmLogHTML = (
       });
       
       sceneContent += `
-        <h2>${shot}</h2>
+        <h2>Shot: ${shot}</h2>
         <table>
           <thead>
             <tr>${tableHeaders}</tr>
