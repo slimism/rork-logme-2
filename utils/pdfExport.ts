@@ -60,18 +60,34 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               font-size: 24px;
             }
             h2 { 
-              color: #333; 
+              color: #fff; 
+              background-color: #5DB1E3;
               margin-top: 25px; 
               margin-bottom: 15px;
               font-size: 18px;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 5px;
+              border: 1px solid #333;
+              padding: 8px;
+              text-align: center;
             }
             .project-header { 
               background: #f9f9f9; 
               padding: 15px; 
               border: 2px solid #333;
               margin-bottom: 25px; 
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            .project-header-logo {
+              flex-shrink: 0;
+              margin-right: 15px;
+            }
+            .project-header-logo img {
+              height: 60px;
+              width: auto;
+            }
+            .project-header-content {
+              flex: 1;
               text-align: center;
             }
             .project-title {
@@ -99,7 +115,8 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               color: #666;
             }
             .scene-header {
-              background: #e8e8e8;
+              background: #5DB1E3;
+              color: #fff;
               padding: 8px;
               margin: 20px 0 10px 0;
               border: 1px solid #333;
@@ -193,18 +210,34 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               font-size: 20px;
             }
             h2 { 
-              color: #333; 
+              color: #fff; 
+              background-color: #5DB1E3;
               margin-top: 20px; 
               margin-bottom: 10px;
               font-size: 16px;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 3px;
+              border: 1px solid #333;
+              padding: 6px;
+              text-align: center;
             }
             .project-header { 
               background: #f9f9f9; 
               padding: 12px; 
               border: 2px solid #333;
               margin-bottom: 20px; 
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            .project-header-logo {
+              flex-shrink: 0;
+              margin-right: 10px;
+            }
+            .project-header-logo img {
+              height: 50px;
+              width: auto;
+            }
+            .project-header-content {
+              flex: 1;
               text-align: center;
             }
             .project-title {
@@ -232,7 +265,8 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               color: #666;
             }
             .scene-header {
-              background: #e8e8e8;
+              background: #5DB1E3;
+              color: #fff;
               padding: 6px;
               margin: 15px 0 8px 0;
               border: 1px solid #333;
@@ -504,20 +538,25 @@ const generateFilmLogHTML = (
   // Generate project header with personnel info
   const projectHeader = `
     <div class="project-header">
-      <div class="project-title">${project.name}</div>
-      <div>FILM PRODUCTION LOG SHEET</div>
-      <div class="project-info">
-        <div>Created: ${new Date(project.createdAt).toLocaleDateString()}</div>
-        <div>Total Takes: ${logSheets.length}</div>
-        <div>Export Date: ${new Date().toLocaleDateString()}</div>
+      <div class="project-header-logo">
+        <img src="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/odqfkl7858wu89osl3mk8" alt="Logo" />
       </div>
-      ${project.settings?.directorName || project.settings?.cinematographerName || project.settings?.loggerName ? `
-        <div class="personnel-info">
-          ${project.settings?.directorName ? `<div><strong>Director:</strong> ${project.settings.directorName}</div>` : ''}
-          ${project.settings?.cinematographerName ? `<div><strong>Cinematographer:</strong> ${project.settings.cinematographerName}</div>` : ''}
-          ${project.settings?.loggerName ? `<div><strong>Logger:</strong> ${project.settings.loggerName}</div>` : ''}
+      <div class="project-header-content">
+        <div class="project-title">${project.name}</div>
+        <div>FILM PRODUCTION LOG SHEET</div>
+        <div class="project-info">
+          <div>Created: ${new Date(project.createdAt).toLocaleDateString()}</div>
+          <div>Total Takes: ${logSheets.length}</div>
+          <div>Export Date: ${new Date().toLocaleDateString()}</div>
         </div>
-      ` : ''}
+        ${project.settings?.directorName || project.settings?.cinematographerName || project.settings?.loggerName ? `
+          <div class="personnel-info">
+            ${project.settings?.directorName ? `<div><strong>Director:</strong> ${project.settings.directorName}</div>` : ''}
+            ${project.settings?.cinematographerName ? `<div><strong>Cinematographer:</strong> ${project.settings.cinematographerName}</div>` : ''}
+            ${project.settings?.loggerName ? `<div><strong>Logger:</strong> ${project.settings.loggerName}</div>` : ''}
+          </div>
+        ` : ''}
+      </div>
     </div>
   `;
 

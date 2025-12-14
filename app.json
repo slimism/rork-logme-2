@@ -19,7 +19,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "LogMe needs access to your photos to add project logos and images to your film production logs.",
-        "NSCameraUsageDescription": "LogMe needs access to your camera to capture photos for project logos and documentation."
+        "NSCameraUsageDescription": "LogMe needs access to your camera to capture photos for project logos and documentation.",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -39,7 +40,11 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.INTERNET",
         "android.permission.CAMERA",
-        "com.android.vending.BILLING"
+        "com.android.vending.BILLING",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET"
       ]
     },
     "web": {
