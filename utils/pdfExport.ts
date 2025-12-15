@@ -108,21 +108,29 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               padding: 15px; 
               border: 2px solid #333;
               margin-bottom: 25px; 
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
+              position: relative;
+              min-height: 100px;
             }
             .project-header-logo {
-              flex-shrink: 0;
-              margin-right: 15px;
+              position: absolute;
+              top: 10px;
+              left: 10px;
+              display: flex;
+              flex-direction: column;
+              align-items: flex-start;
             }
             .project-header-logo img {
-              height: 60px;
+              height: 50px;
               width: auto;
             }
+            .project-header-logo .logger-name {
+              font-size: 10px;
+              margin-top: 4px;
+              font-weight: bold;
+            }
             .project-header-content {
-              flex: 1;
               text-align: center;
+              padding-left: 100px;
             }
             .project-title {
               font-size: 20px;
@@ -259,21 +267,29 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               padding: 12px; 
               border: 2px solid #333;
               margin-bottom: 20px; 
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
+              position: relative;
+              min-height: 90px;
             }
             .project-header-logo {
-              flex-shrink: 0;
-              margin-right: 10px;
+              position: absolute;
+              top: 8px;
+              left: 8px;
+              display: flex;
+              flex-direction: column;
+              align-items: flex-start;
             }
             .project-header-logo img {
-              height: 50px;
+              height: 45px;
               width: auto;
             }
+            .project-header-logo .logger-name {
+              font-size: 9px;
+              margin-top: 3px;
+              font-weight: bold;
+            }
             .project-header-content {
-              flex: 1;
               text-align: center;
+              padding-left: 90px;
             }
             .project-title {
               font-size: 18px;
@@ -581,6 +597,7 @@ const generateFilmLogHTML = async (
     <div class="project-header">
       <div class="project-header-logo">
         ${logoHtml}
+        ${project.settings?.loggerName ? `<div class="logger-name">Logger: ${project.settings.loggerName}</div>` : ''}
       </div>
       <div class="project-header-content">
         <div class="project-title">${project.name}</div>
@@ -590,11 +607,10 @@ const generateFilmLogHTML = async (
           <div>Total Takes: ${logSheets.length}</div>
           <div>Export Date: ${new Date().toLocaleDateString()}</div>
         </div>
-        ${project.settings?.directorName || project.settings?.cinematographerName || project.settings?.loggerName ? `
+        ${project.settings?.directorName || project.settings?.cinematographerName ? `
           <div class="personnel-info">
             ${project.settings?.directorName ? `<div><strong>Director:</strong> ${project.settings.directorName}</div>` : ''}
             ${project.settings?.cinematographerName ? `<div><strong>Cinematographer:</strong> ${project.settings.cinematographerName}</div>` : ''}
-            ${project.settings?.loggerName ? `<div><strong>Logger:</strong> ${project.settings.loggerName}</div>` : ''}
           </div>
         ` : ''}
       </div>
