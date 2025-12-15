@@ -175,6 +175,11 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               word-wrap: break-word;
             }
             .page-break { page-break-before: always; }
+            .classification-divider {
+              border: none;
+              border-top: 3px solid #333;
+              margin: 30px 0 20px 0;
+            }
           </style>
         </head>
         <body>
@@ -335,6 +340,11 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               padding: 20px;
             }
             .page-break { page-break-before: always; }
+            .classification-divider {
+              border: none;
+              border-top: 3px solid #333;
+              margin: 30px 0 20px 0;
+            }
           </style>
         </head>
         <body>
@@ -691,7 +701,7 @@ const generateFilmLogHTML = async (
   // Add smart export sections if requested
   if (isSmartExport) {
     const smartSections = generateSmartExportSections(logSheets, fieldList, customFields);
-    content += `\n<div class=\"page-break\"></div>\n<div>\n  ${smartSections}\n</div>`;
+    content += `\n<div class="page-break"></div>\n<hr class="classification-divider" />\n<div>\n  ${smartSections}\n</div>`;
   } else {
     // Add SFX and Ambience tables for regular export
     if (sfxTakes.length > 0) {
