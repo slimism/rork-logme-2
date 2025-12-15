@@ -81,7 +81,7 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               content: "-";
             }
             th { 
-              background-color: #5DB1E3; 
+              background-color: #474747; 
               font-weight: bold; 
               text-align: center;
               color: #fff;
@@ -149,7 +149,7 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               color: #666;
             }
             .scene-header {
-              background: #5DB1E3;
+              background: #474747;
               color: #fff;
               padding: 8px;
               margin: 20px 0 10px 0;
@@ -232,7 +232,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               content: "-";
             }
             th { 
-              background-color: #5DB1E3; 
+              background-color: #474747; 
               font-weight: bold; 
               text-align: center;
               color: #fff;
@@ -300,7 +300,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               color: #666;
             }
             .scene-header {
-              background: #5DB1E3;
+              background: #474747;
               color: #fff;
               padding: 6px;
               margin: 15px 0 8px 0;
