@@ -128,7 +128,8 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
             }
             .project-header-content {
               text-align: center;
-              padding-left: 100px;
+              margin: 0 auto;
+              padding: 0 100px;
             }
             .project-title {
               font-size: 20px;
@@ -290,7 +291,8 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
             }
             .project-header-content {
               text-align: center;
-              padding-left: 90px;
+              margin: 0 auto;
+              padding: 0 90px;
             }
             .project-title {
               font-size: 18px;
