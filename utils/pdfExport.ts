@@ -163,6 +163,7 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               border: 1px solid #333;
               font-weight: bold;
               text-align: center;
+              font-size: 18px;
             }
             .take-row:nth-child(even) {
               background-color: #f9f9f9;
@@ -326,7 +327,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               border: 1px solid #333;
               font-weight: bold;
               text-align: center;
-              font-size: 12px;
+              font-size: 16px;
             }
             .take-row:nth-child(even) {
               background-color: #f9f9f9;
