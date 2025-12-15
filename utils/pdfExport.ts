@@ -2,10 +2,43 @@ import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { Project, LogSheet } from '@/types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const window: any;
+
+// Logo URL and cached base64
+const LOGO_URL = 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/odqfkl7858wu89osl3mk8';
+let cachedLogoBase64: string | null = null;
+
+// Convert image URL to base64 data URI for iOS compatibility
+const getLogoBase64 = async (): Promise<string> => {
+  if (cachedLogoBase64) return cachedLogoBase64;
+  
+  try {
+    const response = await fetch(LOGO_URL);
+    const blob = await response.blob();
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        cachedLogoBase64 = reader.result as string;
+        resolve(cachedLogoBase64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Failed to convert logo to base64:', error);
+    // Return empty string if conversion fails
+    return '';
+  }
+};
+
 // Web-compatible PDF generation
 const generatePDFWeb = async (htmlContent: string, filename: string): Promise<boolean> => {
   try {
-    // Create a new window for printing
+    // Create a new window for printing (web only)
+    if (typeof window === 'undefined' || !window?.open) return false;
+    
     const printWindow = window.open('', '_blank');
     if (!printWindow) return false;
 
@@ -460,11 +493,13 @@ const generateSmartExportSections = (
   ].filter(Boolean).join('');
 };
 
-const generateFilmLogHTML = (
+const generateFilmLogHTML = async (
   project: Project,
   logSheets: LogSheet[],
   isSmartExport: boolean = false
-): string => {
+): Promise<string> => {
+  // Get logo as base64 for iOS compatibility
+  const logoBase64 = await getLogoBase64();
   // Get enabled fields from project settings
   const enabledFields = project.settings?.logSheetFields || [];
   const customFields = project.settings?.customFields || [];
@@ -538,10 +573,14 @@ const generateFilmLogHTML = (
   });
 
   // Generate project header with personnel info
+  const logoHtml = logoBase64 
+    ? `<img src="${logoBase64}" alt="Logo" />`
+    : '';
+  
   const projectHeader = `
     <div class="project-header">
       <div class="project-header-logo">
-        <img src="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/odqfkl7858wu89osl3mk8" alt="Logo" />
+        ${logoHtml}
       </div>
       <div class="project-header-content">
         <div class="project-title">${project.name}</div>
@@ -735,7 +774,7 @@ export const exportProjectToPDF = async (
     const filename = `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_FilmLog`;
     
     // Generate film log HTML content
-    const fullContent = generateFilmLogHTML(project, logSheets, isSmartExport);
+    const fullContent = await generateFilmLogHTML(project, logSheets, isSmartExport);
 
     // Generate PDF based on platform
     if (Platform.OS === 'web') {
