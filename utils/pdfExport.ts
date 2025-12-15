@@ -120,6 +120,12 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               height: 50px;
               width: auto;
             }
+            .project-header-logger {
+              position: absolute;
+              bottom: 15px;
+              left: 10px;
+              font-size: 11px;
+            }
             .project-header-content {
               text-align: center;
               padding-left: 100px;
@@ -270,6 +276,12 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
             .project-header-logo img {
               height: 45px;
               width: auto;
+            }
+            .project-header-logger {
+              position: absolute;
+              bottom: 12px;
+              left: 8px;
+              font-size: 10px;
             }
             .project-header-content {
               text-align: center;
@@ -582,11 +594,11 @@ const generateFilmLogHTML = async (
       <div class="project-header-logo">
         ${logoHtml}
       </div>
+      ${project.settings?.loggerName ? `<div class="project-header-logger">Logger: ${project.settings.loggerName}</div>` : ''}
       <div class="project-header-content">
         <div class="project-title">${project.name}</div>
         <div>FILM PRODUCTION LOG SHEET</div>
         <div class="project-info">
-          ${project.settings?.loggerName ? `<div>Logger: ${project.settings.loggerName}</div>` : ''}
           <div>Created: ${new Date(project.createdAt).toLocaleDateString()}</div>
           <div>Total Takes: ${logSheets.length}</div>
           <div>Export Date: ${new Date().toLocaleDateString()}</div>
