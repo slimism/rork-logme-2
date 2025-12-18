@@ -117,7 +117,7 @@ const generatePDFWeb = async (htmlContent: string, filename: string): Promise<bo
               left: 10px;
             }
             .project-header-logo img {
-              height: 70px;
+              height: 50px;
               width: auto;
             }
             .project-header-logger {
@@ -281,7 +281,7 @@ const generatePDFMobile = async (htmlContent: string, filename: string): Promise
               left: 8px;
             }
             .project-header-logo img {
-              height: 65px;
+              height: 45px;
               width: auto;
             }
             .project-header-logger {
