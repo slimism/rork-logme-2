@@ -24,13 +24,11 @@ const DEFAULT_VOUCHERS: Voucher[] = [
   { code: 'WELCOME01LOGS', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WLCM1FREE', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WELCMN1TKN', type: 'token', value: 1, description: '1 Free Token', used: false },
-  { code: 'WELC1TOKEN', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WLCM1TOKN', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WELCOME-1F', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WELCOMEONE', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WELCOME-01', type: 'token', value: 1, description: '1 Free Token', used: false },
   { code: 'WLCM-1FREE', type: 'token', value: 1, description: '1 Free Token', used: false },
-  { code: 'WELC1TKNS', type: 'token', value: 1, description: '1 Free Token', used: false },
 
   // 4 Free Tokens codes
   { code: 'LOGME4TKN', type: 'token', value: 4, description: '4 Free Tokens', used: false },

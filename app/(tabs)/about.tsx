@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, Linking } from 'react-native';
+import Constants from 'expo-constants';
 import { useColors } from '@/constants/colors';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +26,7 @@ export default function AboutScreen() {
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
-            <Text style={styles.versionValue}>1.1.2</Text>
+            <Text style={styles.versionValue}>{Constants.expoConfig?.version ?? '1.1.3'}</Text>
           </View>
           <View style={[styles.versionRow, { marginTop: 16 }]}>
             <Text style={styles.versionLabel}>Dark Mode</Text>
