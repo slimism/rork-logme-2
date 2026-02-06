@@ -6,7 +6,7 @@ try {
   const iapModule = require('react-native-iap');
   // Handle different export structures (default export vs named export)
   RNIap = iapModule.default || iapModule;
-  
+
   // Debug: Log module structure if fetchProducts doesn't exist
   if (RNIap && typeof RNIap.fetchProducts !== 'function') {
     console.warn('RNIap.fetchProducts not found. Available methods:', Object.keys(RNIap || {}));
@@ -24,6 +24,8 @@ export interface IAPProduct {
   description: string;
   tokens: number;
 }
+
+import { useTokenStore } from '@/store/subscriptionStore';
 
 export interface PurchaseResult {
   success: boolean;
@@ -52,6 +54,9 @@ const PRODUCT_TO_TOKEN_MAP: Record<string, number> = {
 
 class IAPService {
   private initialized = false;
+  private currentPurchaseProductId: string | null = null;
+  private purchaseUpdateSubscription: any = null;
+  private purchaseErrorSubscription: any = null;
 
   async initialize(): Promise<boolean> {
     try {
@@ -79,13 +84,95 @@ class IAPService {
 
       // Initialize react-native-iap connection
       await RNIap.initConnection();
-      
+
       this.initialized = true;
       console.log(`IAP Service initialized successfully for ${Platform.OS}`);
+
+      // Start listening for transactions immediately after initialization
+      this.startListening();
+
       return true;
     } catch (error) {
       console.error('Failed to initialize IAP service:', error);
       return false;
+    }
+  }
+
+  startListening() {
+    if (!RNIap) return;
+
+    // Remove existing listeners if any
+    if (this.purchaseUpdateSubscription) {
+      this.purchaseUpdateSubscription.remove();
+      this.purchaseUpdateSubscription = null;
+    }
+    if (this.purchaseErrorSubscription) {
+      this.purchaseErrorSubscription.remove();
+      this.purchaseErrorSubscription = null;
+    }
+
+    console.log('Starting global IAP transaction listeners');
+
+    this.purchaseUpdateSubscription = RNIap.purchaseUpdatedListener(async (purchase: any) => {
+      console.log('Global listener received purchase:', purchase);
+
+      // If this is the purchase we are currently processing in purchaseProduct, let the local listener handle it
+      if (this.currentPurchaseProductId && purchase.productId === this.currentPurchaseProductId) {
+        console.log('Global listener ignoring current active purchase:', purchase.productId);
+        return;
+      }
+
+      // Otherwise, this is an external transaction (offer code, unfinished transaction, etc.)
+      console.log('Global listener processing external/unfinished purchase:', purchase.productId);
+      await this.handleTransaction(purchase);
+    });
+
+    this.purchaseErrorSubscription = RNIap.purchaseErrorListener((error: any) => {
+      console.log('Global listener received error:', error);
+    });
+  }
+
+  async checkUnfinishedTransactions() {
+    if (!this.initialized) await this.initialize();
+    if (!RNIap) return;
+
+    try {
+      console.log('Checking for available purchases/unfinished transactions...');
+      const purchases = await RNIap.getAvailablePurchases();
+      console.log('Available purchases:', purchases);
+
+      if (purchases && purchases.length > 0) {
+        for (const purchase of purchases) {
+          await this.handleTransaction(purchase);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking unfinished transactions:', error);
+    }
+  }
+
+  private async handleTransaction(purchase: any) {
+    try {
+      if (!purchase.productId) return;
+
+      // Validate token mapping exists
+      const tokens = this.getTokensForProduct(purchase.productId);
+      if (tokens <= 0) {
+        console.warn('Unknown product ID in transaction:', purchase.productId);
+        return;
+      }
+
+      console.log(`Processing transaction for ${purchase.productId}, adding ${tokens} tokens`);
+
+      // Add tokens to store
+      useTokenStore.getState().addTokens(tokens);
+
+      // Finish transaction
+      await RNIap.finishTransaction({ purchase, isConsumable: true });
+      console.log('Transaction finished successfully');
+
+    } catch (error) {
+      console.error('Error handling transaction:', error);
     }
   }
 
@@ -126,9 +213,9 @@ class IAPService {
       // On iOS builds, this exclusively uses Apple's App Store payment system
       // Note: fetchProducts replaced getProducts in react-native-iap v14+
       const products = await RNIap.fetchProducts({ skus: PRODUCT_IDS });
-      
+
       console.log('Raw products from fetchProducts:', JSON.stringify(products, null, 2));
-      
+
       // Map react-native-iap products to our IAPProduct format
       // Note: react-native-iap v14+ uses 'id' instead of 'productId'
       const mappedProducts = products
@@ -144,10 +231,10 @@ class IAPService {
         .map((product: any) => {
           // react-native-iap v14+ uses 'id' instead of 'productId'
           const productIdentifier = product.id || product.productId;
-          
+
           // Get the raw price value (use price or parse displayPrice)
           const rawPrice = product.price || (product.displayPrice ? parseFloat(product.displayPrice.replace(/[^0-9.-]/g, '')) : 0);
-          
+
           // Clean the product title by removing everything in parentheses
           let cleanTitle = product.title || product.displayName || productIdentifier;
           // Remove all content in parentheses (including nested parentheses)
@@ -156,7 +243,7 @@ class IAPService {
           cleanTitle = cleanTitle.replace(/\)\s*$/g, '').replace(/^\s*\(/g, '').trim();
           // Remove any standalone parentheses
           cleanTitle = cleanTitle.replace(/\s*[()]\s*/g, ' ').trim();
-          
+
           const mappedProduct = {
             productId: productIdentifier, // Map 'id' to 'productId' for our interface
             price: this.formatPrice(rawPrice),
@@ -165,11 +252,11 @@ class IAPService {
             description: product.description || '',
             tokens: this.getTokensForProduct(productIdentifier),
           };
-          
+
           console.log('Mapped product:', { productId: mappedProduct.productId, title: mappedProduct.title });
           return mappedProduct;
         });
-      
+
       return mappedProducts;
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -218,19 +305,20 @@ class IAPService {
           error: 'Invalid product ID',
         };
       }
-      
+
       console.log(`Attempting to purchase product: ${productId}`);
-      
+      this.currentPurchaseProductId = productId;
+
       // Set up purchase listener before initiating purchase
       return new Promise<PurchaseResult>((resolve) => {
         const purchaseUpdateListener = RNIap.purchaseUpdatedListener((purchase: any) => {
           purchaseUpdateListener.remove();
           purchaseErrorListener.remove();
-          
+
           if (purchase.productId === productId) {
-            // Finish the transaction
-            RNIap.finishTransaction({ purchase });
-            
+            RNIap.finishTransaction({ purchase, isConsumable: true });
+
+            this.currentPurchaseProductId = null;
             resolve({
               success: true,
               productId: purchase.productId,
@@ -238,54 +326,56 @@ class IAPService {
             });
           }
         });
-        
+
         // Handle purchase errors
         const purchaseErrorListener = RNIap.purchaseErrorListener((error: any) => {
           purchaseErrorListener.remove();
           purchaseUpdateListener.remove();
-          
+
           let errorMessage = 'Purchase failed';
           if (error.code === 'E_USER_CANCELLED') {
             errorMessage = 'Purchase was canceled';
           } else if (error.message) {
             errorMessage = error.message;
           }
-          
+
           resolve({
             success: false,
             error: errorMessage,
           });
+          this.currentPurchaseProductId = null;
         });
-        
+
         // Initiate purchase - react-native-iap v14+ format
         // The correct format requires a 'request' wrapper with platform-specific props and 'type' field
         const purchaseConfig = {
-          request: Platform.OS === 'ios' 
+          request: Platform.OS === 'ios'
             ? {
-                ios: {
-                  sku: productId,
-                },
-              }
-            : {
-                android: {
-                  skus: [productId],
-                },
+              ios: {
+                sku: productId,
               },
+            }
+            : {
+              android: {
+                skus: [productId],
+              },
+            },
           type: 'in-app' as const,
         };
-        
+
         console.log('Purchase config:', JSON.stringify(purchaseConfig, null, 2));
-        
+
         RNIap.requestPurchase(purchaseConfig).catch((error: any) => {
           purchaseErrorListener.remove();
           purchaseUpdateListener.remove();
-          
+
           resolve({
             success: false,
             error: error.message || 'Purchase failed',
           });
+          this.currentPurchaseProductId = null;
         });
-        
+
         // Timeout after 60 seconds
         setTimeout(() => {
           purchaseUpdateListener.remove();
@@ -295,6 +385,8 @@ class IAPService {
             error: 'Purchase timeout',
           });
         }, 60000);
+        // Note: we don't clear currentPurchaseProductId on timeout immediately effectively, 
+        // as the transaction might still come in later.
       });
     } catch (error) {
       console.error('Purchase failed:', error);
@@ -319,11 +411,11 @@ class IAPService {
     if (price === undefined || price === null) {
       return '0.00';
     }
-    
+
     let numericValue: number;
     let currencyPrefix = '';
     let currencySuffix = '';
-    
+
     // Convert to number if it's a string
     if (typeof price === 'string') {
       // Check if string contains currency symbols at the start
@@ -332,7 +424,7 @@ class IAPService {
         currencyPrefix = currencyMatch[1] + ' ';
         price = currencyMatch[2];
       }
-      
+
       // Extract numeric value from string
       numericValue = parseFloat(price.replace(/[^0-9.-]/g, ''));
       if (isNaN(numericValue)) {
@@ -341,7 +433,7 @@ class IAPService {
     } else {
       numericValue = price;
     }
-    
+
     // Format to 2 decimal places and add currency prefix if it existed
     return currencyPrefix + numericValue.toFixed(2);
   }

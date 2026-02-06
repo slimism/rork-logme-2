@@ -11,10 +11,10 @@ import {
   KeyboardAvoidingView,
   Keyboard,
 } from 'react-native';
-import { Calendar, Hourglass, Infinity, Tag } from 'lucide-react-native';
+import { Calendar, Hourglass, Infinity } from 'lucide-react-native';
 import { useColors } from '@/constants/colors';
 import { useTokenStore } from '@/store/subscriptionStore';
-import { useVoucherStore } from '@/store/voucherStore';
+
 import { iapService, IAPProduct } from '@/services/iapService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/store/themeStore';
@@ -29,46 +29,20 @@ export default function Store() {
   const colors = useColors();
   const { tokens, addTokens, getRemainingTrialLogs } = useTokenStore();
   const { darkMode } = useThemeStore();
-  const { redeemVoucher } = useVoucherStore();
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [products, setProducts] = useState<TokenPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [voucherCode, setVoucherCode] = useState('');
-  const [showVoucher, setShowVoucher] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const voucherInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-      // Scroll to voucher input when keyboard appears and voucher is shown
-      if (showVoucher && voucherInputRef.current) {
-        setTimeout(() => {
-          voucherInputRef.current?.measure((x, y, width, height, pageX, pageY) => {
-            scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-          });
-        }, 100);
-      }
-    });
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
 
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, [showVoucher]);
 
   const loadProducts = async () => {
     try {
       const iapProducts = await iapService.getProducts();
-      
+
       if (iapProducts.length === 0) {
         // This could mean:
         // 1. Running in Expo Go (IAP not available)
@@ -88,18 +62,18 @@ export default function Store() {
         }
         return true;
       });
-      
+
       // You can customize the popular badge and savings based on your product configuration
       const tokenPackages: TokenPackage[] = validProducts.map((product, index) => {
         // Determine which product should be marked as popular (typically the middle tier)
         const isPopular = index === Math.floor(validProducts.length / 2);
-        
+
         return {
           ...product,
           popular: isPopular,
         };
       });
-      
+
       console.log('Loaded products:', tokenPackages.map(p => ({ productId: p.productId, title: p.title })));
       setProducts(tokenPackages);
     } catch (error) {
@@ -136,13 +110,13 @@ export default function Store() {
 
     console.log('Purchase initiated for product:', packageItem.productId);
     setPurchasing(packageItem.productId);
-    
+
     try {
       const result = await iapService.purchaseProduct(packageItem.productId);
-      
+
       if (result.success) {
         addTokens(packageItem.tokens);
-        
+
         Alert.alert(
           'Purchase Successful!',
           `You have successfully purchased ${packageItem.tokens} token${packageItem.tokens > 1 ? 's' : ''}. You now have ${tokens + packageItem.tokens} tokens available.`,
@@ -167,31 +141,14 @@ export default function Store() {
   };
 
 
-  const handleRedeemVoucher = () => {
-    if (!voucherCode.trim()) {
-      Alert.alert('Error', 'Please enter a voucher code');
-      return;
-    }
 
-    const result = redeemVoucher(voucherCode);
-    
-    if (result.success) {
-      Alert.alert('Success!', result.message);
-      setVoucherCode('');
-      setShowVoucher(false);
-    } else {
-      Alert.alert('Error', result.message);
-    }
-  };
 
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
   return (
-    <KeyboardAvoidingView 
+    <View
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}
     >
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerSpacer} />
@@ -199,11 +156,9 @@ export default function Store() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.scrollContainer} 
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20 }]}
-        keyboardShouldPersistTaps="handled"
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.contentContainer}
       >
         <View style={[styles.statusCard, styles.firstStatusCard]}>
           <Text style={styles.statusLabel}>Remaining Tokens</Text>
@@ -217,66 +172,28 @@ export default function Store() {
 
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>How Tokens Work</Text>
-          
+
           <View style={styles.infoItem}>
             <Calendar size={20} color={colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoText}>Each token unlocks one project with unlimited logs.</Text>
           </View>
-          
+
           <View style={styles.infoItem}>
             <Hourglass size={20} color={colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoText}>The free trial includes 15 logs for a single project only.</Text>
           </View>
-          
+
           <View style={styles.infoItem}>
             <Infinity size={20} color={colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoText}>Tokens never expire and can be used anytime.</Text>
           </View>
         </View>
 
-        <View style={styles.sectionContainer}>
-          <TouchableOpacity 
-            style={styles.voucherButton}
-            onPress={() => setShowVoucher(!showVoucher)}
-          >
-            <Tag size={20} color={colors.primary} style={styles.voucherIcon} />
-            <Text style={styles.voucherButtonText}>
-              {showVoucher ? 'Hide Voucher Code' : 'Have a Voucher Code?'}
-            </Text>
-          </TouchableOpacity>
-          
-          {showVoucher && (
-            <View style={styles.voucherInputContainer}>
-              <TextInput
-                ref={voucherInputRef}
-                style={styles.voucherInput}
-                placeholder="Enter voucher code"
-                placeholderTextColor={colors.subtext}
-                value={voucherCode}
-                onChangeText={setVoucherCode}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                onFocus={() => {
-                  setTimeout(() => {
-                    voucherInputRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                      scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
-                    });
-                  }, 100);
-                }}
-              />
-              <TouchableOpacity 
-                style={styles.redeemButton}
-                onPress={handleRedeemVoucher}
-              >
-                <Text style={styles.redeemButtonText}>Redeem</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+
 
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Purchase Tokens</Text>
-          
+
           {loading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading products...</Text>
@@ -284,7 +201,7 @@ export default function Store() {
           ) : products.length === 0 ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>
-                {Platform.OS === 'ios' 
+                {Platform.OS === 'ios'
                   ? 'IAP not available. To test purchases, create a development build using "npx expo run:ios" or EAS Build. IAP does not work in Expo Go.'
                   : 'In-app purchases are only available on iOS.'}
               </Text>
@@ -326,17 +243,17 @@ export default function Store() {
           )}
         </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {Platform.OS === 'ios' 
-            ? 'Secure Payments are processed through the Apple App Store.'
-            : Platform.OS === 'android'
-            ? 'Secure Payments are processed through Google Play Store.'
-            : 'Secure Payments are processed through the Apple App Store.'}
-        </Text>
-      </View>
-    </ScrollView>
-    </KeyboardAvoidingView>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {Platform.OS === 'ios'
+              ? 'Secure Payments are processed through the Apple App Store.'
+              : Platform.OS === 'android'
+                ? 'Secure Payments are processed through Google Play Store.'
+                : 'Secure Payments are processed through the Apple App Store.'}
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -498,52 +415,5 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: 12,
     color: colors.subtext,
     textAlign: 'center',
-  },
-  voucherButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  voucherIcon: {
-    marginRight: 8,
-  },
-  voucherButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  voucherInputContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  voucherInput: {
-    flex: 1,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  redeemButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  redeemButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

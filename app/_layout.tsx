@@ -8,6 +8,8 @@ import { useThemeStore } from '@/store/themeStore';
 import { useColors } from '@/constants/colors';
 import { OrientationGuard } from '@/components/OrientationGuard';
 import '@/utils/consoleLogger';
+import { iapService } from '@/services/iapService';
+import { AppState } from 'react-native';
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -20,6 +22,25 @@ export default function RootLayout() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
+
+    // Initialize IAP service and check for pending transactions (e.g. offer codes)
+    const initIap = async () => {
+      await iapService.initialize();
+      await iapService.checkUnfinishedTransactions();
+    };
+
+    initIap();
+
+    // Check for transactions when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        iapService.checkUnfinishedTransactions();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const handleSplashFinish = () => {
@@ -62,12 +83,12 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="project/[id]" 
-          options={{ 
+        <Stack.Screen
+          name="project/[id]"
+          options={{
             title: "Project",
             headerBackTitle: "Projects"
-          }} 
+          }}
         />
       </Stack>
       <Toast />
