@@ -251,9 +251,6 @@ export default function Store() {
                 ? 'Secure Payments are processed through Google Play Store.'
                 : 'Secure Payments are processed through the Apple App Store.'}
           </Text>
-          <Text style={[styles.footerText, styles.footerOfferCode]}>
-            Have an offer code? Redeem it in the App Store (iOS) or Play Store (Android); tokens will appear when you open the app.
-          </Text>
         </View>
       </ScrollView>
     </View>
@@ -418,9 +415,5 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: 12,
     color: colors.subtext,
     textAlign: 'center',
-  },
-  footerOfferCode: {
-    marginTop: 8,
-    paddingHorizontal: 16,
   },
 });
