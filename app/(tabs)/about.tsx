@@ -26,7 +26,7 @@ export default function AboutScreen() {
         <View style={styles.versionSection}>
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
-            <Text style={styles.versionValue}>{Constants.expoConfig?.version ?? '1.1.3'}</Text>
+            <Text style={styles.versionValue}>{Constants.expoConfig?.version ?? '1.1.4'}</Text>
           </View>
           <View style={[styles.versionRow, { marginTop: 16 }]}>
             <Text style={styles.versionLabel}>Dark Mode</Text>

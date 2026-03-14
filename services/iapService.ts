@@ -51,6 +51,11 @@ const PRODUCT_TO_TOKEN_MAP: Record<string, number> = {
   'app.rork.logme.tokens.10': 10,
 };
 // ============================================================================
+// NOTE: This app does not implement custom voucher or promo-code redemption.
+// All promotions use App Store Connect offer codes (iOS) and Google Play
+// offer/promo codes (Android). Redeemed purchases are fulfilled via
+// purchaseUpdatedListener and checkUnfinishedTransactions().
+// ============================================================================
 
 class IAPService {
   private initialized = false;

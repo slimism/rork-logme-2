@@ -76,6 +76,7 @@ Before the IAP will work, you need to:
 
 ## ⚠️ Important Notes
 
+- **Offer codes only**: This app does not support in-app voucher or promo-code entry. Run promotions using **App Store Connect offer codes** (iOS) and **Google Play offer/promo codes** (Android). Redeemed purchases are fulfilled automatically when the user opens or returns to the app.
 - **iOS Only**: Currently configured for iOS only (as requested)
 - **Product IDs are permanent**: Once created in App Store Connect, product IDs cannot be changed
 - **Testing**: IAP only works on physical devices, not in simulator

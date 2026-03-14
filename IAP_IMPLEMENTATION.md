@@ -2,6 +2,10 @@
 
 This document provides instructions for implementing actual In-App Purchases (IAP) when building the LogMe app for production.
 
+## Offer codes only (no in-app vouchers)
+
+This app does not implement custom voucher or promo-code redemption. All promotions use **App Store Connect offer codes** (iOS) and **Google Play offer/promo codes** (Android). Redeemed purchases are delivered by the store and fulfilled in-app via the same IAP flow (e.g. on app launch or when returning to foreground).
+
 ## Current Implementation
 
 The app currently includes:
