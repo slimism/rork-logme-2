@@ -51,7 +51,8 @@
     "react-native-toast-message": "^2.3.3",
     "react-native-web": "^0.21.0",
     "zod": "^4.1.13",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "@rork-ai/toolkit-sdk": "latest"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
